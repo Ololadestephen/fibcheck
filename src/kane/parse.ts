@@ -28,6 +28,8 @@ export interface KaneObservation {
   condition: string;
   extractedValue: string;
   expectedValue: string;
+  analyzerType?: string;
+  usedDomCode?: boolean;
 }
 
 export interface KaneResult {
@@ -133,6 +135,8 @@ function observationsFrom(end: Json | undefined): KaneObservation[] {
     condition: str(m.condition),
     extractedValue: str(m.extracted_value),
     expectedValue: str(m.expected_value),
+    analyzerType: str(m.analyzer_type),
+    usedDomCode: Boolean(m.code_js || m.wrapped_js || (Array.isArray(m.locators) ? m.locators.length : m.locators)),
   }));
 }
 

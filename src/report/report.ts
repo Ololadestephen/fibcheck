@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import type { CheckReport } from "../check.js";
+import type { CheckReport, ClaimRun } from "../check.js";
 import type { Claim } from "../claims/types.js";
 import type { KaneRun } from "../kane/runner.js";
 
@@ -38,15 +38,15 @@ const RESULT_LABELS = {
   cancelled: "Kane cancelled",
 } satisfies Record<KaneRun["status"], string>;
 
-function runByClaim(report: CheckReport): Map<string, KaneRun> {
-  return new Map(report.tested.map(({ claim, kane }) => [claim.id, kane]));
+function runByClaim(report: CheckReport): Map<string, ClaimRun> {
+  return new Map(report.tested.map((entry) => [entry.claim.id, entry]));
 }
 
 function countResults(report: CheckReport) {
   const runs = runByClaim(report);
   const skipped = new Set(report.notTested);
   const counts = { tested: runs.size, passed: 0, failed: 0, error: 0, cancelled: 0, skipped: 0, untestable: 0 };
-  for (const kane of runs.values()) {
+  for (const { kane } of runs.values()) {
     if (!Object.hasOwn(RESULT_LABELS, kane.status)) throw new Error("Unknown Kane result status.");
     counts[kane.status]++;
   }
@@ -64,6 +64,7 @@ function renderReport(report: CheckReport, counts: ReturnType<typeof countResult
   const tested = report.claims.filter((claim) => runs.has(claim.id));
   const remaining = report.claims.filter((claim) => !runs.has(claim.id));
   const name = escapeHtml(report.target);
+  const questioned = report.tested.some((entry) => entry.questioning);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -82,8 +83,8 @@ function renderReport(report: CheckReport, counts: ReturnType<typeof countResult
     <p class="meta">Run <time datetime="${escapeHtml(report.startedAt)}">${escapeHtml(report.startedAt)}</time> · ${report.kaneCredits.toFixed(1)} Kane credits reported · <a href="${encodeURIComponent(inputName)}">Check JSON</a></p>
   </header>
   <section aria-labelledby="results">
-    <h2 id="results">Kane results</h2>
-    <p>These results describe individual browser checks. Claim verdicts require the questioning loop.</p>
+    <h2 id="results">${questioned ? "Initial Kane results" : "Kane results"}</h2>
+    <p>${questioned ? "Each tested claim shows its verdict and the evidence for each round below." : "These results describe individual browser checks. Claim verdicts require the questioning loop."}</p>
     ${renderCounts(counts)}
     <p class="meta">${report.claims.length} extracted claims across ${report.documents.length} documents · ${report.rejected.length} rejected quotes</p>
   </section>
@@ -111,16 +112,32 @@ function renderCounts(counts: ReturnType<typeof countResults>): string {
   return `<dl class="metrics">${metrics.map(([label, count]) => `<div><dt>${label}</dt><dd>${count}</dd></div>`).join("")}</dl>`;
 }
 
-function renderClaim(claim: Claim, kane: KaneRun | undefined, skipped: boolean, directory: string): string {
+function renderClaim(claim: Claim, entry: ClaimRun | undefined, skipped: boolean, directory: string): string {
   const { file, startLine, endLine } = claim.source;
   const line = startLine === endLine ? `line ${startLine}` : `lines ${startLine}–${endLine}`;
-  const status = kane ? RESULT_LABELS[kane.status] : skipped ? "Not run" : "Untestable";
+  const question = entry?.questioning;
+  const status = question ? `Verdict ${question.verdict}` : entry ? RESULT_LABELS[entry.kane.status] : skipped ? "Not run" : "Untestable";
   return `<article>
-    <div class="claim-meta"><span class="status ${kane?.status ?? "pending"}">${status}</span>
+    <div class="claim-meta"><span class="status ${question ? "pending" : entry?.kane.status ?? "pending"}">${escapeHtml(status)}</span>
     <span class="meta">${escapeHtml(file)} · ${escapeHtml(line)}</span></div>
     <blockquote>${escapeHtml(claim.quote)}</blockquote>
-    ${kane ? renderRun(kane, directory) : claim.reason ? `<p class="meta">${escapeHtml(claim.reason)}</p>` : ""}
+    ${entry ? renderClaimRuns(entry, directory) : claim.reason ? `<p class="meta">${escapeHtml(claim.reason)}</p>` : ""}
   </article>`;
+}
+
+function renderClaimRuns({ kane, questioning }: ClaimRun, directory: string): string {
+  if (!questioning) return renderRun(kane, directory);
+  const rounds = [{ purpose: "initial", reason: questioning.initialReason, kane }, ...questioning.followUps];
+  const roundNames: Record<string, string> = { initial: "Initial check", retry: "Reproduction", control: "Control" };
+  const roundsHtml = rounds.map((round) => `<section class="round">
+    <h3>${roundNames[round.purpose]} · ${RESULT_LABELS[round.kane.status]}</h3>
+    <p class="meta">${escapeHtml(round.reason)}</p>
+    ${renderRun(round.kane, directory)}
+    ${questioning.overrides.filter((entry) => entry.round === round.purpose).map((entry) => (
+      `<p class="override"><strong>Blame override</strong> · Kane reported ${escapeHtml(entry.family)} / ${escapeHtml(entry.category)}. ${escapeHtml(entry.hypothesis)} ${escapeHtml(entry.evidence)}</p>`
+    )).join("")}
+  </section>`).join("\n");
+  return `<p>${escapeHtml(questioning.reason)}</p>${roundsHtml}`;
 }
 
 function renderRun(kane: KaneRun, directory: string): string {
@@ -201,6 +218,9 @@ article { background: #fffdf7; border: 1px solid #d7d7c8; padding: .9rem 1.15rem
 .failed { background: #f4dfd7; color: #792b26; }
 blockquote { margin: .55rem 0; padding-left: .7rem; border-left: 2px solid #acae9a; white-space: pre-wrap; }
 details { margin-top: .55rem; font-size: .875rem; }
+.round { margin: 1rem 0 .3rem; padding: .55rem 0 0; border-top: 1px solid #d7d7c8; }
+.round h3 { font-size: 1rem; margin: 0; }
+.override { border-left: 2px solid #9a6231; background: #f8eddd; padding: .45rem .65rem; }
 summary { cursor: pointer; color: #245544; font-weight: 600; }
 ul { margin: .45rem 0; padding-left: 1.4rem; }
 li { margin: .25rem 0; }

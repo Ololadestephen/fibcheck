@@ -12,6 +12,7 @@ export interface KaneRunOptions {
   outDir: string;
   maxSteps?: number;
   timeoutSec?: number;
+  assertionMode?: "dom" | "visual";
   /** Kane variables file (may hold secret test logins; never logged). */
   variablesFile?: string;
   /** The command to run; tests pass a fake. */
@@ -55,6 +56,7 @@ function kaneArgs(options: KaneRunOptions): string[] {
     String(options.maxSteps ?? 25),
     "--timeout",
     String(options.timeoutSec ?? 420),
+    ...(options.assertionMode ? ["--assertion-mode", options.assertionMode] : []),
     ...(options.variablesFile ? ["--variables-file", options.variablesFile] : []),
   ];
 }

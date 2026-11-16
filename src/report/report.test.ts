@@ -101,6 +101,28 @@ describe("pinocchio report", () => {
     expect(readFileSync(join(directory, "badge.svg"), "utf8")).toContain("0 claims tested by Kane");
   });
 
+  it("shows the verdict, retry, control and blame override for a questioned claim", async () => {
+    const kane: KaneRun = {
+      ...parseKaneOutput('{"type":"run_end","status":"failed","one_liner":"No tab."}', 1),
+      objective: "Open Settings.", startUrl: "", outDir: directory, evidenceError: null, evidence: [],
+    };
+    const control = { ...kane, status: "passed" as const, oneLiner: "The administration dashboard loaded." };
+    saveCheck(input, [tab], [{ claim: tab, kane, questioning: {
+      verdict: "outdated", reason: "Two separate runs failed the tab assertion.", initialReason: "Check the documented tab.",
+      followUps: [{ purpose: "retry", reason: "Inspect the in-page navigation again.", kane }, { purpose: "control", reason: "Check access through the dropdown.", kane: control }],
+      overrides: [{ round: "initial", family: "automation_bug", category: "test_data_issue", hypothesis: "Kane attributed the failure to missing administrator access.", evidence: "The same login opened the dashboard." }],
+    } }], []);
+
+    expect(await main(["report", input])).toBe(0);
+    const html = readFileSync(join(directory, "report.html"), "utf8");
+    expect(html).toContain("Verdict outdated");
+    expect(html).toContain("Reproduction · Kane failed");
+    expect(html).toContain("Control · Kane passed");
+    expect(html).toContain("Blame override");
+    expect(html).toContain("missing administrator access");
+    expect(html).toContain("The same login opened the dashboard.");
+  });
+
   it("rejects a file that is not a saved check", () => {
     writeFileSync(input, JSON.stringify({ unrelated: true }));
     expect(() => writeReport(input)).toThrow("Expected a saved Pinocchio check");

@@ -6,6 +6,7 @@ import { extractClaimsCached } from "./claims/cache.js";
 import { collectDocuments } from "./claims/documents.js";
 import type { Claim, RejectedClaim } from "./claims/types.js";
 import { runKane, type KaneRun } from "./kane/runner.js";
+import { questionClaim, type Questioning } from "./loop.js";
 import type { ModelClient } from "./model/client.js";
 import { loadTarget, resolveTarget, type ResolvedTarget } from "./target.js";
 
@@ -27,6 +28,8 @@ export interface CheckOptions {
 export interface ClaimRun {
   claim: Claim;
   kane: KaneRun;
+  /** Present on checks written after the questioning loop was added. */
+  questioning?: Questioning;
 }
 
 export interface CheckReport {
@@ -46,7 +49,7 @@ export interface CheckReport {
   model: { calls: number; inputTokens: number; outputTokens: number; cacheHits: number };
 }
 
-/** Reads a target's docs, extracts claims and runs each testable claim through Kane. No verdicts yet (T4). */
+/** Reads a target's docs, extracts claims and runs the selected browser checks. */
 export async function runCheck(client: ModelClient, options: CheckOptions): Promise<CheckReport> {
   const log = options.log ?? (() => {});
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
@@ -82,7 +85,9 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
     rejected: extraction.rejected,
     tested,
     notTested,
-    kaneCredits: tested.reduce((sum, t) => sum + (t.kane.credits ?? 0), 0),
+    kaneCredits: tested.reduce((sum, { kane, questioning }) => (
+      sum + (kane.credits ?? 0) + (questioning?.followUps.reduce((cost, round) => cost + (round.kane.credits ?? 0), 0) ?? 0)
+    ), 0),
     model: { ...client.usage(), cacheHits: extraction.cacheHits },
   };
   writeFileSync(join(runDir, "check.json"), `${JSON.stringify(report, null, 2)}\n`);
@@ -90,7 +95,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   return report;
 }
 
-/** Starts the app (unless it is already running), runs Kane once per claim, then cleans up. */
+/** Starts the app, runs each claim and any follow-up checks, then cleans up. */
 async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: string, runId: string, options: CheckOptions, log: (line: string) => void): Promise<ClaimRun[]> {
   const tested: ClaimRun[] = [];
   if (claims.length === 0) return tested;
@@ -108,14 +113,21 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: strin
     }
     for (const [index, claim] of claims.entries()) {
       log(`[${index + 1}/${claims.length}] ${claim.id}: "${claim.quote}"`);
-      const kane = await runKane({
-        objective: objectiveFor(claim, target),
-        startUrl: `${target.baseUrl}${target.startPath ?? "/"}`,
-        outDir: join(runDir, "claims", safeName(claim.id)),
-        variablesFile: hasVariables ? variablesFile : undefined,
+      const folder = safeName(claim.id);
+      const managedTarget = options.appRunning ? undefined : target;
+      const result = await questionClaim(claim, managedTarget, objectiveFor(claim, target), async (purpose, objective, assertionMode) => {
+        const kane = await runKane({
+          objective,
+          startUrl: `${target.baseUrl}${target.startPath ?? "/"}`,
+          outDir: join(runDir, "claims", purpose === "initial" ? folder : `${folder}--${purpose}`),
+          assertionMode,
+          variablesFile: hasVariables ? variablesFile : undefined,
+        });
+        log(`    Kane ${purpose}: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
+        return kane;
       });
-      log(`    Kane: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
-      tested.push({ claim, kane });
+      log(`    Claim verdict: ${result.questioning.verdict}. ${result.questioning.reason}`);
+      tested.push({ claim, ...result });
     }
   } finally {
     rmSync(variablesFile, { force: true });

@@ -45,7 +45,7 @@ describe("runKane", () => {
       1,
     );
     const outDir = join(dir, "out");
-    const run = await runKane({ objective: "Check {{thing}}", startUrl: "http://localhost:9090/", outDir, variablesFile: "/tmp/vars.json", ...fake });
+    const run = await runKane({ objective: "Check {{thing}}", startUrl: "http://localhost:9090/", outDir, assertionMode: "visual", variablesFile: "/tmp/vars.json", ...fake });
 
     expect(run.status).toBe("failed");
     expect(run.credits).toBe(30.5);
@@ -56,7 +56,7 @@ describe("runKane", () => {
     expect(existsSync(join(outDir, "evidence", run.evidence[1]?.screenshot ?? "missing"))).toBe(true);
     expect(readFileSync(join(outDir, "kane.ndjson"), "utf8")).toContain("run_end");
     const args = JSON.parse(readFileSync(join(outDir, "kane.stderr"), "utf8").replace("args:", "")) as string[];
-    expect(args).toEqual(expect.arrayContaining(["run", "Check {{thing}}", "--agent", "--headless", "--variables-file", "/tmp/vars.json"]));
+    expect(args).toEqual(expect.arrayContaining(["run", "Check {{thing}}", "--agent", "--headless", "--assertion-mode", "visual", "--variables-file", "/tmp/vars.json"]));
     expect(JSON.parse(readFileSync(join(outDir, "result.json"), "utf8")).status).toBe("failed");
   });
 
