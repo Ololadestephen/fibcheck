@@ -116,11 +116,52 @@ describe("pinocchio report", () => {
     expect(await main(["report", input])).toBe(0);
     const html = readFileSync(join(directory, "report.html"), "utf8");
     expect(html).toContain("Verdict outdated");
+    expect(html).toContain("<dt>Outdated</dt><dd>1</dd>");
+    expect(html).toContain("<dt>False</dt><dd>0</dd>");
     expect(html).toContain("Reproduction · Kane failed");
     expect(html).toContain("Control · Kane passed");
     expect(html).toContain("Blame override");
     expect(html).toContain("missing administrator access");
     expect(html).toContain("The same login opened the dashboard.");
+    const badge = readFileSync(join(directory, "badge.svg"), "utf8");
+    expect(badge).toContain("1 confirmed finding");
+    expect(badge).toContain("v6l18 4-18 4");
+  });
+
+  it("distinguishes false, unconfirmed and legacy runs in the score and grows the nose for findings", () => {
+    const first = { ...tab, id: "first" };
+    const second = { ...tab, id: "second" };
+    const third = { ...tab, id: "third" };
+    const legacy = { ...tab, id: "legacy" };
+    const kane = sampleRun(directory, "failed", 1);
+    const questioning = { reason: "Evidence reviewed.", initialReason: "Run the check.", followUps: [], overrides: [] };
+    saveCheck(input, [first, second, third, legacy], [
+      { claim: first, kane, questioning: { ...questioning, verdict: "false" } },
+      { claim: second, kane, questioning: { ...questioning, verdict: "outdated" } },
+      { claim: third, kane, questioning: { ...questioning, verdict: "unconfirmed" } },
+      { claim: legacy, kane },
+    ], []);
+
+    const { htmlPath, badgePath } = writeReport(input);
+    const html = readFileSync(htmlPath, "utf8");
+    for (const label of ["False", "Outdated", "Unconfirmed", "Without verdict"]) {
+      expect(html).toContain(`<dt>${label}</dt><dd>1</dd>`);
+    }
+    const badge = readFileSync(badgePath, "utf8");
+    expect(badge).toContain("2 confirmed findings");
+    expect(badge).toContain("v6l23 4-23 4");
+  });
+
+  it("certifies a nonempty set of tested claims only with true verdicts and Kane passes", () => {
+    const kane = sampleRun(directory, "passed", 0);
+    const questioning = { verdict: "true" as const, reason: "Kane confirmed the assertion.", initialReason: "Run the check.", followUps: [], overrides: [] };
+    const badgeFor = (entries: CheckReport["tested"]) => {
+      saveCheck(input, [tab, other], entries, [other.id]);
+      return readFileSync(writeReport(input).badgePath, "utf8");
+    };
+    expect(badgeFor([{ claim: tab, kane, questioning }])).toContain("Kane swore it&#39;s true · 1 tested");
+    expect(badgeFor([{ claim: tab, kane }])).toContain("1 claim tested by Kane");
+    expect(badgeFor([{ claim: tab, kane: sampleRun(directory, "failed", 1), questioning }])).toContain("1 claim tested by Kane");
   });
 
   it("rejects a file that is not a saved check", () => {
@@ -130,6 +171,13 @@ describe("pinocchio report", () => {
     expect(existsSync(join(directory, "badge.svg"))).toBe(false);
   });
 });
+
+function sampleRun(outDir: string, status: "passed" | "failed", exitCode: number): KaneRun {
+  return {
+    ...parseKaneOutput(JSON.stringify({ type: "run_end", status }), exitCode),
+    objective: "Open Settings.", startUrl: "", outDir, evidenceError: null, evidence: [],
+  };
+}
 
 function saveCheck(path: string, claims: Claim[], tested: CheckReport["tested"], notTested: string[]): void {
   const report: CheckReport = {

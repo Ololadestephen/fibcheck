@@ -3,6 +3,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import type { CheckReport, ClaimRun } from "../check.js";
 import type { Claim } from "../claims/types.js";
 import type { KaneRun } from "../kane/runner.js";
+import type { ClaimVerdict } from "../loop.js";
 
 export function writeReport(inputPath: string): { htmlPath: string; badgePath: string } {
   const directory = dirname(resolve(inputPath));
@@ -20,8 +21,9 @@ export function writeReport(inputPath: string): { htmlPath: string; badgePath: s
       throw new Error("Expected a saved Pinocchio check with claims and Kane results.");
     }
     const counts = countResults(report);
-    html = renderReport(report, counts, directory, basename(inputPath));
-    badge = renderBadge(counts.tested);
+    const artwork = renderBadge(counts);
+    html = renderReport(report, counts, artwork, directory, basename(inputPath));
+    badge = artwork.svg;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Could not read check report at ${inputPath}: ${message}`);
@@ -38,6 +40,13 @@ const RESULT_LABELS = {
   cancelled: "Kane cancelled",
 } satisfies Record<KaneRun["status"], string>;
 
+const VERDICT_LABELS = {
+  true: "True",
+  false: "False",
+  outdated: "Outdated",
+  unconfirmed: "Unconfirmed",
+} satisfies Record<ClaimVerdict, string>;
+
 function runByClaim(report: CheckReport): Map<string, ClaimRun> {
   return new Map(report.tested.map((entry) => [entry.claim.id, entry]));
 }
@@ -45,10 +54,20 @@ function runByClaim(report: CheckReport): Map<string, ClaimRun> {
 function countResults(report: CheckReport) {
   const runs = runByClaim(report);
   const skipped = new Set(report.notTested);
-  const counts = { tested: runs.size, passed: 0, failed: 0, error: 0, cancelled: 0, skipped: 0, untestable: 0 };
-  for (const { kane } of runs.values()) {
+  const counts = {
+    tested: runs.size, passed: 0, failed: 0, error: 0, cancelled: 0, skipped: 0, untestable: 0, withoutVerdict: 0, verifiedPasses: 0,
+    verdicts: { true: 0, false: 0, outdated: 0, unconfirmed: 0 } satisfies Record<ClaimVerdict, number>,
+  };
+  for (const { kane, questioning } of runs.values()) {
     if (!Object.hasOwn(RESULT_LABELS, kane.status)) throw new Error("Unknown Kane result status.");
     counts[kane.status]++;
+    if (questioning) {
+      if (!Object.hasOwn(VERDICT_LABELS, questioning.verdict)) throw new Error("Unknown claim verdict.");
+      counts.verdicts[questioning.verdict]++;
+      if (questioning.verdict === "true" && kane.status === "passed" && kane.exitCode === 0) counts.verifiedPasses++;
+    } else {
+      counts.withoutVerdict++;
+    }
   }
   for (const claim of report.claims) {
     if (runs.has(claim.id)) continue;
@@ -58,13 +77,15 @@ function countResults(report: CheckReport) {
   return counts;
 }
 
-function renderReport(report: CheckReport, counts: ReturnType<typeof countResults>, directory: string, inputName: string): string {
+type ResultCounts = ReturnType<typeof countResults>;
+
+function renderReport(report: CheckReport, counts: ResultCounts, badge: ReturnType<typeof renderBadge>, directory: string, inputName: string): string {
   const runs = runByClaim(report);
   const skipped = new Set(report.notTested);
   const tested = report.claims.filter((claim) => runs.has(claim.id));
   const remaining = report.claims.filter((claim) => !runs.has(claim.id));
   const name = escapeHtml(report.target);
-  const questioned = report.tested.some((entry) => entry.questioning);
+  const questioned = counts.withoutVerdict < counts.tested;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -77,16 +98,17 @@ function renderReport(report: CheckReport, counts: ReturnType<typeof countResult
 <body>
 <main>
   <header>
-    <img src="badge.svg" alt="Pinocchio · ${counts.tested} claims tested by Kane" width="281" height="34">
+    <img src="badge.svg" alt="Pinocchio · ${escapeHtml(badge.label)}" width="${badge.width}" height="34">
     <h1>${name}</h1>
     <p class="meta">${escapeHtml(report.repo)}${report.commit ? ` · <code>${escapeHtml(report.commit.slice(0, 12))}</code>` : ""}</p>
     <p class="meta">Run <time datetime="${escapeHtml(report.startedAt)}">${escapeHtml(report.startedAt)}</time> · ${report.kaneCredits.toFixed(1)} Kane credits reported · <a href="${encodeURIComponent(inputName)}">Check JSON</a></p>
   </header>
+  ${questioned ? renderVerdictScore(counts) : ""}
   <section aria-labelledby="results">
     <h2 id="results">${questioned ? "Initial Kane results" : "Kane results"}</h2>
-    <p>${questioned ? "Each tested claim shows its verdict and the evidence for each round below." : "These results describe individual browser checks. Claim verdicts require the questioning loop."}</p>
-    ${renderCounts(counts)}
-    <p class="meta">${report.claims.length} extracted claims across ${report.documents.length} documents · ${report.rejected.length} rejected quotes</p>
+    ${questioned ? "" : "<p>These results describe individual browser checks. Claim verdicts require the questioning loop.</p>"}
+    ${renderKaneCounts(counts, questioned)}
+    <p class="meta">${report.claims.length} ${report.claims.length === 1 ? "claim" : "claims"} across ${report.documents.length} ${report.documents.length === 1 ? "document" : "documents"} · ${report.rejected.length} rejected quotes</p>
   </section>
   <section aria-labelledby="tested">
     <h2 id="tested">Tested claims</h2>
@@ -102,13 +124,29 @@ function renderReport(report: CheckReport, counts: ReturnType<typeof countResult
 `;
 }
 
-function renderCounts(counts: ReturnType<typeof countResults>): string {
-  const metrics = [
-    ["Tested", counts.tested],
+function renderKaneCounts(counts: ResultCounts, questioned: boolean): string {
+  const initial = [
     ...Object.entries(RESULT_LABELS).map(([status, label]) => [label, counts[status as KaneRun["status"]]] as const),
-    ["Not run", counts.skipped],
-    ["Untestable", counts.untestable],
   ];
+  return questioned ? renderMetrics(initial) : renderMetrics([
+    ["Tested", counts.tested], ...initial, ["Not run", counts.skipped], ["Untestable", counts.untestable],
+  ]);
+}
+
+function renderVerdictScore(counts: ResultCounts): string {
+  const metrics: (readonly [string, number])[] = [
+    ["Tested", counts.tested],
+    ...Object.entries(VERDICT_LABELS).map(([verdict, label]) => [label, counts.verdicts[verdict as ClaimVerdict]] as const),
+    ["Not run", counts.skipped], ["Untestable", counts.untestable],
+  ];
+  if (counts.withoutVerdict) metrics.push(["Without verdict", counts.withoutVerdict]);
+  return `<section aria-labelledby="score">
+    <h2 id="score">Pinocchio score</h2>
+    ${renderMetrics(metrics)}
+  </section>`;
+}
+
+function renderMetrics(metrics: (readonly [string, number])[]): string {
   return `<dl class="metrics">${metrics.map(([label, count]) => `<div><dt>${label}</dt><dd>${count}</dd></div>`).join("")}</dl>`;
 }
 
@@ -172,20 +210,31 @@ function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
-function renderBadge(tested: number): string {
-  const label = `${tested} claim${tested === 1 ? "" : "s"} tested by Kane`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="281" height="34" viewBox="0 0 281 34" role="img" aria-labelledby="badge-title">
-  <title id="badge-title">Pinocchio · ${label}</title>
-  <rect width="281" height="34" rx="6" fill="#233f33"/>
-  <path d="M119 0h156a6 6 0 0 1 6 6v22a6 6 0 0 1-6 6H119Z" fill="#eee5d4"/>
-  <path d="M12 10h11v6l13 4-13 4H12Z" fill="#f0c58d"/>
+function renderBadge({ tested, verifiedPasses, verdicts }: ResultCounts) {
+  const findings = verdicts.false + verdicts.outdated;
+  const verified = tested > 0 && verifiedPasses === tested;
+  let label = `${tested} claim${tested === 1 ? "" : "s"} tested by Kane`;
+  if (verified) label = `Kane swore it's true · ${tested} tested`;
+  if (findings) label = `${findings} confirmed finding${findings === 1 ? "" : "s"}`;
+
+  const growth = Math.min(findings, 10) * 5;
+  const nose = 13 + growth;
+  const divider = 119 + growth;
+  const labelWidth = verified ? 225 : 162;
+  const width = divider + labelWidth;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="34" viewBox="0 0 ${width} 34" role="img" aria-labelledby="badge-title">
+  <title id="badge-title">Pinocchio · ${escapeHtml(label)}</title>
+  <rect width="${width}" height="34" rx="6" fill="#233f33"/>
+  <path d="M${divider} 0h${labelWidth - 6}a6 6 0 0 1 6 6v22a6 6 0 0 1-6 6H${divider}Z" fill="${verified ? "#dce9dd" : "#eee5d4"}"/>
+  <path d="M12 10h11v6l${nose} 4-${nose} 4H12Z" fill="#f0c58d"/>
   <circle cx="19" cy="14" r="1.3" fill="#233f33"/>
   <g font-family="system-ui, sans-serif" font-size="12">
-    <text x="44" y="21" fill="#fff" font-weight="700">Pinocchio</text>
-    <text x="200" y="21" fill="#233f33" text-anchor="middle">${label}</text>
+    <text x="${44 + growth}" y="21" fill="#fff" font-weight="700">Pinocchio</text>
+    <text x="${divider + labelWidth / 2}" y="21" fill="#233f33" text-anchor="middle">${escapeHtml(label)}</text>
   </g>
 </svg>
 `;
+  return { svg, width, label };
 }
 
 const REPORT_STYLE = `
