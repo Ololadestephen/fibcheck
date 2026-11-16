@@ -31,6 +31,16 @@ npx --package ./pinocchio-0.0.0.tgz -- pinocchio --help
 
 The package includes the compiled CLI and the Linkding target. Run `pinocchio check sissbruecker/linkding` from the directory that contains your `.env` when using the installed command.
 
+## Check README changes in GitHub Actions
+
+The [example workflow](examples/readme-check.yml) checks root `README.md` changes in same-repository pull requests on public GitHub repositories. It reads the README at the PR head commit and the runtime target JSON at the trusted base commit. The browser checks exercise the Docker image configured in that base target. [GitHub Actions security guidance](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
+
+1. Use an isolated, ephemeral self-hosted runner labelled `pinocchio`, with Node.js, npm, Docker, a supported browser, and Kane CLI already authenticated. Put the Gemini key in a private `.env` outside the workflow workspace. Set `PINOCCHIO_RUNNER_ENV_FILE` to its absolute path.
+2. Add `.github/pinocchio.target.json` to the base branch, using `targets/linkding.json` as a shape example. Set the image and port for the public app you want to check.
+3. Copy the example into `.github/workflows/` in the consumer repository and pin the `uses:` line to the approved Pinocchio commit. Set `PINOCCHIO_PR_COMMENTS` to `true` to enable the separate comment job.
+
+The check job writes a counts-only summary. The comment job can post that summary with PR write permission. The check writes the raw Kane output and screenshots to a private directory beside the runner's `.env`. Keep that directory on private storage if you need to retain the evidence after the runner shuts down. [GitHub comment permissions](https://docs.github.com/en/rest/issues/comments#create-an-issue-comment)
+
 ## What the evidence means
 
 Gemini extracts claims from the selected documentation, so use public source material. Kane executes the browser checks and records step screenshots. Pinocchio can then question a failure and run a control. A confirmed outdated verdict requires two distinct Kane failures of the documented assertion, a passing control that rules out a test mistake, and historical evidence of the old behavior. Claims with insufficient evidence stay unconfirmed.

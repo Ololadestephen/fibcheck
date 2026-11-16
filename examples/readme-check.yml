@@ -1,0 +1,43 @@
+name: Pinocchio README check
+
+'on':
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - README.md
+
+permissions: {}
+
+concurrency:
+  group: pinocchio-readme-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: ${{ github.event.repository.private == false && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, pinocchio]
+    timeout-minutes: 30
+    outputs:
+      report: ${{ steps.pinocchio.outputs.report }}
+    steps:
+      - name: Check public README
+        id: pinocchio
+        uses: OWNER/PINOCCHIO_REPOSITORY@REPLACE_WITH_FULL_COMMIT_SHA
+        with:
+          target-file: .github/pinocchio.target.json
+          env-file: ${{ vars.PINOCCHIO_RUNNER_ENV_FILE }}
+          max-claims: '3'
+
+  comment:
+    needs: check
+    if: ${{ vars.PINOCCHIO_PR_COMMENTS == 'true' && needs.check.outputs.report != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post the checked result counts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PINOCCHIO_REPORT: ${{ needs.check.outputs.report }}
+        run: gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$PINOCCHIO_REPORT"

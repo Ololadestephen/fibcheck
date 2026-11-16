@@ -1,0 +1,36 @@
+name: Pinocchio README check
+description: Check the README in a public pull request with Kane CLI.
+inputs:
+  target-file:
+    description: Path to the public target JSON in the trusted base commit.
+    required: true
+  env-file:
+    description: Absolute path to the private .env file on the dedicated runner.
+    required: true
+  max-claims:
+    description: Maximum number of README claims to check.
+    default: '3'
+outputs:
+  report:
+    description: Counts-only Markdown summary suitable for a pull request comment.
+    value: ${{ steps.check.outputs.report }}
+runs:
+  using: composite
+  steps:
+    - name: Build Pinocchio
+      shell: bash
+      env:
+        PINOCCHIO_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        cd "$PINOCCHIO_ACTION_PATH"
+        npm ci --ignore-scripts --no-audit --no-fund
+        npm run build
+    - name: Check the pull request README
+      id: check
+      shell: bash
+      env:
+        PINOCCHIO_ACTION_PATH: ${{ github.action_path }}
+        PINOCCHIO_TARGET_FILE: ${{ inputs.target-file }}
+        PINOCCHIO_ENV_FILE: ${{ inputs.env-file }}
+        PINOCCHIO_MAX_CLAIMS: ${{ inputs.max-claims }}
+      run: node "$PINOCCHIO_ACTION_PATH/scripts/github-readme.mjs"

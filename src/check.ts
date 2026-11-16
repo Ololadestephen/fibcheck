@@ -14,6 +14,8 @@ import { loadTarget, resolveTarget, type ResolvedTarget } from "./target.js";
 
 export interface CheckOptions {
   targetPath: string;
+  /** A trusted caller can provide documents staged from a pinned public revision. */
+  source?: { directory: string; commit: string };
   /** Where run folders go (default `runs/`). */
   runsDir?: string;
   /** Pinocchio's working folder for clones and caches (default `.pinocchio/`). */
@@ -61,8 +63,8 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   const target = resolveTarget(loadTarget(options.targetPath));
   const startedAt = new Date().toISOString();
 
-  const repoDir = fetchRepo(target.repo, join(workDir, "repos", target.name));
-  const commit = gitHead(repoDir);
+  const repoDir = options.source?.directory ?? fetchRepo(target.repo, join(workDir, "repos", target.name));
+  const commit = options.source?.commit ?? gitHead(repoDir);
   const documents = collectDocuments(repoDir, target.docs ?? []);
   log(`Read ${documents.length} document(s) from ${target.repo}${commit ? ` at ${commit.slice(0, 7)}` : ""}.`);
 

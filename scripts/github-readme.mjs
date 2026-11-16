@@ -1,0 +1,43 @@
+import { appendFileSync, mkdtempSync, readFileSync, realpathSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
+import { runCheck } from "../dist/check.js";
+import { githubComment, stageGitHubReadme } from "../dist/github.js";
+import { createModelClient, loadDotEnv } from "../dist/model/config.js";
+import { writeReport } from "../dist/report/report.js";
+
+const env = process.env;
+const credentials = env.PINOCCHIO_ENV_FILE;
+if (!credentials || !isAbsolute(credentials) || basename(credentials) !== ".env") {
+  throw new Error("Supply an absolute path to the runner's private .env file.");
+}
+const envFile = realpathSync(credentials);
+const workspace = realpathSync(env.GITHUB_WORKSPACE);
+const pathFromWorkspace = relative(workspace, envFile);
+if (pathFromWorkspace !== ".." && !pathFromWorkspace.startsWith(`..${sep}`) && !isAbsolute(pathFromWorkspace)) {
+  throw new Error("Place the runner's credentials outside the workflow workspace.");
+}
+if (basename(envFile) !== ".env") throw new Error("The credentials file must be named .env.");
+
+const privateDirectory = dirname(envFile);
+const directory = mkdtempSync(join(privateDirectory, "pull-request-"));
+const staged = await stageGitHubReadme({
+  event: JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, "utf8")),
+  eventName: env.GITHUB_EVENT_NAME,
+  apiUrl: env.GITHUB_API_URL,
+  serverUrl: env.GITHUB_SERVER_URL,
+  targetFile: env.PINOCCHIO_TARGET_FILE,
+  directory,
+  maxClaims: Number(env.PINOCCHIO_MAX_CLAIMS),
+});
+loadDotEnv(privateDirectory);
+const workDir = join(privateDirectory, ".pinocchio");
+const client = createModelClient(basename(directory), privateDirectory);
+// The provider has read the key. Keep it out of the Docker and Kane children.
+delete env.GEMINI_API_KEY;
+delete env.GOOGLE_API_KEY;
+const checked = await runCheck(client, { ...staged, workDir });
+writeReport(join(staged.runsDir, checked.runId, "check.json"));
+
+const summary = githubComment(checked);
+appendFileSync(env.GITHUB_OUTPUT, `report<<PINOCCHIO_REPORT_END\n${summary}\nPINOCCHIO_REPORT_END\n`);
+appendFileSync(env.GITHUB_STEP_SUMMARY, summary + "\n");

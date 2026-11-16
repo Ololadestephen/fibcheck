@@ -51,7 +51,7 @@ function runByClaim(report: CheckReport): Map<string, ClaimRun> {
   return new Map(report.tested.map((entry) => [entry.claim.id, entry]));
 }
 
-function countResults(report: CheckReport) {
+export function countResults(report: CheckReport) {
   const runs = runByClaim(report);
   const skipped = new Set(report.notTested);
   const counts = {
