@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 /**
  * A target describes one web app to check: where its docs are, how to run it
@@ -36,6 +37,22 @@ export interface ResolvedTarget extends Target {
   resolvedEnv: Record<string, string>;
   /** Kane variables, all generated secrets, marked secret. Never logged. */
   kaneVariables: Record<string, { value: string; secret: boolean }>;
+}
+
+export function targetPathFor(input: string): string {
+  if (existsSync(input)) return input;
+  if (input === "sissbruecker/linkding" || isLinkdingRepo(input)) {
+    return fileURLToPath(new URL("../targets/linkding.json", import.meta.url));
+  }
+  throw new Error("No target file or bundled repository matches the input. Pass a target JSON file for a custom app.");
+}
+
+export function isLinkdingRepo(repo: string): boolean {
+  if (!URL.canParse(repo)) return false;
+  const url = new URL(repo);
+  return url.protocol === "https:" && url.host === "github.com"
+    && !url.username && !url.password && !url.search && !url.hash
+    && url.pathname.replace(/\/$/, "").replace(/\.git$/, "") === "/sissbruecker/linkding";
 }
 
 export function loadTarget(path: string): Target {

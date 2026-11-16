@@ -2,7 +2,7 @@ import { normalise } from "./claims/quotes.js";
 import type { Claim } from "./claims/types.js";
 import type { KaneRun, KaneRunOptions } from "./kane/runner.js";
 import type { StepEvidence } from "./kane/evidence.js";
-import type { Target } from "./target.js";
+import { isLinkdingRepo, type Target } from "./target.js";
 
 export type ClaimVerdict = "true" | "false" | "outdated" | "unconfirmed";
 type RoundName = "initial" | "retry" | "control";
@@ -103,14 +103,6 @@ function isAdminTabClaim(claim: Claim): boolean {
   if (claim.type !== "ui_flow" || claim.source.file !== ADMIN_DOC) return false;
   const quote = normalise(claim.quote).replace(/\.$/, "");
   return quote === ADMIN_TAB_QUOTE || quote === "go the settings view and click on the admin tab";
-}
-
-function isLinkdingRepo(repo: string): boolean {
-  if (!URL.canParse(repo)) return false;
-  const url = new URL(repo);
-  return url.protocol === "https:" && url.host === "github.com"
-    && !url.username && !url.password && !url.search && !url.hash
-    && url.pathname.replace(/\.git$/, "") === "/sissbruecker/linkding";
 }
 
 function withLogin(login: string | undefined, objective: string): string {

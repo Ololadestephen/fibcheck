@@ -8,7 +8,7 @@ import type { Claim } from "./claims/types.js";
 import { CallBudget } from "./model/budget.js";
 import { ModelClient } from "./model/client.js";
 import type { ModelProvider } from "./model/types.js";
-import { loadTarget, resolveTarget } from "./target.js";
+import { loadTarget, resolveTarget, targetPathFor } from "./target.js";
 
 const claim: Claim = {
   id: "docs/admin.md#L14",
@@ -39,6 +39,16 @@ describe("targets", () => {
     const target = loadTarget("targets/linkding.json");
     expect(target.login).toContain("{{app_pass}}");
     expect(target.app.env?.LD_SUPERUSER_PASSWORD).toBe("{{secret:app_pass}}");
+  });
+
+  it("locates the bundled profile by repository or GitHub clone URL", () => {
+    const file = "targets/linkding.json";
+    const expected = loadTarget(file);
+    expect(targetPathFor(file)).toBe(file);
+    expect(loadTarget(targetPathFor("sissbruecker/linkding"))).toEqual(expected);
+    expect(loadTarget(targetPathFor(expected.repo + ".git"))).toEqual(expected);
+    expect(() => targetPathFor(expected.repo + "/tree/main")).toThrow(/No target file or bundled repository/);
+    expect(() => targetPathFor("owner/other-app")).toThrow(/target JSON/);
   });
 });
 

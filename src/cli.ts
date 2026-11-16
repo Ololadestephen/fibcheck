@@ -1,17 +1,20 @@
 #!/usr/bin/env node
+import { existsSync, realpathSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { runCheck } from "./check.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
 import { writeReport } from "./report/report.js";
+import { targetPathFor } from "./target.js";
 
 export const USAGE = `pinocchio: finds the false claims in a web app's README with Kane CLI.
 
 Usage:
-  pinocchio check <target.json> [--max-claims N] [--only CLAIM_ID ...] [--app-running]
+  pinocchio check <target.json | repository> [--max-claims N] [--only CLAIM_ID ...] [--app-running]
   pinocchio report <check.json>
   pinocchio --help
 
+Use sissbruecker/linkding or its GitHub URL for the bundled Linkding target.
 A target file names the repository, its docs, and how to run the app (see targets/).
 The check command needs Kane CLI (npm install -g @testmuai/kane-cli, then kane-cli login),
 Docker, and GEMINI_API_KEY in .env.
@@ -51,9 +54,9 @@ async function check(args: string[]): Promise<number> {
       "app-running": { type: "boolean" },
     },
   });
-  const targetPath = positionals[0];
-  if (!targetPath) {
-    process.stderr.write(`check needs a target file.\n\n${USAGE}`);
+  const [target] = positionals;
+  if (!target || positionals.length !== 1) {
+    process.stderr.write(`check needs one target file or repository.\n\n${USAGE}`);
     return 1;
   }
   const maxClaims = values["max-claims"] === undefined ? undefined : Number(values["max-claims"]);
@@ -61,6 +64,7 @@ async function check(args: string[]): Promise<number> {
     process.stderr.write("--max-claims must be a whole number.\n");
     return 1;
   }
+  const targetPath = targetPathFor(target);
   loadDotEnv();
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
   const client = createModelClient(runId);
@@ -79,7 +83,8 @@ async function check(args: string[]): Promise<number> {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+const executable = process.argv[1];
+if (executable && existsSync(executable) && import.meta.url === pathToFileURL(realpathSync(executable)).href) {
   main(process.argv.slice(2)).then(
     (code) => (process.exitCode = code),
     (error: unknown) => {
