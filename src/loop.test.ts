@@ -15,11 +15,12 @@ const claim: Claim = {
 
 const SETTINGS_PAGE = "/settings/general";
 const ADMIN_PAGE = "/admin/";
-const ready = observation("The Settings page shows the Profile form and its Save button.", "true", "true");
+const ready = observation("The Settings page shows the Profile form.", "true", "true");
 const tab = observation("The Settings page contains an in-page Admin tab.", "true", "false");
 const dashboard = observation("The page title contains Site administration", "true", "true");
 const item = observation("The Settings dropdown contains an Admin menu item.", "true", "true");
-const access = observation("The Site administration dashboard shows the account pinotest and a Users management link.", "true", "true");
+const access = observation("The Site administration dashboard shows the account pinotest.", "true", "true");
+const users = observation("The Site administration dashboard shows a Users link.", "true", "true");
 
 describe("questionClaim", () => {
   it("reports outdated after two independent tab failures and a passing access control", async () => {
@@ -45,6 +46,20 @@ describe("questionClaim", () => {
     const { result, rounds } = await perform([first, { ...first }]);
     expect(rounds).toHaveLength(2);
     expect(result.questioning).toMatchObject({ verdict: "unconfirmed", overrides: [] });
+  });
+
+  it("accepts the live checkpoint format and the split readiness observation", async () => {
+    const first = miss("first");
+    first.reasonCode = "assertion_error.checkpoint_failed";
+    first.failedStep = { step: 3, status: "failed", remark: `assert: ${tab.condition} Expect true.` };
+    first.evidence[0]!.summary = "assert: The Settings page shows the Profile form and its Save button. Expect true.";
+    first.evidence[1]!.summary = first.failedStep.remark;
+    first.blame = { ...first.blame!, rootCause: "The run used an account or fixture that does not expose administrator settings." };
+    const retry = miss("again");
+    retry.blame = { ...retry.blame!, rootCause: "The test expected an Admin tab for the pinotest login, so the account or test expectation is mismatched." };
+    const { result } = await perform([first, retry, passedControl()]);
+    expect(result.questioning.verdict).toBe("outdated");
+    expect(result.questioning.overrides).toHaveLength(2);
   });
 
   it("leaves a failed assertion and a faithful pass unconfirmed", async () => {
@@ -159,7 +174,7 @@ function miss(id: string): KaneRun {
 }
 
 function passedControl(): KaneRun {
-  const control = run("passed", "control", [ADMIN_PAGE], [item, dashboard, access]);
+  const control = run("passed", "control", [ADMIN_PAGE], [item, dashboard, access, users]);
   control.steps = [
     { step: 1, status: "done", remark: "click: Open Settings dropdown" },
     { step: 2, status: "done", remark: "click: Click Admin in the dropdown" },

@@ -27,14 +27,16 @@ const ADMIN_TAB_QUOTE = "to open the admin app, go the settings view and click o
 const ADMIN_DOC = "docs/src/content/docs/admin.md";
 const SETTINGS_PATH = "/settings/general";
 const ADMIN_PATH = "/admin/";
-const READY_ASSERTION = "The Settings page shows the Profile form and its Save button.";
+const READY_ASSERTION = "The Settings page shows the Profile form.";
+const READY_WITH_SAVE = "The Settings page shows the Profile form and its Save button.";
 const TAB_ASSERTION = "The Settings page contains an in-page Admin tab.";
 const MENU_ASSERTION = "The Settings dropdown contains an Admin menu item.";
 const TITLE_ASSERTION = "The administration page title contains Site administration.";
-const ACCOUNT_ASSERTION = "The Site administration dashboard shows the account pinotest and a Users management link.";
+const ACCOUNT_ASSERTION = "The Site administration dashboard shows the account pinotest.";
+const USERS_ASSERTION = "The Site administration dashboard shows a Users link.";
 const CHECK_TAB = `Open ${SETTINGS_PATH} after login and wait for it to load. First assert exactly: ${READY_ASSERTION} Expect true. Use visual inspection and check tabs implemented as links as well as native tabs. Assert exactly: ${TAB_ASSERTION} Expect true. Ignore the top navigation dropdown. If the assertion fails, stop there. If it passes, click the in-page Admin tab and assert that the administration page title contains Site administration.`;
 const RETRY_TAB = `Go directly to ${SETTINGS_PATH} after login. First assert exactly: ${READY_ASSERTION} Expect true. Independently inspect the visible navigation inside the Settings page content and look for an Admin tab, including links styled as tabs. Reuse this exact boolean assertion: ${TAB_ASSERTION} Expect true. Capture the failed assertion if there is no tab. If present, click the in-page Admin tab and verify the Site administration page title.`;
-const CONTROL = `From the signed-in bookmarks page, open the Settings dropdown in the top navigation. Assert exactly: ${MENU_ASSERTION} Expect true. Click Admin inside that dropdown. Make these as two separate assertions: ${TITLE_ASSERTION} ${ACCOUNT_ASSERTION} Expect true for both.`;
+const CONTROL = `From the signed-in bookmarks page, open the Settings dropdown in the top navigation. Assert exactly: ${MENU_ASSERTION} Expect true. Click Admin inside that dropdown. Make these as separate assertions: ${TITLE_ASSERTION} ${ACCOUNT_ASSERTION} ${USERS_ASSERTION} Expect true for each.`;
 const CONTROL_PROOF = "The same test login opened Site administration through the top navigation’s Settings dropdown in the passing control run.";
 const TAB_HISTORY = "Linkding’s historical source had an Admin tab in the Settings template at 3ae9cf0. The template was removed at 226eb69.";
 
@@ -116,7 +118,8 @@ function withLogin(login: string | undefined, objective: string): string {
 }
 
 function tabAbsent(run: KaneRun): boolean {
-  return run.status === "failed" && run.reasonCode === "assertion_error.final_verification"
+  const assertionFailure = ["assertion_error.final_verification", "assertion_error.checkpoint_failed"].includes(run.reasonCode);
+  return run.status === "failed" && assertionFailure
     && Boolean(run.failedStep && isTabAssertion(run.failedStep.remark))
     && tabAssertionOnReadyPage(run, "failed")
     && tabObservation(run, "false");
@@ -134,7 +137,8 @@ function tabAssertionOnReadyPage(run: KaneRun, status: "failed" | "passed"): boo
   const ready = assertionText(READY_ASSERTION);
   if (!observedTrue(run, ready)) return false;
   const assertions = screenshotsAt(run, SETTINGS_PATH).filter((step) => step.kind === "assert");
-  const readyStep = assertions.find((step) => step.status === "passed" && assertionText(step.summary) === ready);
+  const readinessSummaries = [ready, assertionText(READY_WITH_SAVE)];
+  const readyStep = assertions.find((step) => step.status === "passed" && readinessSummaries.includes(assertionText(step.summary)));
   return Boolean(readyStep && assertions.some((step) => step.ordinal > readyStep.ordinal && step.status === status && isTabAssertion(step.summary)));
 }
 
@@ -153,7 +157,8 @@ function tabObservation(run: KaneRun, value: "true" | "false"): boolean {
 function menuControlPassed(run: KaneRun): boolean {
   return run.status === "passed" && adminPageVerified(run) && clickedDropdownAdmin(run)
     && observedTrue(run, assertionText(MENU_ASSERTION))
-    && observedTrue(run, assertionText(ACCOUNT_ASSERTION));
+    && observedTrue(run, assertionText(ACCOUNT_ASSERTION))
+    && observedTrue(run, assertionText(USERS_ASSERTION));
 }
 
 function observedTrue(run: KaneRun, assertion: string): boolean {
@@ -162,7 +167,7 @@ function observedTrue(run: KaneRun, assertion: string): boolean {
 }
 
 function assertionText(text: string): string {
-  return normalise(text).replace(/^assert:\s*/, "").replace(/["'.]/g, "");
+  return normalise(text).replace(/^assert:\s*/, "").replace(/["'.]/g, "").replace(/\s+expect true$/, "");
 }
 
 function clickedDropdownAdmin(run: KaneRun): boolean {
@@ -212,7 +217,10 @@ function testDataOverride(round: RoundName, kane: KaneRun): Questioning["overrid
     "account lacks administrator access",
     "account lacks admin access",
     "account does not have the required administrator access",
+    "account or fixture that does not expose administrator settings",
   ].some((phrase) => cause.includes(phrase));
-  if (!missingAccess) return undefined;
-  return { round, family: blame.family, category: blame.category, hypothesis: "Kane attributed the failure to missing administrator access.", evidence: CONTROL_PROOF };
+  const suspectedRoleMismatch = (cause.includes("account-role or test-fixture mismatch") && cause.includes("administrator access"))
+    || (cause.includes("account or test expectation is mismatched") && cause.includes("pinotest login") && cause.includes("admin tab"));
+  if (!missingAccess && !suspectedRoleMismatch) return undefined;
+  return { round, family: blame.family, category: blame.category, hypothesis: "Kane questioned the test account’s administrator access.", evidence: CONTROL_PROOF };
 }
