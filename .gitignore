@@ -22,3 +22,6 @@ coverage/
 # Local agent tooling and quality scan output
 .claude/
 scorecard.png
+
+# Pinocchio usage ledger and totals
+.pinocchio/

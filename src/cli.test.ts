@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { main } from "../src/cli.js";
+import { main } from "./cli.js";
 
 describe("cli", () => {
   it("prints usage and exits 0 for --help", () => {
