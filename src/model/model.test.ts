@@ -106,6 +106,16 @@ describe("GeminiProvider", () => {
     expect(response.model).toBe("lite");
   });
 
+  it("falls back to the second model when the main model times out on the server", async () => {
+    const api: GenerateContentApi = {
+      async generateContent(params) {
+        if (params.model === "main") throw new ApiError({ message: "DEADLINE_EXCEEDED", status: 504 });
+        return { text: "ok" };
+      },
+    };
+    expect((await new GeminiProvider({ api, model: "main", fallbackModel: "lite" }).generate(request)).model).toBe("lite");
+  });
+
   it("reports a clear error when both models are rate limited", async () => {
     const api: GenerateContentApi = {
       async generateContent() {
