@@ -1,0 +1,24 @@
+{
+  "name": "pinocchio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Finds the false claims in a web app's README with Kane CLI, and proves the fix.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "pinocchio": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  }
+}

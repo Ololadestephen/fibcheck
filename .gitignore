@@ -1,0 +1,24 @@
+# Private planning and agent files: never commit
+PLAN.md
+AGENTS.md
+TASKS.md
+CLAUDE.md
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local tooling and run output
+.desloppify/
+runs/
+.testmuai/
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# Local agent tooling and quality scan output
+.claude/
+scorecard.png
