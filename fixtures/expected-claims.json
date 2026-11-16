@@ -9,6 +9,12 @@
         { "quote": "click on the Admin tab", "types": ["ui_flow"] },
         { "quote": "adding /admin to the URL", "types": ["ui_flow", "setup"] },
         { "quote": "only allows to create or assign tags", "types": ["behaviour", "ui_flow"] }
+      ],
+      "review": [
+        { "line": 14, "quote": "click on the Admin tab", "types": ["ui_flow"], "criteria": "Assert an Admin tab within the Settings page and verify the admin interface after clicking it. Reject the top navigation dropdown as a substitute." },
+        { "line": 14, "quote": "open a new window", "types": ["untestable"], "criteria": "Record a separate claim and explain that Kane cannot verify the new window." },
+        { "line": 55, "quote": "only allows to create or assign tags", "types": ["behaviour", "ui_flow"], "criteria": "Use an existing tag to verify the limitation in the main Linkding UI. Check for editing or removal in addition to creating or assigning tags." },
+        { "line": 55, "quote": "use the admin app to manage your tags", "types": ["behaviour", "ui_flow"], "criteria": "Check tag management in the admin app separately from the main UI limitation." }
       ]
     },
     {
