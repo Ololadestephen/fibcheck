@@ -3,16 +3,19 @@ import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { runCheck } from "./check.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
+import { writeReport } from "./report/report.js";
 
 export const USAGE = `pinocchio: finds the false claims in a web app's README with Kane CLI.
 
 Usage:
   pinocchio check <target.json> [--max-claims N] [--only CLAIM_ID ...] [--app-running]
+  pinocchio report <check.json>
   pinocchio --help
 
 A target file names the repository, its docs, and how to run the app (see targets/).
-Needs Kane CLI (npm install -g @testmuai/kane-cli, then kane-cli login),
+The check command needs Kane CLI (npm install -g @testmuai/kane-cli, then kane-cli login),
 Docker, and GEMINI_API_KEY in .env.
+The report command writes report.html and badge.svg beside a saved check.json.
 `;
 
 export async function main(argv: string[]): Promise<number> {
@@ -22,8 +25,20 @@ export async function main(argv: string[]): Promise<number> {
     return 0;
   }
   if (command === "check") return await check(rest);
+  if (command === "report") return report(rest);
   process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
   return 1;
+}
+
+function report(args: string[]): number {
+  const [inputPath] = args;
+  if (args.length !== 1 || !inputPath || inputPath.startsWith("-")) {
+    process.stderr.write("Usage: pinocchio report <check.json>\n");
+    return 1;
+  }
+  const { htmlPath, badgePath } = writeReport(inputPath);
+  process.stdout.write(`Saved ${htmlPath}\nSaved ${badgePath}\n`);
+  return 0;
 }
 
 async function check(args: string[]): Promise<number> {
