@@ -42,23 +42,25 @@ export function extractStepEvidence(packPath: string, destDir: string): StepEvid
   for (const test of readdirSync(testsDir)) {
     const stepsDir = join(testsDir, test, "steps");
     if (!existsSync(stepsDir)) continue;
-    for (const name of readdirSync(stepsDir)) {
-      const dir = join(stepsDir, name);
-      const record = readJson(join(dir, "step.json"));
-      const file = (f: string) => (existsSync(join(dir, f)) ? relative(destDir, join(dir, f)) : null);
-      steps.push({
-        ordinal: typeof record.ordinal === "number" ? record.ordinal : Number.parseInt(name, 10) || 0,
-        kind: String(record.kind ?? ""),
-        status: String(record.status ?? ""),
-        summary: String(record.summary ?? ""),
-        url: String(record.url ?? ""),
-        screenshot: file("screenshot.jpg") ?? file("screenshot.png"),
-        annotated: file("annotated.png"),
-        failureYaml: existsSync(join(dir, "failure.yaml")) ? readFileSync(join(dir, "failure.yaml"), "utf8") : null,
-      });
-    }
+    for (const name of readdirSync(stepsDir)) steps.push(readStep(join(stepsDir, name), name, destDir));
   }
   return steps.sort((a, b) => a.ordinal - b.ordinal);
+}
+
+function readStep(dir: string, name: string, destDir: string): StepEvidence {
+  const record = readJson(join(dir, "step.json"));
+  const file = (f: string) => (existsSync(join(dir, f)) ? relative(destDir, join(dir, f)) : null);
+  const failurePath = join(dir, "failure.yaml");
+  return {
+    ordinal: typeof record.ordinal === "number" ? record.ordinal : Number.parseInt(name, 10) || 0,
+    kind: String(record.kind ?? ""),
+    status: String(record.status ?? ""),
+    summary: String(record.summary ?? ""),
+    url: String(record.url ?? ""),
+    screenshot: file("screenshot.jpg") ?? file("screenshot.png"),
+    annotated: file("annotated.png"),
+    failureYaml: existsSync(failurePath) ? readFileSync(failurePath, "utf8") : null,
+  };
 }
 
 function readJson(path: string): Record<string, unknown> {

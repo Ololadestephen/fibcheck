@@ -68,31 +68,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   const selected = (options.only?.length ? testable.filter((c) => options.only?.includes(c.id)) : testable).slice(0, options.maxClaims ?? 5);
   const notTested = testable.filter((c) => !selected.includes(c)).map((c) => c.id);
 
-  const tested: ClaimRun[] = [];
-  let app: RunningApp | undefined;
-  const variablesFile = join(runDir, "kane-variables.json");
-  try {
-    if (selected.length > 0 && !options.appRunning) {
-      log(`Starting ${target.app.image} on port ${target.app.port}...`);
-      app = await startApp(target, runId);
-    }
-    writeFileSync(variablesFile, JSON.stringify(target.kaneVariables), { mode: 0o600 });
-    chmodSync(variablesFile, 0o600);
-    for (const [index, claim] of selected.entries()) {
-      log(`[${index + 1}/${selected.length}] ${claim.id}: "${claim.quote}"`);
-      const kane = await runKane({
-        objective: objectiveFor(claim, target),
-        startUrl: `${target.baseUrl}${target.startPath ?? "/"}`,
-        outDir: join(runDir, "claims", safeName(claim.id)),
-        variablesFile: Object.keys(target.kaneVariables).length ? variablesFile : undefined,
-      });
-      log(`    Kane: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
-      tested.push({ claim, kane });
-    }
-  } finally {
-    rmSync(variablesFile, { force: true });
-    if (app) await app.stop();
-  }
+  const tested = await testClaims(target, selected, runDir, runId, options, log);
 
   const report: CheckReport = {
     runId,
@@ -112,6 +88,40 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   writeFileSync(join(runDir, "check.json"), `${JSON.stringify(report, null, 2)}\n`);
   log(`Saved ${join(runDir, "check.json")}`);
   return report;
+}
+
+/** Starts the app (unless it is already running), runs Kane once per claim, then cleans up. */
+async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: string, runId: string, options: CheckOptions, log: (line: string) => void): Promise<ClaimRun[]> {
+  const tested: ClaimRun[] = [];
+  if (claims.length === 0) return tested;
+  let app: RunningApp | undefined;
+  const variablesFile = join(runDir, "kane-variables.json");
+  const hasVariables = Object.keys(target.kaneVariables).length > 0;
+  try {
+    if (!options.appRunning) {
+      log(`Starting ${target.app.image} on port ${target.app.port}...`);
+      app = await startApp(target, runId);
+    }
+    if (hasVariables) {
+      writeFileSync(variablesFile, JSON.stringify(target.kaneVariables), { mode: 0o600 });
+      chmodSync(variablesFile, 0o600);
+    }
+    for (const [index, claim] of claims.entries()) {
+      log(`[${index + 1}/${claims.length}] ${claim.id}: "${claim.quote}"`);
+      const kane = await runKane({
+        objective: objectiveFor(claim, target),
+        startUrl: `${target.baseUrl}${target.startPath ?? "/"}`,
+        outDir: join(runDir, "claims", safeName(claim.id)),
+        variablesFile: hasVariables ? variablesFile : undefined,
+      });
+      log(`    Kane: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
+      tested.push({ claim, kane });
+    }
+  } finally {
+    rmSync(variablesFile, { force: true });
+    if (app) await app.stop();
+  }
+  return tested;
 }
 
 /**

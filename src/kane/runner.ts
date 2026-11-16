@@ -31,7 +31,19 @@ export interface KaneRun extends KaneResult {
 /** Runs one Kane flow in agent mode and returns its structured result. Only Kane decides pass or fail. */
 export async function runKane(options: KaneRunOptions): Promise<KaneRun> {
   mkdirSync(options.outDir, { recursive: true });
-  const args = [
+  const { stdout, stderr, exitCode } = await run(options.command ?? "kane-cli", kaneArgs(options));
+  writeFileSync(join(options.outDir, "kane.ndjson"), stdout);
+  writeFileSync(join(options.outDir, "kane.stderr"), stderr);
+
+  const result = parseKaneOutput(stdout, exitCode);
+  const { evidence, evidenceError } = collectEvidence(result, options.outDir);
+  const kaneRun: KaneRun = { ...result, objective: options.objective, startUrl: options.startUrl, outDir: options.outDir, evidence, evidenceError };
+  writeFileSync(join(options.outDir, "result.json"), `${JSON.stringify(kaneRun, null, 2)}\n`);
+  return kaneRun;
+}
+
+function kaneArgs(options: KaneRunOptions): string[] {
+  return [
     ...(options.argsPrefix ?? []),
     "run",
     options.objective,
@@ -45,27 +57,19 @@ export async function runKane(options: KaneRunOptions): Promise<KaneRun> {
     String(options.timeoutSec ?? 420),
     ...(options.variablesFile ? ["--variables-file", options.variablesFile] : []),
   ];
-  const { stdout, stderr, exitCode } = await run(options.command ?? "kane-cli", args);
-  writeFileSync(join(options.outDir, "kane.ndjson"), stdout);
-  writeFileSync(join(options.outDir, "kane.stderr"), stderr);
+}
 
-  const result = parseKaneOutput(stdout, exitCode);
-  let evidence: StepEvidence[] = [];
-  let evidenceError: string | null = null;
+function collectEvidence(result: KaneResult, outDir: string): { evidence: StepEvidence[]; evidenceError: string | null } {
   const pack = findEvidencePack(result.evidencePack, result.sessionDir);
-  if (pack) {
-    try {
-      evidence = extractStepEvidence(pack, join(options.outDir, "evidence"));
-    } catch (error) {
-      evidenceError = `Could not unpack Kane's evidence: ${error instanceof Error ? error.message : String(error)}`;
-    }
-  } else if (result.status === "passed" || result.status === "failed") {
-    evidenceError = "Kane's evidence pack was not found.";
+  if (!pack) {
+    const expected = result.status === "passed" || result.status === "failed";
+    return { evidence: [], evidenceError: expected ? "Kane's evidence pack was not found." : null };
   }
-
-  const kaneRun: KaneRun = { ...result, objective: options.objective, startUrl: options.startUrl, outDir: options.outDir, evidence, evidenceError };
-  writeFileSync(join(options.outDir, "result.json"), `${JSON.stringify(kaneRun, null, 2)}\n`);
-  return kaneRun;
+  try {
+    return { evidence: extractStepEvidence(pack, join(outDir, "evidence")), evidenceError: null };
+  } catch (error) {
+    return { evidence: [], evidenceError: `Could not unpack Kane's evidence: ${error instanceof Error ? error.message : String(error)}` };
+  }
 }
 
 function run(command: string, args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {

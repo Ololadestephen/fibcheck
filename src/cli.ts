@@ -21,7 +21,7 @@ export async function main(argv: string[]): Promise<number> {
     process.stdout.write(USAGE);
     return 0;
   }
-  if (command === "check") return check(rest);
+  if (command === "check") return await check(rest);
   process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
   return 1;
 }

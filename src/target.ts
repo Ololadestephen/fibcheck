@@ -39,7 +39,12 @@ export interface ResolvedTarget extends Target {
 }
 
 export function loadTarget(path: string): Target {
-  const target = JSON.parse(readFileSync(path, "utf8")) as Target;
+  let target: Target;
+  try {
+    target = JSON.parse(readFileSync(path, "utf8")) as Target;
+  } catch (error) {
+    throw new Error(`Could not read target ${path}: ${error instanceof Error ? error.message : String(error)}`);
+  }
   for (const key of ["name", "repo", "app"] as const) {
     if (!target[key]) throw new Error(`Target ${path} is missing "${key}".`);
   }

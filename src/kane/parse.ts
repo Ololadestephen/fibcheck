@@ -53,33 +53,41 @@ export interface KaneResult {
 
 type Json = Record<string, unknown>;
 
-export function parseKaneOutput(stdout: string, exitCode: number): KaneResult {
-  const steps = new Map<number, KaneStep>();
-  let end: Json | undefined;
-  let pack: string | null = null;
-  let errorMessage = "";
-  let ignoredLines = 0;
+interface StreamState {
+  steps: Map<number, KaneStep>;
+  end?: Json;
+  pack: string | null;
+  errorMessage: string;
+  ignoredLines: number;
+}
 
+function readStream(stdout: string): StreamState {
+  const state: StreamState = { steps: new Map(), pack: null, errorMessage: "", ignoredLines: 0 };
   for (const line of stdout.split("\n")) {
     if (!line.trim()) continue;
-    let obj: Json;
     try {
-      obj = JSON.parse(line) as Json;
+      applyEvent(state, JSON.parse(line) as Json);
     } catch {
-      ignoredLines++;
-      continue;
-    }
-    if (typeof obj.step === "number" && (obj.status === "done" || obj.status === "failed")) {
-      steps.set(obj.step, { step: obj.step, status: obj.status, remark: str(obj.remark) });
-    } else if (obj.type === "run_end") {
-      end = obj;
-    } else if (obj.type === "coverage" && typeof obj.pack === "string") {
-      pack = obj.pack;
-    } else if (obj.type === "error") {
-      errorMessage = str(obj.message);
+      state.ignoredLines++;
     }
   }
+  return state;
+}
 
+function applyEvent(state: StreamState, obj: Json): void {
+  if (typeof obj.step === "number" && (obj.status === "done" || obj.status === "failed")) {
+    state.steps.set(obj.step, { step: obj.step, status: obj.status, remark: str(obj.remark) });
+  } else if (obj.type === "run_end") {
+    state.end = obj;
+  } else if (obj.type === "coverage" && typeof obj.pack === "string") {
+    state.pack = obj.pack;
+  } else if (obj.type === "error") {
+    state.errorMessage = str(obj.message);
+  }
+}
+
+export function parseKaneOutput(stdout: string, exitCode: number): KaneResult {
+  const { steps, end, pack, errorMessage, ignoredLines } = readStream(stdout);
   const stepList = [...steps.values()].sort((a, b) => a.step - b.step);
   const failed = stepList.filter((s) => s.status === "failed");
   return {

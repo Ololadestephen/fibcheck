@@ -15,9 +15,8 @@ export async function extractClaimsCached(client: ModelClient, documents: Source
   mkdirSync(cacheDir, { recursive: true });
   for (const document of documents) {
     const path = join(cacheDir, `${cacheKey(document)}.json`);
-    let part: ExtractionResult;
-    if (existsSync(path)) {
-      part = JSON.parse(readFileSync(path, "utf8")) as ExtractionResult;
+    let part = readCache(path);
+    if (part) {
       result.cacheHits++;
     } else {
       part = await extractClaims(client, [document]);
@@ -27,6 +26,16 @@ export async function extractClaimsCached(client: ModelClient, documents: Source
     result.rejected.push(...part.rejected);
   }
   return result;
+}
+
+/** A damaged cache file counts as a miss, so the document is simply extracted again. */
+function readCache(path: string): ExtractionResult | undefined {
+  if (!existsSync(path)) return undefined;
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as ExtractionResult;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Changes when the document, its path or the extraction prompt changes. */
