@@ -1,6 +1,17 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import type { KaneResult } from "./parse.js";
+
+type RunIdentity = Pick<KaneResult, "sessionDir" | "testUrl">;
+
+export function distinctKaneRuns(left: RunIdentity, right: RunIdentity): boolean {
+  if (left.sessionDir && right.sessionDir) {
+    if (left.sessionDir === right.sessionDir) return false;
+    return !left.testUrl || !right.testUrl || left.testUrl !== right.testUrl;
+  }
+  return Boolean(left.testUrl && right.testUrl && left.testUrl !== right.testUrl);
+}
 
 /** One step's evidence, with paths relative to the run's evidence folder. */
 export interface StepEvidence {

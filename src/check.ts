@@ -6,7 +6,9 @@ import { extractClaimsCached } from "./claims/cache.js";
 import { collectDocuments } from "./claims/documents.js";
 import type { Claim, RejectedClaim } from "./claims/types.js";
 import { runKane, type KaneRun } from "./kane/runner.js";
-import { questionClaim, type Questioning } from "./loop.js";
+import { seedLinkdingTags } from "./linkding-tags.js";
+import { questionClaim } from "./loop.js";
+import type { Questioning } from "./loop-types.js";
 import type { ModelClient } from "./model/client.js";
 import { loadTarget, resolveTarget, type ResolvedTarget } from "./target.js";
 
@@ -111,6 +113,9 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: strin
       writeFileSync(variablesFile, JSON.stringify(target.kaneVariables), { mode: 0o600 });
       chmodSync(variablesFile, 0o600);
     }
+    const containerName = app?.containerName;
+    let tagSetup: Promise<void> | undefined;
+    const prepareTags = containerName ? () => (tagSetup ??= seedLinkdingTags(containerName)) : undefined;
     for (const [index, claim] of claims.entries()) {
       log(`[${index + 1}/${claims.length}] ${claim.id}: "${claim.quote}"`);
       const folder = safeName(claim.id);
@@ -125,7 +130,7 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: strin
         });
         log(`    Kane ${purpose}: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
         return kane;
-      });
+      }, prepareTags);
       log(`    Claim verdict: ${result.questioning.verdict}. ${result.questioning.reason}`);
       tested.push({ claim, ...result });
     }

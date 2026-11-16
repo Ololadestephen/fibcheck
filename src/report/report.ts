@@ -3,7 +3,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import type { CheckReport, ClaimRun } from "../check.js";
 import type { Claim } from "../claims/types.js";
 import type { KaneRun } from "../kane/runner.js";
-import type { ClaimVerdict } from "../loop.js";
+import type { ClaimVerdict } from "../loop-types.js";
 
 export function writeReport(inputPath: string): { htmlPath: string; badgePath: string } {
   const directory = dirname(resolve(inputPath));

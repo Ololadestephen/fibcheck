@@ -1,27 +1,10 @@
 import { normalise } from "./claims/quotes.js";
 import type { Claim } from "./claims/types.js";
-import type { KaneRun, KaneRunOptions } from "./kane/runner.js";
-import type { StepEvidence } from "./kane/evidence.js";
+import type { KaneRun } from "./kane/runner.js";
+import { distinctKaneRuns, type StepEvidence } from "./kane/evidence.js";
+import { linkdingTagClaim, questionLinkdingTags } from "./linkding-tags.js";
+import type { ClaimVerdict, QuestionedRun, Questioning, RunRound } from "./loop-types.js";
 import { isLinkdingRepo, type Target } from "./target.js";
-
-export type ClaimVerdict = "true" | "false" | "outdated" | "unconfirmed";
-type RoundName = "initial" | "retry" | "control";
-
-interface FollowUp {
-  purpose: Exclude<RoundName, "initial">;
-  reason: string;
-  kane: KaneRun;
-}
-
-export interface Questioning {
-  verdict: ClaimVerdict;
-  reason: string;
-  initialReason: string;
-  followUps: FollowUp[];
-  overrides: { round: RoundName; family: string; category: string; hypothesis: string; evidence: string }[];
-}
-
-type RunRound = (purpose: RoundName, objective: string, mode?: KaneRunOptions["assertionMode"]) => Promise<KaneRun>;
 
 const ADMIN_TAB_QUOTE = "to open the admin app, go the settings view and click on the admin tab";
 const ADMIN_DOC = "docs/src/content/docs/admin.md";
@@ -45,14 +28,21 @@ export async function questionClaim(
   managedTarget: Pick<Target, "repo" | "login" | "app"> | undefined,
   originalObjective: string,
   run: RunRound,
-): Promise<{ kane: KaneRun; questioning: Questioning }> {
-  const adminTab = managedTarget && isLinkdingRepo(managedTarget.repo)
+  prepareTags?: () => Promise<void>,
+): Promise<QuestionedRun> {
+  const linkding = managedTarget && isLinkdingRepo(managedTarget.repo)
     && managedTarget.app.image === "sissbruecker/linkding:1.47.0"
     && managedTarget.app.env?.LD_SUPERUSER_NAME === "pinotest"
     && managedTarget.app.env.LD_SUPERUSER_PASSWORD === "{{secret:app_pass}}"
-    && managedTarget.login?.includes("pinotest and password {{app_pass}}")
-    && isAdminTabClaim(claim);
-  if (!adminTab) {
+    && managedTarget.login?.includes("pinotest and password {{app_pass}}");
+  if (linkding && managedTarget.login && prepareTags) {
+    const tags = linkdingTagClaim(claim);
+    if (tags) {
+      await prepareTags();
+      return questionLinkdingTags(tags, managedTarget.login, run);
+    }
+  }
+  if (!linkding || !isAdminTabClaim(claim)) {
     const kane = await run("initial", originalObjective);
     return {
       kane,
@@ -67,7 +57,7 @@ export async function questionClaim(
   }
 
   const initialReason = "Verify that Settings loaded, then look for the tab inside the page before following it.";
-  const followUps: FollowUp[] = [];
+  const followUps: Questioning["followUps"] = [];
   const kane = await run("initial", withLogin(managedTarget.login, CHECK_TAB), "visual");
   const outcome = (verdict: ClaimVerdict, reason: string, overrides: Questioning["overrides"] = []) => ({
     kane,
@@ -84,13 +74,13 @@ export async function questionClaim(
   if (tabPresent(retry)) {
     return outcome("unconfirmed", "The two Kane runs disagreed about the in-page Admin tab.");
   }
-  if (!tabAbsent(retry) || !independent(kane, retry)) {
+  if (!tabAbsent(retry) || !distinctKaneRuns(kane, retry)) {
     return outcome("unconfirmed", "Kane did not reproduce the same failed tab assertion in two distinct runs.");
   }
 
   const control = await run("control", withLogin(managedTarget.login, CONTROL));
   followUps.push({ purpose: "control", reason: "Check whether this account can reach the admin dashboard through the Settings dropdown.", kane: control });
-  if (!menuControlPassed(control) || !independent(control, kane) || !independent(control, retry)) {
+  if (!menuControlPassed(control) || !distinctKaneRuns(control, kane) || !distinctKaneRuns(control, retry)) {
     return outcome("unconfirmed", "The control did not establish that the same login could access Site administration.");
   }
 
@@ -192,15 +182,7 @@ function screenshotsAt(run: KaneRun, path: string): StepEvidence[] {
   });
 }
 
-function independent(left: KaneRun, right: KaneRun): boolean {
-  if (left.sessionDir && right.sessionDir) {
-    if (left.sessionDir === right.sessionDir) return false;
-    return !left.testUrl || !right.testUrl || left.testUrl !== right.testUrl;
-  }
-  return Boolean(left.testUrl && right.testUrl && left.testUrl !== right.testUrl);
-}
-
-function testDataOverride(round: RoundName, kane: KaneRun): Questioning["overrides"][number] | undefined {
+function testDataOverride(round: "initial" | "retry", kane: KaneRun): Questioning["overrides"][number] | undefined {
   const blame = kane.blame;
   if (blame?.category !== "test_data_issue") return undefined;
   const cause = normalise(blame.rootCause);

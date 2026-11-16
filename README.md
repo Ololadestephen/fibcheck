@@ -37,7 +37,7 @@ Gemini extracts claims from the selected documentation, so use public source mat
 
 The verified Linkding example checks an old instruction to click an Admin tab within Settings. Two independent runs found no in-page tab. A third run used the same account to find the Admin item in the top navigation's Settings dropdown and open Site administration. The control evidence overruled Kane's account diagnosis. After a documentation patch described the dropdown route, a fresh Kane run passed that route.
 
-Linkding's Admin-tab claim currently has a reviewed questioning flow. Other checks retain Kane's individual browser outcomes and use an unconfirmed claim verdict until a reviewed flow covers them. Use `report` on saved checks to render evidence without calling Gemini or Kane again.
+Linkding's Admin-tab and tag-management claims have reviewed flows. Other checks retain Kane's individual browser outcomes and use an unconfirmed claim verdict until a reviewed flow covers them. Use `report` on saved checks to render evidence without calling Gemini or Kane again.
 
 ## Development checks
 
