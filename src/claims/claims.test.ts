@@ -26,7 +26,8 @@ function clientReturning(...replies: unknown[]): ModelClient {
   let i = 0;
   const provider: ModelProvider = {
     name: "fake",
-    async generate() {
+    async generate(_request, beforeAttempt) {
+      beforeAttempt();
       return { text: JSON.stringify(replies[i++] ?? { claims: [] }), model: "fake", usage: { inputTokens: 1, outputTokens: 1 } };
     },
   };

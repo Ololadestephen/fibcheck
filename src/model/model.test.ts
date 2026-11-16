@@ -18,7 +18,8 @@ function tempBudget(maxCallsPerRun: number, maxCallsTotal: number, runId = "run-
 
 const echoProvider: ModelProvider = {
   name: "fake",
-  async generate(request) {
+  async generate(request, beforeAttempt) {
+    beforeAttempt();
     return { text: JSON.stringify({ echo: request.purpose }), model: "fake-1", usage: { inputTokens: 10, outputTokens: 5 } };
   },
 };
@@ -70,7 +71,14 @@ describe("ModelClient", () => {
   it("does not call the provider once the budget is spent", async () => {
     const { budget } = tempBudget(1, 5);
     let calls = 0;
-    const counting: ModelProvider = { name: "c", generate: async (r) => (calls++, echoProvider.generate(r)) };
+    const counting: ModelProvider = {
+      name: "c",
+      async generate(_r, beforeAttempt) {
+        beforeAttempt();
+        calls++;
+        return { text: "{}", model: "c", usage: { inputTokens: 1, outputTokens: 1 } };
+      },
+    };
     const client = new ModelClient(counting, budget);
     await client.generate(request);
     await expect(client.generate(request)).rejects.toThrow(BudgetExceededError);
@@ -87,7 +95,7 @@ describe("GeminiProvider", () => {
         return { text: "{}", usageMetadata: { promptTokenCount: 7, candidatesTokenCount: 3, thoughtsTokenCount: 2 } };
       },
     };
-    const response = await new GeminiProvider({ api, model: "m1" }).generate({ ...request, jsonSchema: { type: "object" } });
+    const response = await new GeminiProvider({ retryDelaysMs: [0, 0], api, model: "m1" }).generate({ ...request, jsonSchema: { type: "object" } }, () => {});
     expect(seen?.config.responseMimeType).toBe("application/json");
     expect(response).toEqual({ text: "{}", model: "m1", usage: { inputTokens: 7, outputTokens: 5 } });
   });
@@ -101,7 +109,7 @@ describe("GeminiProvider", () => {
         return { text: "ok" };
       },
     };
-    const response = await new GeminiProvider({ api, model: "main", fallbackModel: "lite" }).generate(request);
+    const response = await new GeminiProvider({ retryDelaysMs: [0, 0], api, model: "main", fallbackModel: "lite" }).generate(request, () => {});
     expect(models).toEqual(["main", "lite"]);
     expect(response.model).toBe("lite");
   });
@@ -113,7 +121,36 @@ describe("GeminiProvider", () => {
         return { text: "ok" };
       },
     };
-    expect((await new GeminiProvider({ api, model: "main", fallbackModel: "lite" }).generate(request)).model).toBe("lite");
+    expect((await new GeminiProvider({ retryDelaysMs: [0, 0], api, model: "main", fallbackModel: "lite" }).generate(request, () => {})).model).toBe("lite");
+  });
+
+  it("makes at most three requests, each announced to the budget, and waits between them", async () => {
+    let requests = 0;
+    let announced = 0;
+    const waits: number[] = [];
+    const api: GenerateContentApi = {
+      async generateContent() {
+        requests++;
+        throw new ApiError({ message: "overloaded", status: 503 });
+      },
+    };
+    const provider = new GeminiProvider({ api, model: "a", fallbackModel: "b", retryDelaysMs: [5, 7], sleep: async (ms) => void waits.push(ms) });
+    await expect(provider.generate(request, () => void announced++)).rejects.toThrow(/overloaded or timing out/);
+    expect([requests, announced, waits]).toEqual([3, 3, [5, 7]]);
+  });
+
+  it("stops retrying when the budget refuses the next request", async () => {
+    let requests = 0;
+    const api: GenerateContentApi = {
+      async generateContent() {
+        requests++;
+        throw new ApiError({ message: "overloaded", status: 503 });
+      },
+    };
+    const { budget } = tempBudget(2, 10);
+    const client = new ModelClient(new GeminiProvider({ api, model: "a", fallbackModel: "b", retryDelaysMs: [0, 0] }), budget);
+    await expect(client.generate(request)).rejects.toThrow(BudgetExceededError);
+    expect(requests).toBe(2);
   });
 
   it("reports a clear error when both models are rate limited", async () => {
@@ -122,7 +159,7 @@ describe("GeminiProvider", () => {
         throw new ApiError({ message: "quota", status: 429 });
       },
     };
-    await expect(new GeminiProvider({ api, model: "a", fallbackModel: "b" }).generate(request)).rejects.toThrow(RateLimitedError);
+    await expect(new GeminiProvider({ retryDelaysMs: [0, 0], api, model: "a", fallbackModel: "b" }).generate(request, () => {})).rejects.toThrow(RateLimitedError);
   });
 
   it("does not retry other API errors", async () => {
@@ -133,7 +170,7 @@ describe("GeminiProvider", () => {
         throw new ApiError({ message: "bad key details", status: 400 });
       },
     };
-    await expect(new GeminiProvider({ api }).generate(request)).rejects.toThrow("Gemini API error (HTTP 400).");
+    await expect(new GeminiProvider({ retryDelaysMs: [0, 0], api }).generate(request, () => {})).rejects.toThrow("Gemini API error (HTTP 400).");
     expect(calls).toBe(1);
   });
 });

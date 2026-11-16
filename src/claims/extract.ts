@@ -14,6 +14,14 @@ Claim types:
 - mobile: claims about phones, tablets or mobile apps.
 - untestable: a concrete statement a browser test cannot check (performance, security, licence, hosting, third-party services, marketing adjectives such as "fast" or "clean"). Give the reason.
 
+What counts as a claim (be exhaustive; a borderline claim is better listed than missed):
+- Every item of a feature list, each as its own claim.
+- Limitations and negative statements: what the app "only" allows, cannot do, does not support, or what is disabled.
+- Defaults: what is shown, enabled or selected "by default", default ports, default users and passwords. If a sentence introduces credentials or a command shown in the next lines, quote that sentence.
+- Where something is found in the UI, and what a page or section contains.
+- One sentence can hold several claims. In "While A, B", "A, but B" or "A, so B", A and B are separate claims: list each, quoting the clause that states it. Side remarks about the main UI in a section about something else (for example "the UI currently only allows X") are claims too.
+Go through the document from top to bottom, section by section, and check every sentence and list item.
+
 Rules:
 - Quote each claim exactly as written, copied character for character from a single place in the document, without the line-number prefix. Keep each quote to one sentence or one list item.
 - Give the first and last line number of the quote, using the numbers shown before each line.

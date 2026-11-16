@@ -36,21 +36,31 @@ export interface GeminiOptions {
   fallbackModel?: string;
   /** Injected for tests. Defaults to the real SDK, which reads GEMINI_API_KEY itself. */
   api?: GenerateContentApi;
+  /** Waits before the second and third attempt. Tests pass zeros. */
+  retryDelaysMs?: number[];
+  sleep?: (ms: number) => Promise<void>;
 }
 
 /**
  * Calls the Gemini API. On a rate limit or an overloaded or timed-out server
- * (HTTP 429, 503 or 504) it retries once on the fallback model. It never logs the request, the response or the key.
+ * (HTTP 429, 503 or 504) it tries the fallback model, then the main model once
+ * more after a pause: at most three HTTP requests per call, each announced
+ * through `beforeAttempt` so the call budget counts it. It never logs the
+ * request, the response or the key.
  */
 export class GeminiProvider implements ModelProvider {
   readonly name = "gemini";
   private readonly model: string;
   private readonly fallbackModel: string;
   private readonly api: GenerateContentApi;
+  private readonly retryDelaysMs: number[];
+  private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(options: GeminiOptions = {}) {
     this.model = options.model ?? DEFAULT_GEMINI_MODEL;
     this.fallbackModel = options.fallbackModel ?? DEFAULT_GEMINI_FALLBACK_MODEL;
+    this.retryDelaysMs = options.retryDelaysMs ?? [2_000, 15_000];
+    this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     // One attempt and a timeout: the SDK's default of 5 hidden retries with waits up to
     // 60 seconds would hide rate limits and spend free-tier quota our call limits never see.
     this.api =
@@ -58,17 +68,20 @@ export class GeminiProvider implements ModelProvider {
       new GoogleGenAI({ httpOptions: { timeout: REQUEST_TIMEOUT_MS, retryOptions: { attempts: 1 } } }).models;
   }
 
-  async generate(request: ModelRequest): Promise<ModelResponse> {
-    try {
-      return await this.call(this.model, request);
-    } catch (error) {
-      if (!isRetryable(error) || this.fallbackModel === this.model) throw toProviderError(error);
+  async generate(request: ModelRequest, beforeAttempt: () => void = () => {}): Promise<ModelResponse> {
+    const plan = this.fallbackModel === this.model ? [this.model, this.model] : [this.model, this.fallbackModel, this.model];
+    let lastError: unknown;
+    for (const [index, model] of plan.entries()) {
+      if (index > 0) await this.sleep(this.retryDelaysMs[index - 1] ?? 0);
+      beforeAttempt();
+      try {
+        return await this.call(model, request);
+      } catch (error) {
+        lastError = error;
+        if (!isRetryable(error)) break;
+      }
     }
-    try {
-      return await this.call(this.fallbackModel, request);
-    } catch (error) {
-      throw toProviderError(error);
-    }
+    throw toProviderError(lastError);
   }
 
   private async call(model: string, request: ModelRequest): Promise<ModelResponse> {
@@ -109,6 +122,9 @@ function toProviderError(error: unknown): Error {
     return new RateLimitedError(
       "Gemini rate limit reached on both the main and the fallback model. Wait and try again, or lower the number of claims per run.",
     );
+  }
+  if (error instanceof ApiError && (error.status === 503 || error.status === 504)) {
+    return new Error(`Gemini is overloaded or timing out (HTTP ${error.status}) on every attempt. Try again in a few minutes.`);
   }
   if (error instanceof ApiError) {
     return new Error(`Gemini API error (HTTP ${error.status}).`);

@@ -34,7 +34,12 @@ export interface ModelResponse {
 /** A model provider, such as the Gemini API. */
 export interface ModelProvider {
   readonly name: string;
-  generate(request: ModelRequest): Promise<ModelResponse>;
+  /**
+   * Answers one request. A provider that makes more than one HTTP request
+   * (for example to retry) must call `beforeAttempt` before each of them,
+   * so the call budget counts every real request.
+   */
+  generate(request: ModelRequest, beforeAttempt: () => void): Promise<ModelResponse>;
 }
 
 /** Raised when a provider rejects a request because of rate limits, after any fallback. */

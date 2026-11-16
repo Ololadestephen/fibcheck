@@ -41,7 +41,7 @@ describe.skipIf(!live)("claim extraction (live model)", () => {
         if (typeOk) found++;
         report.push({ file, expected: expected.quote, expectedTypes: expected.types, got: match ? { quote: match.quote, type: match.type, id: match.id } : null, ok: typeOk });
       }
-      report.push({ file, extracted: claims.length, rejected });
+      report.push({ file, extracted: claims.length, rejected, claims: claims.map((c) => ({ id: c.id, type: c.type, quote: c.quote })) });
     }
 
     mkdirSync(".pinocchio", { recursive: true });
