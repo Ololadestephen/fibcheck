@@ -1,0 +1,65 @@
+{
+  "about": "Claims the extractor must find, written by the lead from the T1 documents. Each document is fetched at a pinned commit, so the text never changes. Quotes are short parts of the claim; a match means an extracted claim's quote contains this text (after normalising Markdown) and has the expected type. 'types' lists acceptable types where a claim honestly fits more than one.",
+  "documents": [
+    {
+      "repo": "sissbruecker/linkding",
+      "commit": "27b7303baf41bb28babc610ac8eaa486e1ddfab5",
+      "path": "docs/src/content/docs/admin.md",
+      "expected": [
+        { "quote": "click on the Admin tab", "types": ["ui_flow"] },
+        { "quote": "adding /admin to the URL", "types": ["ui_flow", "setup"] },
+        { "quote": "only allows to create or assign tags", "types": ["behaviour", "ui_flow"] }
+      ]
+    },
+    {
+      "repo": "sissbruecker/linkding",
+      "commit": "27b7303baf41bb28babc610ac8eaa486e1ddfab5",
+      "path": "README.md",
+      "expected": [
+        { "quote": "Import and export bookmarks in Netscape HTML format", "types": ["behaviour"] },
+        { "quote": "Installable as a Progressive Web App", "types": ["behaviour", "mobile"] },
+        { "quote": "Bulk editing, Markdown notes, read it later functionality", "types": ["behaviour"] },
+        { "quote": "Clean UI optimized for readability", "types": ["untestable"] }
+      ]
+    },
+    {
+      "repo": "go-shiori/shiori",
+      "commit": "aebb4021a56048eed4c8feb325399be5f46e5470",
+      "path": "docs/Usage.md",
+      "expected": [
+        { "quote": "we can use the default user to access web interface", "types": ["setup"] },
+        { "quote": "open the settings page and add accounts as needed", "types": ["ui_flow", "behaviour"] },
+        { "quote": "tag:tagname", "types": ["behaviour"] }
+      ]
+    },
+    {
+      "repo": "PrivateBin/PrivateBin",
+      "commit": "9ffe9c8f7619859255dea4d975bc4e4c8211db95",
+      "path": "README.md",
+      "expected": [
+        { "quote": "Markdown format support for HTML formatted pastes, including preview function", "types": ["behaviour"] },
+        { "quote": "QR code for paste URLs", "types": ["behaviour", "mobile"] },
+        { "quote": "Language selection (disabled by default", "types": ["behaviour"] }
+      ]
+    },
+    {
+      "repo": "louislam/uptime-kuma",
+      "commit": "1e3e2eee51821c453329ee8d7145be0568712863",
+      "path": "README.md",
+      "expected": [
+        { "quote": "20-second intervals", "types": ["behaviour"] },
+        { "quote": "Multiple status pages", "types": ["behaviour"] },
+        { "quote": "Fancy, Reactive, Fast UI/UX", "types": ["untestable"] }
+      ]
+    },
+    {
+      "repo": "mealie-recipes/mealie",
+      "commit": "e2c0c3b1bfd7a785dde8e9704f1c8475333613ae",
+      "path": "docs/docs/documentation/getting-started/features.md",
+      "expected": [
+        { "quote": "previous day and the next 6 days by default", "types": ["behaviour"] },
+        { "quote": "/group/migrations page", "types": ["ui_flow", "behaviour"] }
+      ]
+    }
+  ]
+}
