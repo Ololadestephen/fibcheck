@@ -1,0 +1,17 @@
+{
+  "name": "linkding",
+  "repo": "https://github.com/sissbruecker/linkding",
+  "docs": ["docs/src/content/docs/admin.md"],
+  "app": {
+    "image": "sissbruecker/linkding:1.47.0",
+    "port": 9090,
+    "containerPort": 9090,
+    "env": {
+      "LD_SUPERUSER_NAME": "pinotest",
+      "LD_SUPERUSER_PASSWORD": "{{secret:app_pass}}"
+    },
+    "readyPath": "/login/"
+  },
+  "startPath": "/login/",
+  "login": "If a login form is shown, log in with username pinotest and password {{app_pass}}."
+}
