@@ -6,7 +6,7 @@ import { createModelClient, loadDotEnv } from "../dist/model/config.js";
 import { writeReport } from "../dist/report/report.js";
 
 const env = process.env;
-const credentials = env.PINOCCHIO_ENV_FILE;
+const credentials = env.FIBCHECK_ENV_FILE;
 if (!credentials || !isAbsolute(credentials) || basename(credentials) !== ".env") {
   throw new Error("Supply an absolute path to the runner's private .env file.");
 }
@@ -25,12 +25,12 @@ const staged = await stageGitHubReadme({
   eventName: env.GITHUB_EVENT_NAME,
   apiUrl: env.GITHUB_API_URL,
   serverUrl: env.GITHUB_SERVER_URL,
-  targetFile: env.PINOCCHIO_TARGET_FILE,
+  targetFile: env.FIBCHECK_TARGET_FILE,
   directory,
-  maxClaims: Number(env.PINOCCHIO_MAX_CLAIMS),
+  maxClaims: Number(env.FIBCHECK_MAX_CLAIMS),
 });
 loadDotEnv(privateDirectory);
-const workDir = join(privateDirectory, ".pinocchio");
+const workDir = join(privateDirectory, ".fibcheck");
 const client = createModelClient(basename(directory), privateDirectory);
 // The provider has read the key. Keep it out of the Docker and Kane children.
 delete env.GEMINI_API_KEY;
@@ -39,5 +39,5 @@ const checked = await runCheck(client, { ...staged, workDir });
 writeReport(join(staged.runsDir, checked.runId, "check.json"));
 
 const summary = githubComment(checked);
-appendFileSync(env.GITHUB_OUTPUT, `report<<PINOCCHIO_REPORT_END\n${summary}\nPINOCCHIO_REPORT_END\n`);
+appendFileSync(env.GITHUB_OUTPUT, `report<<FIBCHECK_REPORT_END\n${summary}\nFIBCHECK_REPORT_END\n`);
 appendFileSync(env.GITHUB_STEP_SUMMARY, summary + "\n");

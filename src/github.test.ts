@@ -12,7 +12,7 @@ import { loadTarget } from "./target.js";
 const BASE = "b".repeat(40);
 const HEAD = "a".repeat(40);
 const REPO = "owner/public-app";
-const PROFILE = ".github/pinocchio.target.json";
+const PROFILE = ".github/fibcheck.target.json";
 const serverUrl = new URL("/", loadTarget("targets/linkding.json").repo);
 const apiUrl = new URL(serverUrl);
 apiUrl.hostname = "api." + serverUrl.hostname;
@@ -37,7 +37,7 @@ function fileResponse(text: string): Response {
 
 describe("GitHub README check", () => {
   let directory: string;
-  beforeEach(() => { directory = mkdtempSync(join(tmpdir(), "pinocchio-pr-test-")); });
+  beforeEach(() => { directory = mkdtempSync(join(tmpdir(), "fibcheck-pr-test-")); });
   afterEach(() => rmSync(directory, { recursive: true, force: true }));
 
   function options() {

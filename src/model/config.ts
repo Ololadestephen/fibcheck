@@ -14,12 +14,12 @@ export function loadDotEnv(cwd = process.cwd()): void {
 
 export function readLimits(env: NodeJS.ProcessEnv = process.env): BudgetLimits {
   return {
-    maxCallsPerRun: positiveInt(env.PINOCCHIO_MAX_CALLS_PER_RUN, DEFAULT_LIMITS.maxCallsPerRun, "PINOCCHIO_MAX_CALLS_PER_RUN"),
-    maxCallsTotal: positiveInt(env.PINOCCHIO_MAX_CALLS_TOTAL, DEFAULT_LIMITS.maxCallsTotal, "PINOCCHIO_MAX_CALLS_TOTAL"),
+    maxCallsPerRun: positiveInt(env.FIBCHECK_MAX_CALLS_PER_RUN, DEFAULT_LIMITS.maxCallsPerRun, "FIBCHECK_MAX_CALLS_PER_RUN"),
+    maxCallsTotal: positiveInt(env.FIBCHECK_MAX_CALLS_TOTAL, DEFAULT_LIMITS.maxCallsTotal, "FIBCHECK_MAX_CALLS_TOTAL"),
   };
 }
 
-/** Builds the shared model client for one run. Usage files live in `<cwd>/.pinocchio/`. */
+/** Builds the shared model client for one run. Usage files live in `<cwd>/.fibcheck/`. */
 export function createModelClient(runId: string, cwd = process.cwd(), env: NodeJS.ProcessEnv = process.env): ModelClient {
   if (!env.GEMINI_API_KEY && !env.GOOGLE_API_KEY) {
     throw new Error(
@@ -27,10 +27,10 @@ export function createModelClient(runId: string, cwd = process.cwd(), env: NodeJ
     );
   }
   const provider = new GeminiProvider({
-    model: env.PINOCCHIO_GEMINI_MODEL || undefined,
-    fallbackModel: env.PINOCCHIO_GEMINI_FALLBACK_MODEL || undefined,
+    model: env.FIBCHECK_GEMINI_MODEL || undefined,
+    fallbackModel: env.FIBCHECK_GEMINI_FALLBACK_MODEL || undefined,
   });
-  const dir = join(cwd, ".pinocchio");
+  const dir = join(cwd, ".fibcheck");
   const budget = new CallBudget(readLimits(env), runId, join(dir, "usage-totals.json"), join(dir, "usage-ledger.jsonl"));
   return new ModelClient(provider, budget);
 }

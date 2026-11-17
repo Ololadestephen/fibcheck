@@ -66,7 +66,7 @@ describe("parseDiagnosis", () => {
 
 describe("modelDiagnoser", () => {
   it("asks the shared client for JSON and counts the call", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "pinocchio-diagnose-"));
+    const dir = mkdtempSync(join(tmpdir(), "fibcheck-diagnose-"));
     const prompts: string[] = [];
     const client = new ModelClient({
       name: "fake",

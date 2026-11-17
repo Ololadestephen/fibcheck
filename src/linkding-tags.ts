@@ -6,23 +6,23 @@ import { distinctKaneRuns, type StepEvidence } from "./kane/evidence.js";
 import type { KaneRun } from "./kane/runner.js";
 import { KANE_RUN_LIMIT_REASON, type ClaimVerdict, type QuestionedRun, type Questioning, type RunRound } from "./loop-types.js";
 
-const MAIN_TAG = "pinocchiotag";
-const ADMIN_TAG = "pinocchioadmintag";
+const MAIN_TAG = "fibchecktag";
+const ADMIN_TAG = "fibcheckadmintag";
 const ADMIN_DOC = "docs/src/content/docs/admin.md";
 const MAIN_LIMIT = "linkding UI currently only allows to create or assign tags";
 const ADMIN_CLAIM = "you can use the admin app to manage your tags";
-const ROW_PRESENT = "The ordinary Linkding Tags page lists pinocchiotag.";
-const EDIT_OFFERED = "The pinocchiotag row has an Edit control on the ordinary Linkding Tags page.";
-const MAIN_EDIT_NAME = "The Edit Tag Name field is pinocchiotag.";
-const MAIN_RENAMED = "The ordinary Linkding Tags page lists pinocchiotagmain.";
-const ADMIN_RENAMED = "The Site administration Tags list contains pinocchioadmintagproof.";
+const ROW_PRESENT = "The ordinary Linkding Tags page lists fibchecktag.";
+const EDIT_OFFERED = "The fibchecktag row has an Edit control on the ordinary Linkding Tags page.";
+const MAIN_EDIT_NAME = "The Edit Tag Name field is fibchecktag.";
+const MAIN_RENAMED = "The ordinary Linkding Tags page lists fibchecktagmain.";
+const ADMIN_RENAMED = "The Site administration Tags list contains fibcheckadmintagproof.";
 const MAIN_CONTROL_PROOF = "Kane renamed the seeded tag from the ordinary Tags page and verified the new name in the table.";
 const TAG_HISTORY = "Linkding added its ordinary tag-management page in commit 82e5b7d.";
 
 const CHECK_MAIN = `Navigate directly to /tags in the ordinary Linkding app after login. Wait for the Tags table. Assert exactly: ${ROW_PRESENT} Expect true. Look in the Actions column for that specific row. Assert exactly: ${EDIT_OFFERED} Expect false. Do not change the tag or visit the administration app.`;
 const RETRY_MAIN = `After login, open the normal Linkding Tags page at /tags and wait for its table. First make this exact boolean assertion: ${ROW_PRESENT} Expect true. Now inspect only that tag's row and read the actions shown next to its name. Make this exact separate boolean assertion: ${EDIT_OFFERED} Expect false. Leave the tag unchanged.`;
-const CONTROL_MAIN = `After login, open /tags in the ordinary Linkding app. Find pinocchiotag in the Tags table and click Edit in that row. Before typing, assert this exact boolean condition: ${MAIN_EDIT_NAME} Expect true. Change the Name to pinocchiotagmain and click Save in the Edit Tag form. Verify this exact condition: ${MAIN_RENAMED} Expect true. Do not use the administration app.`;
-const CHECK_ADMIN = `After login, open the Settings dropdown in the top navigation, then choose Admin. On Site administration, click the Tags link in the Bookmarks section. In the admin tag list open the existing pinocchioadmintag record, change its Name to pinocchioadmintagproof, and click Save. Verify this exact condition: ${ADMIN_RENAMED} Expect true.`;
+const CONTROL_MAIN = `After login, open /tags in the ordinary Linkding app. Find fibchecktag in the Tags table and click Edit in that row. Before typing, assert this exact boolean condition: ${MAIN_EDIT_NAME} Expect true. Change the Name to fibchecktagmain and click Save in the Edit Tag form. Verify this exact condition: ${MAIN_RENAMED} Expect true. Do not use the administration app.`;
+const CHECK_ADMIN = `After login, open the Settings dropdown in the top navigation, then choose Admin. On Site administration, click the Tags link in the Bookmarks section. In the admin tag list open the existing fibcheckadmintag record, change its Name to fibcheckadmintagproof, and click Save. Verify this exact condition: ${ADMIN_RENAMED} Expect true.`;
 const exec = promisify(execFile);
 
 type TagClaim = "main" | "admin";
@@ -44,7 +44,7 @@ export async function seedLinkdingTags(containerName: string): Promise<void> {
     "user = get_user_model().objects.get(username='pinotest')",
     "assert user.is_superuser and user.is_staff",
     `names = ['${MAIN_TAG}', '${ADMIN_TAG}']`,
-    "assert not Tag.objects.filter(owner=user, name__in=names + ['pinocchiotagmain', 'pinocchioadmintagproof']).exists()",
+    "assert not Tag.objects.filter(owner=user, name__in=names + ['fibchecktagmain', 'fibcheckadmintagproof']).exists()",
     "Tag.objects.bulk_create([Tag(name=name, owner=user, date_added=timezone.now()) for name in names])",
     "assert set(Tag.objects.filter(owner=user, name__in=names).values_list('name', flat=True)) == set(names)",
   ].join("\n");
@@ -54,7 +54,7 @@ export async function seedLinkdingTags(containerName: string): Promise<void> {
 export async function questionLinkdingTags(kind: TagClaim, login: string, run: RunRound, canRunFollowUp: () => boolean): Promise<QuestionedRun> {
   if (kind === "admin") {
     const kane = await run("initial", `${login} ${CHECK_ADMIN}`, "dom");
-    const verified = renamedTag(kane, "/admin/bookmarks/tag", ADMIN_TAG, "pinocchioadmintagproof", ADMIN_RENAMED);
+    const verified = renamedTag(kane, "/admin/bookmarks/tag", ADMIN_TAG, "fibcheckadmintagproof", ADMIN_RENAMED);
     return {
       kane,
       questioning: {
@@ -93,7 +93,7 @@ export async function questionLinkdingTags(kind: TagClaim, login: string, run: R
     ? "Check the original tag name in the Edit form, then save the rename on the ordinary Tags page."
     : "Use Edit and Save on the ordinary Tags page to test whether the control works.";
   followUps.push({ purpose: "control", reason: controlReason, kane: control });
-  if (!distinctKaneRuns(kane, control) || !distinctKaneRuns(retry, control) || !renamedTag(control, "/tags", MAIN_TAG, "pinocchiotagmain", MAIN_RENAMED)) {
+  if (!distinctKaneRuns(kane, control) || !distinctKaneRuns(retry, control) || !renamedTag(control, "/tags", MAIN_TAG, "fibchecktagmain", MAIN_RENAMED)) {
     return outcome("unconfirmed", "The control did not establish a successful rename in an independent run on the ordinary Tags page.");
   }
 

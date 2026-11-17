@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
  * A target describes one web app to check: where its docs are, how to run it
  * locally, and how Kane logs in. Example files live in `targets/`.
  *
- * Secrets: write `{{secret:NAME}}` in `app.env`. Pinocchio generates a fresh
+ * Secrets: write `{{secret:NAME}}` in `app.env`. fibcheck generates a fresh
  * random value for each run, passes it to the container, and gives it to
  * Kane as a secret variable `NAME`, so `login` can say `{{NAME}}`.
  */

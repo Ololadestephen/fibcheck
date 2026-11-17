@@ -59,7 +59,7 @@ export class CallBudget {
     const totals = this.readTotals();
     if (totals.calls >= this.limits.maxCallsTotal) {
       throw new BudgetExceededError(
-        `Total model call limit reached (${this.limits.maxCallsTotal} calls). Raise PINOCCHIO_MAX_CALLS_TOTAL to continue.`,
+        `Total model call limit reached (${this.limits.maxCallsTotal} calls). Raise FIBCHECK_MAX_CALLS_TOTAL to continue.`,
       );
     }
     this.runCalls += 1;

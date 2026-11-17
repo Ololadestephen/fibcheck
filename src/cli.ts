@@ -7,12 +7,12 @@ import { createModelClient, loadDotEnv } from "./model/config.js";
 import { writeReport } from "./report/report.js";
 import { targetPathFor } from "./target.js";
 
-export const USAGE = `pinocchio: finds the false claims in a web app's README with Kane CLI.
+export const USAGE = `fibcheck: finds the false claims in a web app's README with Kane CLI.
 
 Usage:
-  pinocchio check <target.json | repository> [--max-claims N] [--max-kane-runs N] [--only CLAIM_ID ...] [--app-running]
-  pinocchio report <check.json>
-  pinocchio --help
+  fibcheck check <target.json | repository> [--max-claims N] [--max-kane-runs N] [--only CLAIM_ID ...] [--app-running]
+  fibcheck report <check.json>
+  fibcheck --help
 
 Use sissbruecker/linkding or its GitHub URL for the bundled Linkding target.
 A target file names the repository, its docs, and how to run the app (see targets/).
@@ -36,7 +36,7 @@ export async function main(argv: string[]): Promise<number> {
 function report(args: string[]): number {
   const [inputPath] = args;
   if (args.length !== 1 || !inputPath || inputPath.startsWith("-")) {
-    process.stderr.write("Usage: pinocchio report <check.json>\n");
+    process.stderr.write("Usage: fibcheck report <check.json>\n");
     return 1;
   }
   const { htmlPath, badgePath } = writeReport(inputPath);
@@ -95,7 +95,7 @@ if (executable && existsSync(executable) && import.meta.url === pathToFileURL(re
   main(process.argv.slice(2)).then(
     (code) => (process.exitCode = code),
     (error: unknown) => {
-      process.stderr.write(`pinocchio: ${error instanceof Error ? error.message : String(error)}\n`);
+      process.stderr.write(`fibcheck: ${error instanceof Error ? error.message : String(error)}\n`);
       process.exitCode = 1;
     },
   );

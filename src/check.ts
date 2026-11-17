@@ -21,7 +21,7 @@ export interface CheckOptions {
   source?: { directory: string; commit: string };
   /** Where run folders go (default `runs/`). */
   runsDir?: string;
-  /** Pinocchio's working folder for clones and caches (default `.pinocchio/`). */
+  /** fibcheck's working folder for clones and caches (default `.fibcheck/`). */
   workDir?: string;
   /** Test at most this many claims (Kane credits are limited). */
   maxClaims?: number;
@@ -67,7 +67,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   validateOptions(options);
   const log = options.log ?? (() => {});
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
-  const workDir = options.workDir ?? ".pinocchio";
+  const workDir = options.workDir ?? ".fibcheck";
   const runDir = resolve(options.runsDir ?? "runs", runId);
   mkdirSync(runDir, { recursive: true });
   const target = resolveTarget(loadTarget(options.targetPath));
@@ -200,7 +200,7 @@ async function runClaims(target: ResolvedTarget, claims: Claim[], session: Claim
 
 function writeKaneVariables(variables: ResolvedTarget["kaneVariables"]) {
   if (Object.keys(variables).length === 0) return undefined;
-  const directory = mkdtempSync(join(tmpdir(), "pinocchio-kane-"));
+  const directory = mkdtempSync(join(tmpdir(), "fibcheck-kane-"));
   const path = join(directory, "variables.json");
   const remove = () => rmSync(directory, { recursive: true, force: true });
   try {

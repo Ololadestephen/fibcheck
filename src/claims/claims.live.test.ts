@@ -1,7 +1,7 @@
 /**
  * Live evaluation of extraction against pinned public docs:
- *   PINOCCHIO_LIVE=1 npx vitest run src/claims/claims.live.test.ts
- * Each completed document is recorded in .pinocchio/eval-claims.json.
+ *   FIBCHECK_LIVE=1 npx vitest run src/claims/claims.live.test.ts
+ * Each completed document is recorded in .fibcheck/eval-claims.json.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -30,7 +30,7 @@ interface EvaluationDocument {
   review?: Review[];
 }
 
-const EVAL_PATH = ".pinocchio/eval-claims.json";
+const EVAL_PATH = ".fibcheck/eval-claims.json";
 const MINIMUM_FOUND = 15;
 
 function matchesQuote(claim: Claim, expected: Expected): boolean {
@@ -64,7 +64,7 @@ function reviewChecks(claims: Claim[], reviews: Review[]) {
   });
 }
 
-describe.skipIf(process.env.PINOCCHIO_LIVE !== "1")("claim extraction (live model)", () => {
+describe.skipIf(process.env.FIBCHECK_LIVE !== "1")("claim extraction (live model)", () => {
   it("finds the expected claims and separates the key checks", { timeout: 600_000 }, async () => {
     loadDotEnv();
     const { documents } = JSON.parse(readFileSync("fixtures/expected-claims.json", "utf8")) as { documents: EvaluationDocument[] };
@@ -75,7 +75,7 @@ describe.skipIf(process.env.PINOCCHIO_LIVE !== "1")("claim extraction (live mode
     let found = 0;
     let evaluated = 0;
 
-    mkdirSync(".pinocchio", { recursive: true });
+    mkdirSync(".fibcheck", { recursive: true });
     const save = (complete: boolean) => {
       writeFileSync(EVAL_PATH, `${JSON.stringify({ complete, found, evaluated, total, usage: client.usage(), report }, null, 2)}\n`);
     };
@@ -88,7 +88,7 @@ describe.skipIf(process.env.PINOCCHIO_LIVE !== "1")("claim extraction (live mode
       const { claims, rejected, cacheHits } = await extractClaimsCached(
         client,
         [{ file: doc.path, content }],
-        ".pinocchio/cache/claims",
+        ".fibcheck/cache/claims",
       );
       const scores = scoreClaims(claims, doc.expected);
       const reviews = reviewChecks(claims, doc.review ?? []);

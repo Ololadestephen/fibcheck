@@ -12,11 +12,11 @@ const startUrl = new URL("/login/", resolveTarget(target).baseUrl).href;
 const source = { file: "docs/src/content/docs/admin.md", startLine: 55, endLine: 55 };
 const ordinary: Claim = { id: "admin.md#L55", source, type: "behaviour", quote: "While linkding UI currently only allows to create or assign tags," };
 const admin: Claim = { ...ordinary, id: "admin.md#L55-2", quote: "you can use the admin app to manage your tags." };
-const row = "The ordinary Linkding Tags page lists pinocchiotag.";
-const edit = "The pinocchiotag row has an Edit control on the ordinary Linkding Tags page.";
-const originalName = "The Edit Tag Name field is pinocchiotag.";
-const mainRenamed = "The ordinary Linkding Tags page lists pinocchiotagmain.";
-const adminRenamed = "The Site administration Tags list contains pinocchioadmintagproof.";
+const row = "The ordinary Linkding Tags page lists fibchecktag.";
+const edit = "The fibchecktag row has an Edit control on the ordinary Linkding Tags page.";
+const originalName = "The Edit Tag Name field is fibchecktag.";
+const mainRenamed = "The ordinary Linkding Tags page lists fibchecktagmain.";
+const adminRenamed = "The Site administration Tags list contains fibcheckadmintagproof.";
 
 describe("Linkding tag claims", () => {
   it("matches each clause independently and rejects the old compound extraction", () => {
@@ -108,10 +108,10 @@ describe("Linkding tag claims", () => {
     const control = renameWithIdentity();
     const identity = control.observations.find((item) => item.condition.includes(originalName));
     if (!identity) throw new Error("Expected a name observation.");
-    identity.expectedValue = "pinocchiotag";
-    identity.extractedValue = "pinocchiotag";
+    identity.expectedValue = "fibchecktag";
+    identity.extractedValue = "fibchecktag";
     expect((await review(ordinary, [failure("first"), failure("second"), control])).result.questioning.verdict).toBe("outdated");
-    for (const name of ["pinocchioadmintag", "pinocchio_tag", "PINOCCHIOTAG"]) {
+    for (const name of ["fibcheckadmintag", "fibcheck_tag", "FIBCHECKTAG"]) {
       identity.extractedValue = name;
       expect((await review(ordinary, [failure("first"), failure("second"), control])).result.questioning.verdict).toBe("unconfirmed");
     }
@@ -183,8 +183,8 @@ function failure(id: string, reasonCode = "assertion_error.final_verification"):
 function rename(usingAdmin: boolean): KaneRun {
   const result = runResult("control", "passed", "success.complete");
   const [original, renamed, assertion, path] = usingAdmin
-    ? ["pinocchioadmintag", "pinocchioadmintagproof", adminRenamed, "/admin/bookmarks/tag/"]
-    : ["pinocchiotag", "pinocchiotagmain", mainRenamed, "/tags"];
+    ? ["fibcheckadmintag", "fibcheckadmintagproof", adminRenamed, "/admin/bookmarks/tag/"]
+    : ["fibchecktag", "fibchecktagmain", mainRenamed, "/tags"];
   const editPath = usingAdmin ? "/admin/bookmarks/tag/2/change/" : path;
   result.observations = [observation(assertion)];
   result.evidence = [

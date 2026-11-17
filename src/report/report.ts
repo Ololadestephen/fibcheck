@@ -18,7 +18,7 @@ export function writeReport(inputPath: string): { htmlPath: string; badgePath: s
   try {
     const report = JSON.parse(readFileSync(inputPath, "utf8")) as CheckReport;
     if (!Array.isArray(report?.claims) || !Array.isArray(report.tested) || !Array.isArray(report.notTested)) {
-      throw new Error("Expected a saved Pinocchio check with claims and Kane results.");
+      throw new Error("Expected a saved fibcheck check with claims and Kane results.");
     }
     const counts = countResults(report);
     const artwork = renderBadge(counts);
@@ -93,13 +93,13 @@ function renderReport(report: CheckReport, counts: ResultCounts, badge: ReturnTy
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' file:">
-<title>${name} · Pinocchio</title>
+<title>${name} · fibcheck</title>
 <style>${REPORT_STYLE}</style>
 </head>
 <body>
 <main>
   <header>
-    <img src="badge.svg" alt="Pinocchio · ${escapeHtml(badge.label)}" width="${badge.width}" height="34">
+    <img src="badge.svg" alt="fibcheck · ${escapeHtml(badge.label)}" width="${badge.width}" height="34">
     <h1>${name}</h1>
     <p class="meta">${escapeHtml(report.repo)}${report.commit ? ` · <code>${escapeHtml(report.commit.slice(0, 12))}</code>` : ""}</p>
     <p class="meta">Run <time datetime="${escapeHtml(report.startedAt)}">${escapeHtml(report.startedAt)}</time> · ${report.kaneCredits.toFixed(1)} Kane credits reported · <a href="${encodeURIComponent(inputName)}">Check JSON</a></p>
@@ -142,7 +142,7 @@ function renderVerdictScore(counts: ResultCounts): string {
   ];
   if (counts.withoutVerdict) metrics.push(["Without verdict", counts.withoutVerdict]);
   return `<section aria-labelledby="score">
-    <h2 id="score">Pinocchio score</h2>
+    <h2 id="score">fibcheck score</h2>
     ${renderMetrics(metrics)}
   </section>`;
 }
@@ -221,19 +221,18 @@ function renderBadge({ tested, verifiedPasses, verdicts }: ResultCounts) {
   if (verified) label = `Kane swore it's true · ${tested} tested`;
   if (findings) label = `${findings} confirmed finding${findings === 1 ? "" : "s"}`;
 
-  const growth = Math.min(findings, 10) * 5;
-  const nose = 13 + growth;
-  const divider = 119 + growth;
+  const state = findings ? "findings" : verified ? "verified" : "tested";
+  const dot = { findings: "#d9534f", verified: "#5cb37a", tested: "#c9b48a" }[state];
+  const divider = 104;
   const labelWidth = verified ? 225 : 162;
   const width = divider + labelWidth;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="34" viewBox="0 0 ${width} 34" role="img" aria-labelledby="badge-title">
-  <title id="badge-title">Pinocchio · ${escapeHtml(label)}</title>
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="34" viewBox="0 0 ${width} 34" role="img" aria-labelledby="badge-title" data-state="${state}">
+  <title id="badge-title">fibcheck · ${escapeHtml(label)}</title>
   <rect width="${width}" height="34" rx="6" fill="#233f33"/>
   <path d="M${divider} 0h${labelWidth - 6}a6 6 0 0 1 6 6v22a6 6 0 0 1-6 6H${divider}Z" fill="${verified ? "#dce9dd" : "#eee5d4"}"/>
-  <path d="M12 10h11v6l${nose} 4-${nose} 4H12Z" fill="#f0c58d"/>
-  <circle cx="19" cy="14" r="1.3" fill="#233f33"/>
+  <circle cx="20" cy="17" r="6" fill="${dot}"/>
   <g font-family="system-ui, sans-serif" font-size="12">
-    <text x="${44 + growth}" y="21" fill="#fff" font-weight="700">Pinocchio</text>
+    <text x="34" y="21" fill="#fff" font-weight="700">fibcheck</text>
     <text x="${divider + labelWidth / 2}" y="21" fill="#233f33" text-anchor="middle">${escapeHtml(label)}</text>
   </g>
 </svg>

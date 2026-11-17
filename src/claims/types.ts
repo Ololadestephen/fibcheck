@@ -1,4 +1,4 @@
-/** The kinds of claim Pinocchio sorts a README into. */
+/** The kinds of claim fibcheck sorts a README into. */
 export const CLAIM_TYPES = ["setup", "ui_flow", "behaviour", "mobile", "untestable"] as const;
 export type ClaimType = (typeof CLAIM_TYPES)[number];
 

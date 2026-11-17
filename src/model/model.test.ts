@@ -181,7 +181,7 @@ describe("GeminiProvider", () => {
 
 describe("config", () => {
   it("rejects a limit that is not a positive whole number", () => {
-    expect(() => readLimits({ PINOCCHIO_MAX_CALLS_PER_RUN: "0" })).toThrow(/positive whole number/);
+    expect(() => readLimits({ FIBCHECK_MAX_CALLS_PER_RUN: "0" })).toThrow(/positive whole number/);
     expect(readLimits({})).toEqual({ maxCallsPerRun: 60, maxCallsTotal: 1500 });
   });
 

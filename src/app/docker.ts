@@ -16,7 +16,7 @@ export interface RunningApp {
  * the environment of the `docker` process, never on its command line.
  */
 export async function startApp(target: ResolvedTarget, runId: string, timeoutMs = 180_000): Promise<RunningApp> {
-  const containerName = `pinocchio-${target.name}-${runId}`.replace(/[^a-zA-Z0-9_.-]/g, "-");
+  const containerName = `fibcheck-${target.name}-${runId}`.replace(/[^a-zA-Z0-9_.-]/g, "-");
   const envArgs = Object.keys(target.resolvedEnv).flatMap((key) => ["-e", key]);
   try {
     await exec(

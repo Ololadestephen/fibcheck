@@ -1,5 +1,5 @@
 {
-  "name": "pinocchio",
+  "name": "fibcheck",
   "version": "0.0.0",
   "private": true,
   "description": "Finds the false claims in a web app's README with Kane CLI, and proves the fix.",
@@ -10,7 +10,7 @@
   },
   "files": ["dist/", "targets/linkding.json"],
   "bin": {
-    "pinocchio": "dist/cli.js"
+    "fibcheck": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

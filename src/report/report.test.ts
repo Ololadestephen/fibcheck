@@ -29,12 +29,12 @@ const unsupported: Claim = {
   source: { file: "README.md", startLine: 3, endLine: 3 },
 };
 
-describe("pinocchio report", () => {
+describe("fibcheck report", () => {
   let directory: string;
   let input: string;
 
   beforeEach(() => {
-    directory = mkdtempSync(join(tmpdir(), "pinocchio-report-"));
+    directory = mkdtempSync(join(tmpdir(), "fibcheck-report-"));
     input = join(directory, "check.json");
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   });
@@ -125,10 +125,10 @@ describe("pinocchio report", () => {
     expect(html).toContain("The same login opened the dashboard.");
     const badge = readFileSync(join(directory, "badge.svg"), "utf8");
     expect(badge).toContain("1 confirmed finding");
-    expect(badge).toContain("v6l18 4-18 4");
+    expect(badge).toContain('data-state="findings"');
   });
 
-  it("distinguishes false, unconfirmed and legacy runs in the score and grows the nose for findings", () => {
+  it("distinguishes false, unconfirmed and legacy runs in the score and marks findings on the badge", () => {
     const first = { ...tab, id: "first" };
     const second = { ...tab, id: "second" };
     const third = { ...tab, id: "third" };
@@ -149,7 +149,7 @@ describe("pinocchio report", () => {
     }
     const badge = readFileSync(badgePath, "utf8");
     expect(badge).toContain("2 confirmed findings");
-    expect(badge).toContain("v6l23 4-23 4");
+    expect(badge).toContain('data-state="findings"');
   });
 
   it("certifies a nonempty set of tested claims only with true verdicts and Kane passes", () => {
@@ -166,7 +166,7 @@ describe("pinocchio report", () => {
 
   it("rejects a file that is not a saved check", () => {
     writeFileSync(input, JSON.stringify({ unrelated: true }));
-    expect(() => writeReport(input)).toThrow("Expected a saved Pinocchio check");
+    expect(() => writeReport(input)).toThrow("Expected a saved fibcheck check");
     expect(existsSync(join(directory, "report.html"))).toBe(false);
     expect(existsSync(join(directory, "badge.svg"))).toBe(false);
   });

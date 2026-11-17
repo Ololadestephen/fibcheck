@@ -1,5 +1,5 @@
 /**
- * The provider-neutral interface for Pinocchio's own agent.
+ * The provider-neutral interface for fibcheck's own agent.
  *
  * Everything outside `src/model` talks to a `ModelClient`, never to a
  * provider SDK, so a provider can be swapped (or replaced by an MCP host

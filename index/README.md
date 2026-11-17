@@ -1,8 +1,8 @@
-# The Pinocchio index
+# The fibcheck index
 
 **8 apps checked, 0 README claims confirmed false or outdated.**
 
-On November 17, 2026, Pinocchio checked 17 claims from the READMEs of 8 popular self-hosted web apps. It used Kane CLI to run each claim in a real browser against the app. 16 claims held. 1 is unconfirmed, because the failure came from how the test typed text, not from the app. No claim met our bar for calling it false.
+On November 17, 2026, fibcheck checked 17 claims from the READMEs of 8 popular self-hosted web apps. It used Kane CLI to run each claim in a real browser against the app. 16 claims held. 1 is unconfirmed, because the failure came from how the test typed text, not from the app. No claim met our bar for calling it false.
 
 This is a good result for these projects, and we report it as it is. A tool that checks claims is only useful if it can also say "this held".
 
@@ -14,7 +14,7 @@ A claim counts as false or outdated only when all of these are true:
 2. Each failure was checked for a test mistake: the right page, a valid sign-in, test data that existed, and an input method Kane can perform.
 3. A control run passed on the same app with the same account, which rules out a broken setup.
 
-Kane decides every pass and fail. Pinocchio's own model never does. Kane's own guess about who is at fault is a hypothesis, and we override it when the screenshots show otherwise.
+Kane decides every pass and fail. fibcheck's own model never does. Kane's own guess about who is at fault is a hypothesis, and we override it when the screenshots show otherwise.
 
 ## Results
 
@@ -67,7 +67,7 @@ Kane failed this claim twice, and a plain-text control memo passed, so it met th
 
 ## What a confirmed finding looks like
 
-The index found nothing false, but Pinocchio has confirmed two outdated statements in Linkding's documentation (`docs/src/content/docs/admin.md` at `27b7303`, not its README). Both passed the full rule above.
+The index found nothing false, but fibcheck has confirmed two outdated statements in Linkding's documentation (`docs/src/content/docs/admin.md` at `27b7303`, not its README). Both passed the full rule above.
 
 - **Line 14:** "To open the Admin app, go the *Settings* view and click on the *Admin* tab." Two separate Kane runs found no Admin tab inside the Settings page ([run 1](evidence/linkding-docs-l14-run1.jpg)). A control with the same account opened Site administration through the Settings menu in the top navigation ([control](evidence/linkding-docs-l14-control.jpg)). Kane blamed the test account for missing admin rights; the control showed the account had them. Linkding's history shows the tab existed in the Settings template and was later removed, which makes the statement outdated rather than false.
 - **Line 55:** "linkding UI currently only allows to create or assign tags". Two separate Kane runs found Edit and Remove actions on an existing tag on the ordinary Tags page ([run 1](evidence/linkding-docs-l55-run1.jpg)). A passing control renamed a tag on that same page and saw the new name ([control](evidence/linkding-docs-l55-control.jpg)). The second half of the sentence, that the admin app can manage tags, held.

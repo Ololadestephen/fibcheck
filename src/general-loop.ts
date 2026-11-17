@@ -13,7 +13,7 @@ export interface GeneralQuestioning {
 /** Rewordings allowed after an agent or check problem, before the claim is left unconfirmed. */
 const MAX_REWORDS = 1;
 const INITIAL_REASON = "Run the browser check extracted from the documentation, then have the model read Kane's result.";
-const NOT_OUTDATED = "Pinocchio did not check whether the claim was once true, so it is reported as false rather than outdated.";
+const NOT_OUTDATED = "fibcheck did not check whether the claim was once true, so it is reported as false rather than outdated.";
 
 const CAUSE_REASONS: Record<Diagnosis["cause"], string> = {
   agent_misstep: "Kane's own navigation caused the failure, and no rewording was left.",

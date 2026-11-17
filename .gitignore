@@ -23,5 +23,5 @@ coverage/
 .claude/
 scorecard.png
 
-# Pinocchio usage ledger and totals
-.pinocchio/
+# fibcheck usage ledger and totals
+.fibcheck/

@@ -1,4 +1,4 @@
-name: Pinocchio README check
+name: fibcheck README check
 description: Check the README in a public pull request with Kane CLI.
 inputs:
   target-file:
@@ -17,20 +17,20 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Build Pinocchio
+    - name: Build fibcheck
       shell: bash
       env:
-        PINOCCHIO_ACTION_PATH: ${{ github.action_path }}
+        FIBCHECK_ACTION_PATH: ${{ github.action_path }}
       run: |
-        cd "$PINOCCHIO_ACTION_PATH"
+        cd "$FIBCHECK_ACTION_PATH"
         npm ci --ignore-scripts --no-audit --no-fund
         npm run build
     - name: Check the pull request README
       id: check
       shell: bash
       env:
-        PINOCCHIO_ACTION_PATH: ${{ github.action_path }}
-        PINOCCHIO_TARGET_FILE: ${{ inputs.target-file }}
-        PINOCCHIO_ENV_FILE: ${{ inputs.env-file }}
-        PINOCCHIO_MAX_CLAIMS: ${{ inputs.max-claims }}
-      run: node "$PINOCCHIO_ACTION_PATH/scripts/github-readme.mjs"
+        FIBCHECK_ACTION_PATH: ${{ github.action_path }}
+        FIBCHECK_TARGET_FILE: ${{ inputs.target-file }}
+        FIBCHECK_ENV_FILE: ${{ inputs.env-file }}
+        FIBCHECK_MAX_CLAIMS: ${{ inputs.max-claims }}
+      run: node "$FIBCHECK_ACTION_PATH/scripts/github-readme.mjs"

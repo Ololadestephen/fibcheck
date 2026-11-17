@@ -71,7 +71,7 @@ export function githubComment(report: CheckReport): string {
   ];
   if (counts.withoutVerdict > 0) entries.push(["Without verdict", counts.withoutVerdict]);
   return [
-    "### Pinocchio README check",
+    "### fibcheck README check",
     "",
     `Checked revision \`${report.commit.slice(0, 12)}\`.`,
     "",
@@ -89,10 +89,10 @@ function publicPullRequest(eventName: string, raw: unknown): { repository: strin
   const repository = event?.repository?.full_name;
   const pr = event?.pull_request;
   if (typeof repository !== "string" || !/^[\w-]+\/[\w.-]+$/.test(repository) || event?.repository?.private !== false) {
-    throw new Error("Pinocchio requires a public GitHub repository.");
+    throw new Error("fibcheck requires a public GitHub repository.");
   }
   if (pr?.head?.repo?.full_name !== repository || pr.base?.repo?.full_name !== repository) {
-    throw new Error("Pinocchio requires a pull request from a branch in the same repository.");
+    throw new Error("fibcheck requires a pull request from a branch in the same repository.");
   }
   const { head, base } = pr;
   if (typeof head.sha !== "string" || typeof base.sha !== "string" || !COMMIT.test(head.sha) || !COMMIT.test(base.sha)) {
