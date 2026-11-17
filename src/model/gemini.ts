@@ -2,10 +2,11 @@ import { ApiError, GoogleGenAI } from "@google/genai";
 import { RateLimitedError, type ModelProvider, type ModelRequest, type ModelResponse } from "./types.js";
 
 /**
- * Default models (approval A2; both stable and on the free tier per aistudio.google.com/docs/pricing, 2026-11-16).
- * gemini-3.8-flash was tried first but timed out on the server (HTTP 504 DEADLINE_EXCEEDED) twice on a tiny prompt.
+ * Default models (approval A2). The owner switched the main model to gemini-4-hydrogen on 2026-11-17,
+ * on the free tier, after gemini-3.6-flash reached its daily free-tier quota.
+ * gemini-3.8-flash was tried earlier but timed out on the server (HTTP 504 DEADLINE_EXCEEDED) twice on a tiny prompt.
  */
-export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-4-hydrogen";
 export const DEFAULT_GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite";
 
 /** Per-request timeout. Claim extraction on a 250-line part normally answers well within this. */
