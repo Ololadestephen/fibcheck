@@ -3,7 +3,7 @@ import type { Claim } from "./claims/types.js";
 import type { KaneRun } from "./kane/runner.js";
 import { distinctKaneRuns, type StepEvidence } from "./kane/evidence.js";
 import { linkdingTagClaim, questionLinkdingTags } from "./linkding-tags.js";
-import type { ClaimVerdict, QuestionedRun, Questioning, RunRound } from "./loop-types.js";
+import { KANE_RUN_LIMIT_REASON, type ClaimVerdict, type QuestionedRun, type Questioning, type RunRound } from "./loop-types.js";
 import { isLinkdingRepo, type Target } from "./target.js";
 
 const ADMIN_TAB_QUOTE = "to open the admin app, go the settings view and click on the admin tab";
@@ -29,6 +29,7 @@ export async function questionClaim(
   originalObjective: string,
   run: RunRound,
   prepareTags?: () => Promise<void>,
+  canRunFollowUp: () => boolean = () => true,
 ): Promise<QuestionedRun> {
   const linkding = managedTarget && isLinkdingRepo(managedTarget.repo)
     && managedTarget.app.image === "sissbruecker/linkding:1.47.0"
@@ -39,7 +40,7 @@ export async function questionClaim(
     const tags = linkdingTagClaim(claim);
     if (tags) {
       await prepareTags();
-      return questionLinkdingTags(tags, managedTarget.login, run);
+      return questionLinkdingTags(tags, managedTarget.login, run, canRunFollowUp);
     }
   }
   if (!linkding || !isAdminTabClaim(claim)) {
@@ -69,6 +70,7 @@ export async function questionClaim(
     return outcome("unconfirmed", "Kane did not establish the result of the in-page Admin tab assertion on the Settings page.");
   }
 
+  if (!canRunFollowUp()) return outcome("unconfirmed", KANE_RUN_LIMIT_REASON);
   const retry = await run("retry", withLogin(managedTarget.login, RETRY_TAB), "visual");
   followUps.push({ purpose: "retry", reason: "Repeat the in-page tab assertion in a separate run with the same logged-in account.", kane: retry });
   if (tabPresent(retry)) {
@@ -78,6 +80,7 @@ export async function questionClaim(
     return outcome("unconfirmed", "Kane did not reproduce the same failed tab assertion in two distinct runs.");
   }
 
+  if (!canRunFollowUp()) return outcome("unconfirmed", KANE_RUN_LIMIT_REASON);
   const control = await run("control", withLogin(managedTarget.login, CONTROL));
   followUps.push({ purpose: "control", reason: "Check whether this account can reach the admin dashboard through the Settings dropdown.", kane: control });
   if (!menuControlPassed(control) || !distinctKaneRuns(control, kane) || !distinctKaneRuns(control, retry)) {

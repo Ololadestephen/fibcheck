@@ -1,14 +1,20 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { objectiveFor } from "./check.js";
+import { describe, expect, it, vi } from "vitest";
+import { startApp } from "./app/docker.js";
+import { objectiveFor, runCheck } from "./check.js";
 import { cacheKey, extractClaimsCached } from "./claims/cache.js";
 import type { Claim } from "./claims/types.js";
+import { parseKaneOutput } from "./kane/parse.js";
+import { runKane } from "./kane/runner.js";
 import { CallBudget } from "./model/budget.js";
 import { ModelClient } from "./model/client.js";
 import type { ModelProvider } from "./model/types.js";
 import { loadTarget, resolveTarget, targetPathFor } from "./target.js";
+
+vi.mock("./app/docker.js", { spy: true });
+vi.mock("./kane/runner.js", { spy: true });
 
 const claim: Claim = {
   id: "docs/admin.md#L14",
@@ -63,6 +69,48 @@ describe("objectiveFor", () => {
   it("breaks up braces in quoted text so Kane does not read them as variables", () => {
     const text = objectiveFor({ ...claim, quote: "use {{name}} here", check: "Type {{x}}." }, { login: undefined });
     expect(text).not.toContain("{{");
+  });
+});
+
+describe("check Kane run limit", () => {
+  it.each([0, 1])("starts at most %i Kane rounds and saves all skipped claim IDs", async (limit) => {
+    const dir = mkdtempSync(join(tmpdir(), "pino-budget-"));
+    const stop = vi.fn(async () => {});
+    vi.mocked(startApp).mockResolvedValue({ containerName: "disposable", baseUrl: "http://localhost:1", stop });
+    vi.mocked(runKane).mockImplementation(async ({ objective, startUrl, outDir }) => ({
+      ...parseKaneOutput('{"type":"run_end","status":"passed"}', 0),
+      objective, startUrl, outDir, evidence: [], evidenceError: null,
+    }));
+    try {
+      const quotes = ["Toggle dark mode", "Download a backup"];
+      writeFileSync(join(dir, "README.md"), quotes.join("\n"));
+      const targetPath = join(dir, "target.json");
+      writeFileSync(targetPath, JSON.stringify({ name: "t", repo: dir, app: { image: "test", port: 1, containerPort: 2 } }));
+      const provider: ModelProvider = {
+        name: "fake",
+        async generate(_request, before) {
+          before();
+          const claims = quotes.map((quote, i) => ({
+            quote, startLine: i + 1, endLine: i + 1, type: "behaviour", check: quote,
+          }));
+          return { text: JSON.stringify({ claims }), model: "fake", usage: { inputTokens: 1, outputTokens: 1 } };
+        },
+      };
+      const client = new ModelClient(provider, new CallBudget({ maxCallsPerRun: 1, maxCallsTotal: 1 }, "r", join(dir, "totals"), join(dir, "ledger")));
+      const report = await runCheck(client, {
+        targetPath, source: { directory: dir, commit: "fixture" }, runsDir: dir, workDir: dir, maxKaneRuns: limit,
+      });
+      const saved = JSON.parse(readFileSync(join(dir, report.runId, "check.json"), "utf8"));
+      expect(saved.tested).toHaveLength(limit);
+      expect(saved.notTested).toEqual(["README.md#L1", "README.md#L2"].slice(limit));
+      expect(runKane).toHaveBeenCalledTimes(limit);
+      expect(startApp).toHaveBeenCalledTimes(limit);
+      expect(stop).toHaveBeenCalledTimes(limit);
+    } finally {
+      vi.mocked(startApp).mockReset();
+      vi.mocked(runKane).mockReset();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -47,6 +47,15 @@ describe("Linkding tag claims", () => {
     expect(result.questioning).toMatchObject({ verdict: "unconfirmed", overrides: [] });
   });
 
+  it.each([1, 2])("stops at %i Kane rounds and keeps the tag restriction unconfirmed", async (limit) => {
+    const { result, calls } = await review(ordinary, [failure("first"), failure("second"), rename(false)], limit);
+    expect(calls).toHaveLength(limit);
+    expect(result.questioning.verdict).toBe("unconfirmed");
+    expect(result.questioning.reason).toContain("Kane run limit");
+    expect(result.questioning.followUps).toHaveLength(limit - 1);
+    expect(result.questioning.overrides).toEqual([]);
+  });
+
   it("rejects a reproduction from the same session or from the admin page", async () => {
     const badRoute = failure("second");
     for (const screenshot of badRoute.evidence) screenshot.url = new URL("/admin/bookmarks/tag/", startUrl).href;
@@ -199,13 +208,13 @@ function renameWithIdentity(): KaneRun {
   return result;
 }
 
-async function review(claim: Claim, results: KaneRun[]) {
+async function review(claim: Claim, results: KaneRun[], limit = Infinity) {
   const run = vi.fn<RunRound>().mockImplementation(async () => {
     const result = results.shift();
     if (!result) throw new Error("Unexpected Kane round");
     return result;
   });
   const seed = vi.fn(async () => {});
-  const result = await questionClaim(claim, target, "Original check", run, seed);
+  const result = await questionClaim(claim, target, "Original check", run, seed, () => run.mock.calls.length < limit);
   return { result, calls: run.mock.calls, seed };
 }

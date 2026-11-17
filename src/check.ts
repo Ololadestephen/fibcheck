@@ -22,6 +22,8 @@ export interface CheckOptions {
   workDir?: string;
   /** Test at most this many claims (Kane credits are limited). */
   maxClaims?: number;
+  /** Total Kane calls for this check, including retries and controls. */
+  maxKaneRuns?: number;
   /** Test only these claim ids. */
   only?: string[];
   /** Use an app already running at the target's port instead of starting Docker. */
@@ -55,6 +57,9 @@ export interface CheckReport {
 
 /** Reads a target's docs, extracts claims and runs the selected browser checks. */
 export async function runCheck(client: ModelClient, options: CheckOptions): Promise<CheckReport> {
+  if (options.maxKaneRuns !== undefined && (!Number.isSafeInteger(options.maxKaneRuns) || options.maxKaneRuns < 0)) {
+    throw new Error("--max-kane-runs must be a whole number.");
+  }
   const log = options.log ?? (() => {});
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
   const workDir = options.workDir ?? ".pinocchio";
@@ -73,9 +78,9 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   log(`Found ${extraction.claims.length} claims (${testable.length} testable), ${extraction.rejected.length} rejected quotes, ${extraction.cacheHits} document(s) from cache.`);
 
   const selected = (options.only?.length ? testable.filter((c) => options.only?.includes(c.id)) : testable).slice(0, options.maxClaims ?? 5);
-  const notTested = testable.filter((c) => !selected.includes(c)).map((c) => c.id);
-
   const tested = await testClaims(target, selected, runDir, runId, options, log);
+  const testedClaims = new Set(tested.map(({ claim }) => claim.id));
+  const notTested = testable.filter((claim) => !testedClaims.has(claim.id)).map((claim) => claim.id);
 
   const report: CheckReport = {
     runId,
@@ -102,7 +107,9 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
 /** Starts the app, runs each claim and any follow-up checks, then cleans up. */
 async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: string, runId: string, options: CheckOptions, log: (line: string) => void): Promise<ClaimRun[]> {
   const tested: ClaimRun[] = [];
-  if (claims.length === 0) return tested;
+  let runsRemaining = options.maxKaneRuns ?? Infinity;
+  const canRun = () => runsRemaining > 0;
+  if (claims.length === 0 || !canRun()) return tested;
   let app: RunningApp | undefined;
   const variablesFile = join(runDir, "kane-variables.json");
   const hasVariables = Object.keys(target.kaneVariables).length > 0;
@@ -119,10 +126,15 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: strin
     let tagSetup: Promise<void> | undefined;
     const prepareTags = containerName ? () => (tagSetup ??= seedLinkdingTags(containerName)) : undefined;
     for (const [index, claim] of claims.entries()) {
+      if (!canRun()) {
+        log("Kane run limit reached. Remaining claims were not tested.");
+        break;
+      }
       log(`[${index + 1}/${claims.length}] ${claim.id}: "${claim.quote}"`);
       const folder = safeName(claim.id);
       const managedTarget = options.appRunning ? undefined : target;
       const result = await questionClaim(claim, managedTarget, objectiveFor(claim, target), async (purpose, objective, assertionMode) => {
+        runsRemaining--;
         const kane = await runKane({
           objective,
           startUrl: `${target.baseUrl}${target.startPath ?? "/"}`,
@@ -132,7 +144,7 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: strin
         });
         log(`    Kane ${purpose}: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
         return kane;
-      }, prepareTags);
+      }, prepareTags, canRun);
       log(`    Claim verdict: ${result.questioning.verdict}. ${result.questioning.reason}`);
       tested.push({ claim, ...result });
     }

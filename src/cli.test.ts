@@ -14,4 +14,15 @@ describe("cli", () => {
     expect(await main(["nope"])).toBe(1);
     write.mockRestore();
   });
+
+  it("rejects negative or noninteger Kane run limits before loading a target", async () => {
+    const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(await main(["check", "missing-target", "--max-kane-runs=-1"])).toBe(1);
+      expect(await main(["check", "missing-target", "--max-kane-runs", "1.5"])).toBe(1);
+      expect(write.mock.calls).toEqual(Array(2).fill(["--max-kane-runs must be a whole number.\n"]));
+    } finally {
+      write.mockRestore();
+    }
+  });
 });

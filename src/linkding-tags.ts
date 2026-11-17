@@ -4,7 +4,7 @@ import { normalise } from "./claims/quotes.js";
 import type { Claim } from "./claims/types.js";
 import { distinctKaneRuns, type StepEvidence } from "./kane/evidence.js";
 import type { KaneRun } from "./kane/runner.js";
-import type { ClaimVerdict, QuestionedRun, Questioning, RunRound } from "./loop-types.js";
+import { KANE_RUN_LIMIT_REASON, type ClaimVerdict, type QuestionedRun, type Questioning, type RunRound } from "./loop-types.js";
 
 const MAIN_TAG = "pinocchiotag";
 const ADMIN_TAG = "pinocchioadmintag";
@@ -51,7 +51,7 @@ export async function seedLinkdingTags(containerName: string): Promise<void> {
   await exec("docker", ["exec", containerName, "python", "manage.py", "shell", "-c", script]);
 }
 
-export async function questionLinkdingTags(kind: TagClaim, login: string, run: RunRound): Promise<QuestionedRun> {
+export async function questionLinkdingTags(kind: TagClaim, login: string, run: RunRound, canRunFollowUp: () => boolean): Promise<QuestionedRun> {
   if (kind === "admin") {
     const kane = await run("initial", `${login} ${CHECK_ADMIN}`, "dom");
     const verified = renamedTag(kane, "/admin/bookmarks/tag", ADMIN_TAG, "pinocchioadmintagproof", ADMIN_RENAMED);
@@ -80,12 +80,14 @@ export async function questionLinkdingTags(kind: TagClaim, login: string, run: R
     return outcome("unconfirmed", "Kane did not establish the documented restriction for the seeded tag.");
   }
 
+  if (!canRunFollowUp()) return outcome("unconfirmed", KANE_RUN_LIMIT_REASON);
   const retry = await run("retry", `${login} ${RETRY_MAIN}`, "visual");
   followUps.push({ purpose: "retry", reason: "Inspect the same seeded tag in a separate Kane session.", kane: retry });
   if (!distinctKaneRuns(kane, retry) || !editObservedOnFailedCheck(retry)) {
     return outcome("unconfirmed", "Kane did not reproduce the same failed Edit assertion in two distinct runs.");
   }
 
+  if (!canRunFollowUp()) return outcome("unconfirmed", KANE_RUN_LIMIT_REASON);
   const control = await run("control", `${login} ${CONTROL_MAIN}`, "dom");
   const controlReason = control.objective.includes(MAIN_EDIT_NAME)
     ? "Check the original tag name in the Edit form, then save the rename on the ordinary Tags page."

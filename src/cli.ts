@@ -10,7 +10,7 @@ import { targetPathFor } from "./target.js";
 export const USAGE = `pinocchio: finds the false claims in a web app's README with Kane CLI.
 
 Usage:
-  pinocchio check <target.json | repository> [--max-claims N] [--only CLAIM_ID ...] [--app-running]
+  pinocchio check <target.json | repository> [--max-claims N] [--max-kane-runs N] [--only CLAIM_ID ...] [--app-running]
   pinocchio report <check.json>
   pinocchio --help
 
@@ -50,6 +50,7 @@ async function check(args: string[]): Promise<number> {
     allowPositionals: true,
     options: {
       "max-claims": { type: "string" },
+      "max-kane-runs": { type: "string" },
       only: { type: "string", multiple: true },
       "app-running": { type: "boolean" },
     },
@@ -64,6 +65,11 @@ async function check(args: string[]): Promise<number> {
     process.stderr.write("--max-claims must be a whole number.\n");
     return 1;
   }
+  const maxKaneRuns = values["max-kane-runs"] === undefined ? undefined : Number(values["max-kane-runs"]);
+  if (maxKaneRuns !== undefined && (!Number.isSafeInteger(maxKaneRuns) || maxKaneRuns < 0)) {
+    process.stderr.write("--max-kane-runs must be a whole number.\n");
+    return 1;
+  }
   const targetPath = targetPathFor(target);
   loadDotEnv();
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
@@ -71,6 +77,7 @@ async function check(args: string[]): Promise<number> {
   const report = await runCheck(client, {
     targetPath,
     maxClaims,
+    maxKaneRuns,
     only: values.only,
     appRunning: values["app-running"],
     log: (line) => process.stdout.write(`${line}\n`),

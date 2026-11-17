@@ -48,6 +48,15 @@ describe("questionClaim", () => {
     expect(result.questioning).toMatchObject({ verdict: "unconfirmed", overrides: [] });
   });
 
+  it.each([1, 2])("stops at %i Kane rounds and keeps the Admin tab claim unconfirmed", async (limit) => {
+    const { result, rounds } = await perform([miss("first"), miss("again"), passedControl()], claim, limit);
+    expect(rounds).toHaveLength(limit);
+    expect(result.questioning.verdict).toBe("unconfirmed");
+    expect(result.questioning.reason).toContain("Kane run limit");
+    expect(result.questioning.followUps).toHaveLength(limit - 1);
+    expect(result.questioning.overrides).toEqual([]);
+  });
+
   it("accepts the live checkpoint format and the split readiness observation", async () => {
     const first = miss("first");
     first.reasonCode = "assertion_error.checkpoint_failed";
@@ -188,13 +197,13 @@ function passedTab(id: string): KaneRun {
   return result;
 }
 
-async function perform(runs: KaneRun[], selected = claim) {
+async function perform(runs: KaneRun[], selected = claim, limit = Infinity) {
   const rounds: { purpose: string; objective: string; mode?: string }[] = [];
   const result = await questionClaim(selected, target, "Original check", async (purpose, objective, mode) => {
     rounds.push({ purpose, objective, mode });
     const response = runs[rounds.length - 1];
     if (!response) throw new Error("Unexpected Kane round");
     return response;
-  });
+  }, undefined, () => rounds.length < limit);
   return { result, rounds };
 }

@@ -1,6 +1,7 @@
 import type { KaneRun, KaneRunOptions } from "./kane/runner.js";
 
 export type ClaimVerdict = "true" | "false" | "outdated" | "unconfirmed";
+export const KANE_RUN_LIMIT_REASON = "The Kane run limit was reached before the required follow-up check.";
 type RoundName = "initial" | "retry" | "control";
 
 interface FollowUp {
