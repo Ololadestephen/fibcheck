@@ -42,6 +42,14 @@ export interface ModelProvider {
   generate(request: ModelRequest, beforeAttempt: () => void): Promise<ModelResponse>;
 }
 
+/** Raised when a provider is overloaded or timing out (for example HTTP 503 or 504). */
+export class ProviderOverloadedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProviderOverloadedError";
+  }
+}
+
 /** Raised when a provider rejects a request because of rate limits. */
 export class RateLimitedError extends Error {
   constructor(message: string) {

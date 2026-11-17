@@ -1,5 +1,5 @@
 import { ApiError, GoogleGenAI } from "@google/genai";
-import { RateLimitedError, type ModelProvider, type ModelRequest, type ModelResponse } from "./types.js";
+import { ProviderOverloadedError, RateLimitedError, type ModelProvider, type ModelRequest, type ModelResponse } from "./types.js";
 
 /**
  * Default models (approval A2). On 2026-11-17 the owner made gemini-3.5-flash-lite the primary model on the
@@ -127,7 +127,7 @@ function toProviderError(error: unknown): Error {
     );
   }
   if (error instanceof ApiError && (error.status === 503 || error.status === 504)) {
-    return new Error(`Gemini is overloaded or timing out (HTTP ${error.status}). Try again in a few minutes.`);
+    return new ProviderOverloadedError(`Gemini is overloaded or timing out (HTTP ${error.status}). Try again in a few minutes.`);
   }
   if (error instanceof ApiError) {
     return new Error(`Gemini API error (HTTP ${error.status}).`);
