@@ -5,7 +5,8 @@ import { join, resolve } from "node:path";
 import { startApp, type RunningApp } from "./app/docker.js";
 import { extractClaimsCached } from "./claims/cache.js";
 import { collectDocuments } from "./claims/documents.js";
-import type { Claim, RejectedClaim } from "./claims/types.js";
+import { locateQuote } from "./claims/quotes.js";
+import type { Claim, RejectedClaim, SourceDocument } from "./claims/types.js";
 import { runKane, type KaneRun } from "./kane/runner.js";
 import { seedLinkdingTags } from "./linkding-tags.js";
 import { modelDiagnoser } from "./diagnose.js";
@@ -33,6 +34,11 @@ export interface CheckOptions {
   appRunning?: boolean;
   /** A trusted caller supplies login variables for an already-running disposable app. */
   appRunningSecrets?: Readonly<Record<string, string>>;
+  /**
+   * A trusted caller can supply reviewed claims instead of model extraction. Each quote must be found in the named
+   * document near its cited lines, or the claim is rejected and not tested.
+   */
+  reviewedClaims?: Claim[];
   /** Let the model read failed or unreviewed Kane runs and propose rewordings, reproductions and controls (default true). */
   diagnose?: boolean;
   log?: (line: string) => void;
@@ -79,7 +85,9 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   const documents = collectDocuments(repoDir, target.docs ?? []);
   log(`Read ${documents.length} document(s) from ${target.repo}${commit ? ` at ${commit.slice(0, 7)}` : ""}.`);
 
-  const extraction = await extractClaimsCached(client, documents, join(workDir, "cache", "claims"));
+  const extraction = options.reviewedClaims
+    ? verifyReviewedClaims(documents, options.reviewedClaims)
+    : await extractClaimsCached(client, documents, join(workDir, "cache", "claims"));
   const testable = extraction.claims.filter((c) => c.type !== "untestable" && c.check);
   log(`Found ${extraction.claims.length} claims (${testable.length} testable), ${extraction.rejected.length} rejected quotes, ${extraction.cacheHits} document(s) from cache.`);
 
@@ -106,6 +114,19 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   writeFileSync(join(runDir, "check.json"), `${JSON.stringify(report, null, 2)}\n`);
   log(`Saved ${join(runDir, "check.json")}`);
   return report;
+}
+
+/** Keeps supplied claims whose quotes appear in their documents, with corrected line numbers. */
+export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[]): { claims: Claim[]; rejected: RejectedClaim[]; cacheHits: number } {
+  const verified: Claim[] = [];
+  const rejected: RejectedClaim[] = [];
+  for (const claim of claims) {
+    const document = documents.find(({ file }) => file === claim.source.file);
+    const source = document && locateQuote(document.content, claim.quote, claim.source);
+    if (source) verified.push({ ...claim, source });
+    else rejected.push({ quote: claim.quote, file: claim.source.file, why: document ? "The quote was not found in the document." : "The document was not read." });
+  }
+  return { claims: verified, rejected, cacheHits: 0 };
 }
 
 function validateOptions({ maxKaneRuns, appRunningSecrets, appRunning }: CheckOptions): void {

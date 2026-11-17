@@ -16,7 +16,7 @@
     "build": "tsc -p tsconfig.build.json",
     "prepack": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && npm run build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --dir src"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

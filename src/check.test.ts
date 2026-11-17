@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { startApp } from "./app/docker.js";
-import { localAddressesToApp, objectiveFor, runCheck } from "./check.js";
+import { localAddressesToApp, objectiveFor, runCheck, verifyReviewedClaims } from "./check.js";
 import { cacheKey, extractClaimsCached } from "./claims/cache.js";
 import type { Claim } from "./claims/types.js";
 import { parseKaneOutput } from "./kane/parse.js";
@@ -66,6 +66,26 @@ describe("targets", () => {
     expect(loadTarget(targetPathFor(expected.repo + ".git"))).toEqual(expected);
     expect(() => targetPathFor(expected.repo + "/tree/main")).toThrow(/No target file or bundled repository/);
     expect(() => targetPathFor("owner/other-app")).toThrow(/target JSON/);
+  });
+});
+
+describe("verifyReviewedClaims", () => {
+  const documents = [{ file: "docs/usage.md", content: "# Usage\n\nPress n to add a new bookmark.\nOther text.\n" }];
+  const base = { id: "docs/usage.md#L3", type: "ui_flow" as const, check: "Press n.", source: { file: "docs/usage.md", startLine: 9, endLine: 9 } };
+
+  it("keeps a quote found in its document and corrects the line", () => {
+    const result = verifyReviewedClaims(documents, [{ ...base, quote: "Press n to add a new bookmark." }]);
+    expect(result.claims[0]?.source).toEqual({ file: "docs/usage.md", startLine: 3, endLine: 3 });
+    expect(result.rejected).toEqual([]);
+  });
+
+  it("rejects quotes that are not in the document, or documents that were not read", () => {
+    const result = verifyReviewedClaims(documents, [
+      { ...base, quote: "Press x to delete everything." },
+      { ...base, quote: "Press n to add a new bookmark.", source: { file: "docs/other.md", startLine: 1, endLine: 1 } },
+    ]);
+    expect(result.claims).toEqual([]);
+    expect(result.rejected.map(({ why }) => why)).toEqual(["The quote was not found in the document.", "The document was not read."]);
   });
 });
 
