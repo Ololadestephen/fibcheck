@@ -2,11 +2,12 @@ import { ApiError, GoogleGenAI } from "@google/genai";
 import { RateLimitedError, type ModelProvider, type ModelRequest, type ModelResponse } from "./types.js";
 
 /**
- * Default models (approval A2). The owner switched the main model to gemini-4-hydrogen on 2026-11-17,
- * on the free tier, after gemini-3.6-flash reached its daily free-tier quota.
+ * Default models (approval A2). On 2026-11-17 the owner made gemini-3.5-flash-lite the primary model on the
+ * free tier, because gemini-3.6-flash reached its daily quota and gemini-4-hydrogen returned capacity errors.
+ * Hydrogen is kept out of the call path so no request waits on its retries; the fallback is the same model.
  * gemini-3.8-flash was tried earlier but timed out on the server (HTTP 504 DEADLINE_EXCEEDED) twice on a tiny prompt.
  */
-export const DEFAULT_GEMINI_MODEL = "gemini-4-hydrogen";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 export const DEFAULT_GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite";
 
 /** Per-request timeout. Claim extraction on a 250-line part normally answers well within this. */

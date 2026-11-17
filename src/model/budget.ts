@@ -41,6 +41,7 @@ export interface LedgerEntry {
 export class CallBudget {
   private runCalls = 0;
   private runUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+  private readonly runModels = new Set<string>();
 
   constructor(
     private readonly limits: BudgetLimits,
@@ -68,6 +69,7 @@ export class CallBudget {
 
   /** Records the outcome of a reserved call in the ledger and the totals. */
   record(entry: Omit<LedgerEntry, "at" | "runId">): void {
+    if (entry.ok) this.runModels.add(entry.model);
     this.runUsage = {
       inputTokens: this.runUsage.inputTokens + entry.inputTokens,
       outputTokens: this.runUsage.outputTokens + entry.outputTokens,
@@ -84,8 +86,9 @@ export class CallBudget {
   }
 
   /** Calls and tokens used so far in this run. */
-  runSummary(): { calls: number } & TokenUsage {
-    return { calls: this.runCalls, ...this.runUsage };
+  /** Calls and tokens for this run, and every model that answered. */
+  runSummary(): { calls: number; models: string[] } & TokenUsage {
+    return { calls: this.runCalls, ...this.runUsage, models: [...this.runModels].sort() };
   }
 
   private readTotals(): TotalsFile {

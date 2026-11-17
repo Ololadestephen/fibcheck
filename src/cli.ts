@@ -85,7 +85,7 @@ async function check(args: string[]): Promise<number> {
   const counts = report.tested.reduce<Record<string, number>>((acc, t) => ((acc[t.kane.status] = (acc[t.kane.status] ?? 0) + 1), acc), {});
   process.stdout.write(
     `\nTested ${report.tested.length} claim(s). Initial Kane results: ${Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(", ") || "none"}. ` +
-      `Not tested: ${report.notTested.length}. Kane credits: ${report.kaneCredits.toFixed(1)}. Model calls: ${report.model.calls}.\n`,
+      `Not tested: ${report.notTested.length}. Kane credits: ${report.kaneCredits.toFixed(1)}. Model calls: ${report.model.calls}${report.model.models?.length ? ` (${report.model.models.join(", ")})` : ""}.\n`,
   );
   return 0;
 }

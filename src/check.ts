@@ -59,7 +59,8 @@ export interface CheckReport {
   /** Testable claims not run in this check (over the limit or not selected). */
   notTested: string[];
   kaneCredits: number;
-  model: { calls: number; inputTokens: number; outputTokens: number; cacheHits: number };
+  /** `models` lists every model that answered in this check; older checks lack it. */
+  model: { calls: number; inputTokens: number; outputTokens: number; cacheHits: number; models?: string[] };
 }
 
 /** Reads a target's docs, extracts claims and runs the selected browser checks. */

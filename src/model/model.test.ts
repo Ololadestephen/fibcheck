@@ -58,7 +58,7 @@ describe("ModelClient", () => {
     const ledger = readFileSync(join(dir, "ledger.jsonl"), "utf8");
     expect(ledger).toContain('"purpose":"test"');
     expect(ledger).not.toContain("SECRET-LOOKING TEXT");
-    expect(client.usage()).toEqual({ calls: 1, inputTokens: 10, outputTokens: 5 });
+    expect(client.usage()).toEqual({ calls: 1, inputTokens: 10, outputTokens: 5, models: ["fake-1"] });
   });
 
   it("parses and validates JSON replies", async () => {

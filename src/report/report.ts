@@ -102,7 +102,7 @@ function renderReport(report: CheckReport, counts: ResultCounts, badge: ReturnTy
     <img src="badge.svg" alt="fibcheck · ${escapeHtml(badge.label)}" width="${badge.width}" height="34">
     <h1>${name}</h1>
     <p class="meta">${escapeHtml(report.repo)}${report.commit ? ` · <code>${escapeHtml(report.commit.slice(0, 12))}</code>` : ""}</p>
-    <p class="meta">Run <time datetime="${escapeHtml(report.startedAt)}">${escapeHtml(report.startedAt)}</time> · ${report.kaneCredits.toFixed(1)} Kane credits reported · <a href="${encodeURIComponent(inputName)}">Check JSON</a></p>
+    <p class="meta">Run <time datetime="${escapeHtml(report.startedAt)}">${escapeHtml(report.startedAt)}</time> · ${report.kaneCredits.toFixed(1)} Kane credits reported · ${report.model?.models?.length ? `Model: ${escapeHtml(report.model.models.join(", "))} · ` : ""}<a href="${encodeURIComponent(inputName)}">Check JSON</a></p>
   </header>
   ${questioned ? renderVerdictScore(counts) : ""}
   <section aria-labelledby="results">
