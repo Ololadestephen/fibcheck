@@ -2,6 +2,7 @@ import { normalise } from "./claims/quotes.js";
 import type { Claim } from "./claims/types.js";
 import type { KaneRun } from "./kane/runner.js";
 import { distinctKaneRuns, type StepEvidence } from "./kane/evidence.js";
+import { questionGenerally, type GeneralQuestioning } from "./general-loop.js";
 import { linkdingTagClaim, questionLinkdingTags } from "./linkding-tags.js";
 import { KANE_RUN_LIMIT_REASON, type ClaimVerdict, type QuestionedRun, type Questioning, type RunRound } from "./loop-types.js";
 import { isLinkdingRepo, type Target } from "./target.js";
@@ -30,6 +31,7 @@ export async function questionClaim(
   run: RunRound,
   prepareTags?: () => Promise<void>,
   canRunFollowUp: () => boolean = () => true,
+  general?: GeneralQuestioning,
 ): Promise<QuestionedRun> {
   const linkding = managedTarget && isLinkdingRepo(managedTarget.repo)
     && managedTarget.app.image === "sissbruecker/linkding:1.47.0"
@@ -44,6 +46,7 @@ export async function questionClaim(
     }
   }
   if (!linkding || !isAdminTabClaim(claim)) {
+    if (general && claim.check) return await questionGenerally(claim, claim.check, general, run, canRunFollowUp);
     const kane = await run("initial", originalObjective);
     return {
       kane,

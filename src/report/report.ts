@@ -64,7 +64,8 @@ export function countResults(report: CheckReport) {
     if (questioning) {
       if (!Object.hasOwn(VERDICT_LABELS, questioning.verdict)) throw new Error("Unknown claim verdict.");
       counts.verdicts[questioning.verdict]++;
-      if (questioning.verdict === "true" && kane.status === "passed" && kane.exitCode === 0) counts.verifiedPasses++;
+      const decisive = questioning.followUps.at(-1)?.kane ?? kane;
+      if (questioning.verdict === "true" && decisive.status === "passed" && decisive.exitCode === 0) counts.verifiedPasses++;
     } else {
       counts.withoutVerdict++;
     }
@@ -166,10 +167,13 @@ function renderClaim(claim: Claim, entry: ClaimRun | undefined, skipped: boolean
 function renderClaimRuns({ kane, questioning }: ClaimRun, directory: string): string {
   if (!questioning) return renderRun(kane, directory);
   const rounds = [{ purpose: "initial", reason: questioning.initialReason, kane }, ...questioning.followUps];
-  const roundNames: Record<string, string> = { initial: "Initial check", retry: "Reproduction", control: "Control" };
+  const roundNames: Record<string, string> = { initial: "Initial check", reword: "Reworded check", retry: "Reproduction", control: "Control" };
   const roundsHtml = rounds.map((round) => `<section class="round">
     <h3>${roundNames[round.purpose]} · ${RESULT_LABELS[round.kane.status]}</h3>
     <p class="meta">${escapeHtml(round.reason)}</p>
+    ${(questioning.diagnoses ?? []).filter((entry) => entry.round === round.purpose).map((entry) => (
+      `<p class="meta"><strong>Model reading</strong> · ${readingLabel(entry)}. ${escapeHtml(entry.reason)}</p>`
+    )).join("")}
     ${renderRun(round.kane, directory)}
     ${questioning.overrides.filter((entry) => entry.round === round.purpose).map((entry) => (
       `<p class="override"><strong>Blame override</strong> · Kane reported ${escapeHtml(entry.family)} / ${escapeHtml(entry.category)}. ${escapeHtml(entry.hypothesis)} ${escapeHtml(entry.evidence)}</p>`
@@ -275,3 +279,8 @@ ul { margin: .45rem 0; padding-left: 1.4rem; }
 li { margin: .25rem 0; }
 li span { display: block; }
 `;
+
+function readingLabel({ cause, exercisedClaim }: { cause: string; exercisedClaim: boolean }): string {
+  if (cause === "unclear" && exercisedClaim) return "tested the claim as written";
+  return `${escapeHtml(cause.replace(/_/g, " "))}${exercisedClaim ? "" : " · did not test the claim as written"}`;
+}

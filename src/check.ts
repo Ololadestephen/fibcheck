@@ -8,6 +8,8 @@ import { collectDocuments } from "./claims/documents.js";
 import type { Claim, RejectedClaim } from "./claims/types.js";
 import { runKane, type KaneRun } from "./kane/runner.js";
 import { seedLinkdingTags } from "./linkding-tags.js";
+import { modelDiagnoser } from "./diagnose.js";
+import type { GeneralQuestioning } from "./general-loop.js";
 import { questionClaim } from "./loop.js";
 import type { Questioning } from "./loop-types.js";
 import type { ModelClient } from "./model/client.js";
@@ -31,6 +33,8 @@ export interface CheckOptions {
   appRunning?: boolean;
   /** A trusted caller supplies login variables for an already-running disposable app. */
   appRunningSecrets?: Readonly<Record<string, string>>;
+  /** Let the model read failed or unreviewed Kane runs and propose rewordings, reproductions and controls (default true). */
+  diagnose?: boolean;
   log?: (line: string) => void;
 }
 
@@ -79,7 +83,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   log(`Found ${extraction.claims.length} claims (${testable.length} testable), ${extraction.rejected.length} rejected quotes, ${extraction.cacheHits} document(s) from cache.`);
 
   const selected = (options.only?.length ? testable.filter((c) => options.only?.includes(c.id)) : testable).slice(0, options.maxClaims ?? 5);
-  const tested = await testClaims(target, selected, runDir, runId, options, log);
+  const tested = await testClaims(target, selected, { runDir, runId, options, log, client });
   const testedClaims = new Set(tested.map(({ claim }) => claim.id));
   const notTested = testable.filter((claim) => !testedClaims.has(claim.id)).map((claim) => claim.id);
 
@@ -119,7 +123,16 @@ function totalKaneCredits(tested: ClaimRun[]): number {
 }
 
 /** Starts the app, runs each claim and any follow-up checks, then cleans up. */
-async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: string, runId: string, options: CheckOptions, log: (line: string) => void): Promise<ClaimRun[]> {
+interface TestContext {
+  runDir: string;
+  runId: string;
+  options: CheckOptions;
+  log: (line: string) => void;
+  client: ModelClient;
+}
+
+async function testClaims(target: ResolvedTarget, claims: Claim[], context: TestContext): Promise<ClaimRun[]> {
+  const { runDir, runId, options, log, client } = context;
   if (claims.length === 0 || options.maxKaneRuns === 0) return [];
   let app: RunningApp | undefined;
   const variables = options.appRunning ? runningAppVariables(target.login, options.appRunningSecrets ?? {}) : target.kaneVariables;
@@ -133,6 +146,7 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: strin
     return await runClaims(target, claims, {
       runDir, log, managedTarget, containerName: app?.containerName,
       variablesFile: variablesFile?.path, maxKaneRuns: options.maxKaneRuns,
+      diagnose: options.diagnose === false ? undefined : modelDiagnoser(client, Object.values(variables).map(({ value }) => value)),
     });
   } finally {
     try {
@@ -150,6 +164,7 @@ interface ClaimSession {
   containerName?: string;
   variablesFile?: string;
   maxKaneRuns?: number;
+  diagnose?: GeneralQuestioning["diagnose"];
 }
 
 async function runClaims(target: ResolvedTarget, claims: Claim[], session: ClaimSession): Promise<ClaimRun[]> {
@@ -173,7 +188,10 @@ async function runClaims(target: ResolvedTarget, claims: Claim[], session: Claim
       const kane = await runKane({ objective, startUrl, outDir, assertionMode, variablesFile });
       log(`    Kane ${purpose}: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
       return kane;
-    }, prepareTags, canRun);
+    }, prepareTags, canRun, session.diagnose && {
+      diagnose: session.diagnose,
+      objectiveFor: (check) => objectiveFor({ ...claim, check }, target),
+    });
     log(`    Claim verdict: ${result.questioning.verdict}. ${result.questioning.reason}`);
     tested.push({ claim, ...result });
   }
@@ -200,7 +218,7 @@ function writeKaneVariables(variables: ResolvedTarget["kaneVariables"]) {
  * read it as a variable.
  */
 export function objectiveFor(claim: Claim, target: Pick<ResolvedTarget, "login">): string {
-  const safe = (text: string) => text.replace(/\{\{/g, "{ {").replace(/\}\}/g, "} }");
+  const safe = (text: string) => text.replace(/[{}]{2,}/g, (braces) => braces.split("").join(" "));
   const parts = [
     target.login,
     `The app's documentation (${claim.source.file}, line ${claim.source.startLine}) says: "${safe(claim.quote)}".`,

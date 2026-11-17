@@ -81,6 +81,11 @@ describe("objectiveFor", () => {
     const text = objectiveFor({ ...claim, quote: "use {{name}} here", check: "Type {{x}}." }, { login: undefined });
     expect(text).not.toContain("{{");
   });
+
+  it.each(["{{{x}}}", "{{{{y", "a}}}}", "{ {{z}} }"])("leaves no doubled braces in %s", (quote) => {
+    const text = objectiveFor({ ...claim, quote, check: quote }, { login: undefined });
+    expect(text).not.toMatch(/\{\{|\}\}/);
+  });
 });
 
 describe("check Kane run limit", () => {
