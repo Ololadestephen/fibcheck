@@ -13,6 +13,7 @@ const MAIN_LIMIT = "linkding UI currently only allows to create or assign tags";
 const ADMIN_CLAIM = "you can use the admin app to manage your tags";
 const ROW_PRESENT = "The ordinary Linkding Tags page lists pinocchiotag.";
 const EDIT_OFFERED = "The pinocchiotag row has an Edit control on the ordinary Linkding Tags page.";
+const MAIN_EDIT_NAME = "The Edit Tag Name field is pinocchiotag.";
 const MAIN_RENAMED = "The ordinary Linkding Tags page lists pinocchiotagmain.";
 const ADMIN_RENAMED = "The Site administration Tags list contains pinocchioadmintagproof.";
 const MAIN_CONTROL_PROOF = "Kane renamed the seeded tag from the ordinary Tags page and verified the new name in the table.";
@@ -20,7 +21,7 @@ const TAG_HISTORY = "Linkding added its ordinary tag-management page in commit 8
 
 const CHECK_MAIN = `Navigate directly to /tags in the ordinary Linkding app after login. Wait for the Tags table. Assert exactly: ${ROW_PRESENT} Expect true. Look in the Actions column for that specific row. Assert exactly: ${EDIT_OFFERED} Expect false. Do not change the tag or visit the administration app.`;
 const RETRY_MAIN = `After login, open the normal Linkding Tags page at /tags and wait for its table. First make this exact boolean assertion: ${ROW_PRESENT} Expect true. Now inspect only that tag's row and read the actions shown next to its name. Make this exact separate boolean assertion: ${EDIT_OFFERED} Expect false. Leave the tag unchanged.`;
-const CONTROL_MAIN = `After login, open /tags in the ordinary Linkding app. Find pinocchiotag in the Tags table, click Edit in that row, change the Name to pinocchiotagmain, and click Save in the Edit Tag form. Verify this exact condition: ${MAIN_RENAMED} Expect true. Do not use the administration app.`;
+const CONTROL_MAIN = `After login, open /tags in the ordinary Linkding app. Find pinocchiotag in the Tags table and click Edit in that row. Before typing, assert this exact boolean condition: ${MAIN_EDIT_NAME} Expect true. Change the Name to pinocchiotagmain and click Save in the Edit Tag form. Verify this exact condition: ${MAIN_RENAMED} Expect true. Do not use the administration app.`;
 const CHECK_ADMIN = `After login, open the Settings dropdown in the top navigation, then choose Admin. On Site administration, click the Tags link in the Bookmarks section. In the admin tag list open the existing pinocchioadmintag record, change its Name to pinocchioadmintagproof, and click Save. Verify this exact condition: ${ADMIN_RENAMED} Expect true.`;
 const exec = promisify(execFile);
 
@@ -86,7 +87,10 @@ export async function questionLinkdingTags(kind: TagClaim, login: string, run: R
   }
 
   const control = await run("control", `${login} ${CONTROL_MAIN}`, "dom");
-  followUps.push({ purpose: "control", reason: "Use Edit and Save on the ordinary Tags page to test whether the control works.", kane: control });
+  const controlReason = control.objective.includes(MAIN_EDIT_NAME)
+    ? "Check the original tag name in the Edit form, then save the rename on the ordinary Tags page."
+    : "Use Edit and Save on the ordinary Tags page to test whether the control works.";
+  followUps.push({ purpose: "control", reason: controlReason, kane: control });
   if (!distinctKaneRuns(kane, control) || !distinctKaneRuns(retry, control) || !renamedTag(control, "/tags", MAIN_TAG, "pinocchiotagmain", MAIN_RENAMED)) {
     return outcome("unconfirmed", "The control did not establish a successful rename in an independent run on the ordinary Tags page.");
   }
@@ -109,21 +113,45 @@ function renamedTag(run: KaneRun, path: string, original: string, renamed: strin
   if (run.status !== "passed" || run.exitCode !== 0 || !observedBoolean(run, assertion, "true", "true")) return false;
   const result = assertionScreenshot(run, path, assertion, "passed");
   if (!result) return false;
+  const originalField = path === "/tags" ? ordinaryTagForm(run) : undefined;
+  if (path === "/tags" && run.objective.includes(MAIN_EDIT_NAME) && !originalField) return false;
   const actions = captures(run, "passed").filter(({ step }) => step.ordinal < result.ordinal);
-  return savedTagRename(actions, path, original, renamed);
+  return savedTagRename(actions, path, original, renamed, originalField?.ordinal);
 }
 
-function savedTagRename(actions: ReturnType<typeof captures>, path: string, original: string, renamed: string): boolean {
-  const originalName = new RegExp(`\\b${original}\\b`);
-  const selected = actions.find((entry) => entry.path === path && entry.step.kind === "click"
-    && originalName.test(entry.summary) && (path !== "/tags" || /\bedit\b/.test(entry.summary)));
-  if (!selected) return false;
+function ordinaryTagForm(run: KaneRun): StepEvidence | undefined {
+  const observations = matchingObservations(run, MAIN_EDIT_NAME);
+  if (observations.length === 0 || !observations.every((o) => {
+    if (statedExpectation(o.condition, "true") !== "true") return false;
+    return (o.expectedValue === MAIN_TAG && o.extractedValue === MAIN_TAG)
+      || (normalise(o.expectedValue) === "true" && normalise(o.extractedValue) === "true");
+  })) return undefined;
+  return assertionScreenshot(run, "/tags", MAIN_EDIT_NAME, "passed");
+}
 
+function savedTagRename(actions: ReturnType<typeof captures>, path: string, original: string, renamed: string, formOrdinal?: number): boolean {
+  const selected = selectedTag(actions, path, original, formOrdinal);
+  if (!selected) return false;
+  const ready = formOrdinal ?? selected.step.ordinal;
   const nameInput = new RegExp(`^type:.*["']${renamed}["'].*\\bname\\b`);
-  const typed = actions.find((entry) => entry.step.ordinal > selected.step.ordinal && entry.step.kind === "type"
+  const typed = actions.find((entry) => entry.step.ordinal > ready && entry.step.kind === "type"
     && onTagEditForm(path, entry.path) && nameInput.test(entry.summary));
-  return Boolean(typed && actions.some((entry) => entry.step.ordinal > typed.step.ordinal && entry.path === typed.path
-    && entry.step.kind === "click" && /^click:.*\bsave\b/.test(entry.summary)));
+  if (!typed || changedEditForm(actions, ready, typed.step.ordinal)) return false;
+  const saved = actions.find((entry) => entry.step.ordinal > typed.step.ordinal && entry.path === typed.path
+    && entry.step.kind === "click" && /^click:.*\bsave\b/.test(entry.summary));
+  return Boolean(saved && !changedEditForm(actions, typed.step.ordinal, saved.step.ordinal));
+}
+
+function selectedTag(actions: ReturnType<typeof captures>, path: string, original: string, formOrdinal?: number) {
+  const originalName = new RegExp(`\\b${original}\\b`);
+  return actions.find((entry) => entry.path === path && entry.step.kind === "click"
+    && (path !== "/tags" || /\bedit\b/.test(entry.summary))
+    && (formOrdinal === undefined ? originalName.test(entry.summary) : entry.step.ordinal < formOrdinal));
+}
+
+function changedEditForm(actions: ReturnType<typeof captures>, after: number, before: number): boolean {
+  return actions.some(({ step, summary }) => step.ordinal > after && step.ordinal < before
+    && (step.kind === "navigate" || (step.kind === "click" && /\b(edit|cancel|close)\b/.test(summary))));
 }
 
 function onTagEditForm(listPath: string, path: string): boolean {
@@ -132,12 +160,18 @@ function onTagEditForm(listPath: string, path: string): boolean {
 }
 
 function observedBoolean(run: KaneRun, assertion: string, expected: "true" | "false", actual: "true" | "false"): boolean {
+  const chosen = matchingObservations(run, assertion);
+  return chosen.length > 0 && chosen.every((o) => statedExpectation(o.condition, expected) === expected
+    && normalise(o.expectedValue) === expected && normalise(o.extractedValue) === actual);
+}
+
+function matchingObservations(run: KaneRun, assertion: string) {
   const stripExpectation = (text: string) => normalise(text).replace(/\.? expect (true|false)\.?$/, "").replace(/\.$/, "");
-  const chosen = run.observations.filter((o) => stripExpectation(o.condition) === stripExpectation(assertion));
-  return chosen.length > 0 && chosen.every((o) => {
-    const stated = /\bexpect (true|false)\.?$/.exec(normalise(o.condition))?.[1] ?? expected;
-    return stated === expected && normalise(o.expectedValue) === expected && normalise(o.extractedValue) === actual;
-  });
+  return run.observations.filter((o) => stripExpectation(o.condition) === stripExpectation(assertion));
+}
+
+function statedExpectation(condition: string, expected: "true" | "false"): string {
+  return /\bexpect (true|false)\.?$/.exec(normalise(condition))?.[1] ?? expected;
 }
 
 function matchesAssertion(remark: string, assertion: string, expected?: "true" | "false"): boolean {

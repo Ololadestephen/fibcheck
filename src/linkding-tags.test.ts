@@ -14,6 +14,7 @@ const ordinary: Claim = { id: "admin.md#L55", source, type: "behaviour", quote: 
 const admin: Claim = { ...ordinary, id: "admin.md#L55-2", quote: "you can use the admin app to manage your tags." };
 const row = "The ordinary Linkding Tags page lists pinocchiotag.";
 const edit = "The pinocchiotag row has an Edit control on the ordinary Linkding Tags page.";
+const originalName = "The Edit Tag Name field is pinocchiotag.";
 const mainRenamed = "The ordinary Linkding Tags page lists pinocchiotagmain.";
 const adminRenamed = "The Site administration Tags list contains pinocchioadmintagproof.";
 
@@ -71,6 +72,49 @@ describe("Linkding tag claims", () => {
     }
     expect((await review(ordinary, [failure("first"), failure("second"), control])).result.questioning.verdict).toBe("unconfirmed");
     expect((await review(admin, [adminCheck])).result.questioning.verdict).toBe("unconfirmed");
+  });
+
+  it("uses the original name before typing when Kane calls the row 'that tag'", async () => {
+    const control = renameWithIdentity();
+    const { result, calls } = await review(ordinary, [failure("first"), failure("second"), control]);
+    expect(calls[2]?.[1]).toContain(originalName);
+    expect(result.questioning.verdict).toBe("outdated");
+  });
+
+  it("requires matching, ordered identity evidence for new controls", async () => {
+    const missingCapture = renameWithIdentity();
+    missingCapture.evidence = missingCapture.evidence.filter((step) => !step.summary.includes(originalName));
+    const missingObservation = renameWithIdentity();
+    missingObservation.observations = missingObservation.observations.filter((item) => !item.condition.includes(originalName));
+    const lateCapture = renameWithIdentity();
+    const checked = lateCapture.evidence.find((step) => step.summary.includes(originalName));
+    if (!checked) throw new Error("Expected an original-name capture in the fixture.");
+    checked.ordinal = 4;
+    for (const control of [missingCapture, missingObservation, lateCapture]) {
+      expect((await review(ordinary, [failure("first"), failure("second"), control])).result.questioning.verdict).toBe("unconfirmed");
+    }
+  });
+
+  it("accepts an exact tag-name comparison and rejects a different tag name", async () => {
+    const control = renameWithIdentity();
+    const identity = control.observations.find((item) => item.condition.includes(originalName));
+    if (!identity) throw new Error("Expected a name observation.");
+    identity.expectedValue = "pinocchiotag";
+    identity.extractedValue = "pinocchiotag";
+    expect((await review(ordinary, [failure("first"), failure("second"), control])).result.questioning.verdict).toBe("outdated");
+    for (const name of ["pinocchioadmintag", "pinocchio_tag", "PINOCCHIOTAG"]) {
+      identity.extractedValue = name;
+      expect((await review(ordinary, [failure("first"), failure("second"), control])).result.questioning.verdict).toBe("unconfirmed");
+    }
+  });
+
+  it("rejects switching to a different Edit form before typing or saving", async () => {
+    for (const ordinal of [3, 4]) {
+      const control = renameWithIdentity();
+      for (const step of control.evidence) if (step.ordinal >= ordinal) step.ordinal++;
+      control.evidence.push({ ...capture(ordinal, "/tags", "passed", ""), kind: "click", summary: "click: Edit a different tag" });
+      expect((await review(ordinary, [failure("first"), failure("second"), control])).result.questioning.verdict).toBe("unconfirmed");
+    }
   });
 
   it("rejects a later unrelated assertion that follows the canonical Edit sentence", async () => {
@@ -140,6 +184,18 @@ function rename(usingAdmin: boolean): KaneRun {
     { ...capture(3, editPath, "passed", ""), kind: "click", summary: "click: Click Save" },
     capture(4, path, "passed", assertion),
   ];
+  return result;
+}
+
+function renameWithIdentity(): KaneRun {
+  const result = rename(false);
+  result.objective = `Check the original name. ${originalName}`;
+  result.observations.push(observation(originalName));
+  for (const step of result.evidence) {
+    if (step.ordinal === 1) step.summary = "click: PRIMARY: edit that tag";
+    else step.ordinal++;
+  }
+  result.evidence.push(capture(2, "/tags", "passed", originalName));
   return result;
 }
 
