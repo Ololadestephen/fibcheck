@@ -25,7 +25,9 @@ Go through the document from top to bottom, section by section, and check every 
 Rules:
 - Quote each claim exactly as written, copied character for character from a single place in the document, without the line-number prefix. Keep each quote to one sentence or one list item.
 - Give the first and last line number of the quote, using the numbers shown before each line.
-- For testable claims, write "check": one or two sentences saying what a browser test should do and what it should see if the claim is true.
+- For testable claims, write "check" as a short sequence of browser actions and explicit assertions. When the documentation names a page, section, menu or tab, assert the exact location and control type before acting. A control with the same name in a different place or of a different type cannot pass the check. Assert every stated, observable result separately.
+- Split a navigation instruction and a claim about opening a new browser tab or window. Keep the supported navigation and its destination in a testable check. Record the separate tab or window claim as untestable because Kane cannot inspect browser tab or window state.
+- For a limitation, first assert that the relevant page is loaded and the required test data is visible. Then check specifically for actions that would contradict the limitation. For example, if the ordinary interface only supports creating or assigning records, use an existing record and check separately for Edit and Remove there. If a separate administration interface can manage records, quote and test that clause independently in the administration interface.
 - Skip headings, links-only lines, code that is not about using the app, contributor and development instructions, and changelog entries.
 - Do not invent claims or merge separate claims. If there are no claims, return an empty list.`;
 

@@ -95,23 +95,24 @@ describe("GeminiProvider", () => {
         return { text: "{}", usageMetadata: { promptTokenCount: 7, candidatesTokenCount: 3, thoughtsTokenCount: 2 } };
       },
     };
-    const response = await new GeminiProvider({ retryDelaysMs: [0, 0], api, model: "m1" }).generate({ ...request, jsonSchema: { type: "object" } }, () => {});
+    const response = await new GeminiProvider({ initialRetryDelayMs: 0, api, model: "m1" }).generate({ ...request, jsonSchema: { type: "object" } }, () => {});
     expect(seen?.config.responseMimeType).toBe("application/json");
     expect(response).toEqual({ text: "{}", model: "m1", usage: { inputTokens: 7, outputTokens: 5 } });
   });
 
-  it("falls back to the second model on a rate limit", async () => {
+  it("retries capacity errors on the main model, then keeps a working lighter model for the run", async () => {
     const models: string[] = [];
     const api: GenerateContentApi = {
       async generateContent(params) {
         models.push(params.model);
-        if (params.model === "main") throw new ApiError({ message: "quota", status: 429 });
+        if (params.model === "main") throw new ApiError({ message: "high demand", status: 503 });
         return { text: "ok" };
       },
     };
-    const response = await new GeminiProvider({ retryDelaysMs: [0, 0], api, model: "main", fallbackModel: "lite" }).generate(request, () => {});
-    expect(models).toEqual(["main", "lite"]);
-    expect(response.model).toBe("lite");
+    const provider = new GeminiProvider({ initialRetryDelayMs: 0, api, model: "main", fallbackModel: "lite" });
+    expect((await provider.generate(request, () => {})).model).toBe("lite");
+    expect((await provider.generate(request, () => {})).model).toBe("lite");
+    expect(models).toEqual(["main", "main", "lite", "lite"]);
   });
 
   it("falls back to the second model when the main model times out on the server", async () => {
@@ -121,7 +122,7 @@ describe("GeminiProvider", () => {
         return { text: "ok" };
       },
     };
-    expect((await new GeminiProvider({ retryDelaysMs: [0, 0], api, model: "main", fallbackModel: "lite" }).generate(request, () => {})).model).toBe("lite");
+    expect((await new GeminiProvider({ initialRetryDelayMs: 0, api, model: "main", fallbackModel: "lite" }).generate(request, () => {})).model).toBe("lite");
   });
 
   it("makes at most three requests, each announced to the budget, and waits between them", async () => {
@@ -134,9 +135,9 @@ describe("GeminiProvider", () => {
         throw new ApiError({ message: "overloaded", status: 503 });
       },
     };
-    const provider = new GeminiProvider({ api, model: "a", fallbackModel: "b", retryDelaysMs: [5, 7], sleep: async (ms) => void waits.push(ms) });
+    const provider = new GeminiProvider({ api, model: "a", fallbackModel: "b", initialRetryDelayMs: 5, sleep: async (ms) => void waits.push(ms) });
     await expect(provider.generate(request, () => void announced++)).rejects.toThrow(/overloaded or timing out/);
-    expect([requests, announced, waits]).toEqual([3, 3, [5, 7]]);
+    expect([requests, announced, waits]).toEqual([3, 3, [5, 10]]);
   });
 
   it("stops retrying when the budget refuses the next request", async () => {
@@ -148,18 +149,21 @@ describe("GeminiProvider", () => {
       },
     };
     const { budget } = tempBudget(2, 10);
-    const client = new ModelClient(new GeminiProvider({ api, model: "a", fallbackModel: "b", retryDelaysMs: [0, 0] }), budget);
+    const client = new ModelClient(new GeminiProvider({ api, model: "a", fallbackModel: "b", initialRetryDelayMs: 0 }), budget);
     await expect(client.generate(request)).rejects.toThrow(BudgetExceededError);
     expect(requests).toBe(2);
   });
 
-  it("reports a clear error when both models are rate limited", async () => {
+  it("reports a rate limit without switching models or spending another request", async () => {
+    const models: string[] = [];
     const api: GenerateContentApi = {
-      async generateContent() {
+      async generateContent({ model }) {
+        models.push(model);
         throw new ApiError({ message: "quota", status: 429 });
       },
     };
-    await expect(new GeminiProvider({ retryDelaysMs: [0, 0], api, model: "a", fallbackModel: "b" }).generate(request, () => {})).rejects.toThrow(RateLimitedError);
+    await expect(new GeminiProvider({ initialRetryDelayMs: 0, api, model: "a", fallbackModel: "b" }).generate(request, () => {})).rejects.toThrow(RateLimitedError);
+    expect(models).toEqual(["a"]);
   });
 
   it("does not retry other API errors", async () => {
@@ -170,7 +174,7 @@ describe("GeminiProvider", () => {
         throw new ApiError({ message: "bad key details", status: 400 });
       },
     };
-    await expect(new GeminiProvider({ retryDelaysMs: [0, 0], api }).generate(request, () => {})).rejects.toThrow("Gemini API error (HTTP 400).");
+    await expect(new GeminiProvider({ initialRetryDelayMs: 0, api }).generate(request, () => {})).rejects.toThrow("Gemini API error (HTTP 400).");
     expect(calls).toBe(1);
   });
 });

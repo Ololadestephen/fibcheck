@@ -42,7 +42,7 @@ export interface ModelProvider {
   generate(request: ModelRequest, beforeAttempt: () => void): Promise<ModelResponse>;
 }
 
-/** Raised when a provider rejects a request because of rate limits, after any fallback. */
+/** Raised when a provider rejects a request because of rate limits. */
 export class RateLimitedError extends Error {
   constructor(message: string) {
     super(message);

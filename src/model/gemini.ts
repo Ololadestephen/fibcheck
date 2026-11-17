@@ -36,30 +36,29 @@ export interface GeminiOptions {
   fallbackModel?: string;
   /** Injected for tests. Defaults to the real SDK, which reads GEMINI_API_KEY itself. */
   api?: GenerateContentApi;
-  /** Waits before the second and third attempt. Tests pass zeros. */
-  retryDelaysMs?: number[];
+  /** First retry delay. Each subsequent delay doubles. Tests can pass zero. */
+  initialRetryDelayMs?: number;
   sleep?: (ms: number) => Promise<void>;
 }
 
 /**
- * Calls the Gemini API. On a rate limit or an overloaded or timed-out server
- * (HTTP 429, 503 or 504) it tries the fallback model, then the main model once
- * more after a pause: at most three HTTP requests per call, each announced
- * through `beforeAttempt` so the call budget counts it. It never logs the
- * request, the response or the key.
+ * Retries an overloaded or timed-out Gemini request with exponential backoff.
+ * After two capacity failures on the main model, the third attempt uses the
+ * lighter model. When that works, subsequent requests on this client use it
+ * for the rest of the run. Each HTTP request reserves its own budget slot.
  */
 export class GeminiProvider implements ModelProvider {
   readonly name = "gemini";
-  private readonly model: string;
   private readonly fallbackModel: string;
   private readonly api: GenerateContentApi;
-  private readonly retryDelaysMs: number[];
+  private readonly initialRetryDelayMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
+  private activeModel: string;
 
   constructor(options: GeminiOptions = {}) {
-    this.model = options.model ?? DEFAULT_GEMINI_MODEL;
     this.fallbackModel = options.fallbackModel ?? DEFAULT_GEMINI_FALLBACK_MODEL;
-    this.retryDelaysMs = options.retryDelaysMs ?? [2_000, 15_000];
+    this.activeModel = options.model ?? DEFAULT_GEMINI_MODEL;
+    this.initialRetryDelayMs = options.initialRetryDelayMs ?? 2_000;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     // One attempt and a timeout: the SDK's default of 5 hidden retries with waits up to
     // 60 seconds would hide rate limits and spend free-tier quota our call limits never see.
@@ -69,16 +68,19 @@ export class GeminiProvider implements ModelProvider {
   }
 
   async generate(request: ModelRequest, beforeAttempt: () => void = () => {}): Promise<ModelResponse> {
-    const plan = this.fallbackModel === this.model ? [this.model, this.model] : [this.model, this.fallbackModel, this.model];
+    const firstModel = this.activeModel;
+    const plan = [firstModel, firstModel, this.fallbackModel];
     let lastError: unknown;
     for (const [index, model] of plan.entries()) {
-      if (index > 0) await this.sleep(this.retryDelaysMs[index - 1] ?? 0);
+      if (index > 0) await this.sleep(this.initialRetryDelayMs * 2 ** (index - 1));
       beforeAttempt();
       try {
-        return await this.call(model, request);
+        const response = await this.call(model, request);
+        if (model === this.fallbackModel) this.activeModel = model;
+        return response;
       } catch (error) {
         lastError = error;
-        if (!isRetryable(error)) break;
+        if (!isCapacityError(error)) break;
       }
     }
     throw toProviderError(lastError);
@@ -111,20 +113,19 @@ function isRateLimit(error: unknown): boolean {
   return error instanceof ApiError && error.status === 429;
 }
 
-/** Errors worth one try on the fallback model: rate limits, overload and server timeouts. */
-function isRetryable(error: unknown): boolean {
-  return error instanceof ApiError && [429, 503, 504].includes(error.status);
+function isCapacityError(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 503 || error.status === 504);
 }
 
 /** Turns SDK errors into short messages that cannot carry the key or the prompt. */
 function toProviderError(error: unknown): Error {
   if (isRateLimit(error)) {
     return new RateLimitedError(
-      "Gemini rate limit reached on both the main and the fallback model. Wait and try again, or lower the number of claims per run.",
+      "Gemini returned HTTP 429. Wait for the active rate limit or project quota to reset.",
     );
   }
   if (error instanceof ApiError && (error.status === 503 || error.status === 504)) {
-    return new Error(`Gemini is overloaded or timing out (HTTP ${error.status}) on every attempt. Try again in a few minutes.`);
+    return new Error(`Gemini is overloaded or timing out (HTTP ${error.status}). Try again in a few minutes.`);
   }
   if (error instanceof ApiError) {
     return new Error(`Gemini API error (HTTP ${error.status}).`);
