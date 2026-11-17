@@ -27,7 +27,7 @@ export interface Target {
   };
   /** Where Kane starts, relative to the app's base URL. */
   startPath?: string;
-  /** Sentence telling Kane how to log in, using {{NAME}} for generated secrets. */
+  /** Sentence telling Kane how to log in, using {{NAME}} for secret variables. */
   login?: string;
 }
 
@@ -35,8 +35,21 @@ export interface ResolvedTarget extends Target {
   baseUrl: string;
   /** Container environment with secrets filled in. Never logged. */
   resolvedEnv: Record<string, string>;
-  /** Kane variables, all generated secrets, marked secret. Never logged. */
+  /** Generated Kane variables. Never logged. */
   kaneVariables: Record<string, { value: string; secret: boolean }>;
+}
+
+export function runningAppVariables(
+  login: Target["login"], secrets: Readonly<Record<string, string>>,
+): ResolvedTarget["kaneVariables"] {
+  const names = new Set(Array.from((login ?? "").matchAll(/\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g), (match) => match[1]!));
+  return Object.fromEntries(Array.from(names, (name) => {
+    const value = Object.hasOwn(secrets, name) ? secrets[name] : undefined;
+    if (typeof value !== "string" || value.length === 0) {
+      throw new Error(`Missing Kane login variable "${name}" for the running app. Supply it through appRunningSecrets.`);
+    }
+    return [name, { value, secret: true }];
+  }));
 }
 
 export function targetPathFor(input: string): string {

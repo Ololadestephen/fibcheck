@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { startApp, type RunningApp } from "./app/docker.js";
 import { extractClaimsCached } from "./claims/cache.js";
@@ -10,7 +11,7 @@ import { seedLinkdingTags } from "./linkding-tags.js";
 import { questionClaim } from "./loop.js";
 import type { Questioning } from "./loop-types.js";
 import type { ModelClient } from "./model/client.js";
-import { loadTarget, resolveTarget, type ResolvedTarget } from "./target.js";
+import { loadTarget, resolveTarget, runningAppVariables, type ResolvedTarget } from "./target.js";
 
 export interface CheckOptions {
   targetPath: string;
@@ -28,6 +29,8 @@ export interface CheckOptions {
   only?: string[];
   /** Use an app already running at the target's port instead of starting Docker. */
   appRunning?: boolean;
+  /** A trusted caller supplies login variables for an already-running disposable app. */
+  appRunningSecrets?: Readonly<Record<string, string>>;
   log?: (line: string) => void;
 }
 
@@ -57,9 +60,7 @@ export interface CheckReport {
 
 /** Reads a target's docs, extracts claims and runs the selected browser checks. */
 export async function runCheck(client: ModelClient, options: CheckOptions): Promise<CheckReport> {
-  if (options.maxKaneRuns !== undefined && (!Number.isSafeInteger(options.maxKaneRuns) || options.maxKaneRuns < 0)) {
-    throw new Error("--max-kane-runs must be a whole number.");
-  }
+  validateOptions(options);
   const log = options.log ?? (() => {});
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
   const workDir = options.workDir ?? ".pinocchio";
@@ -94,9 +95,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
     rejected: extraction.rejected,
     tested,
     notTested,
-    kaneCredits: tested.reduce((sum, { kane, questioning }) => (
-      sum + (kane.credits ?? 0) + (questioning?.followUps.reduce((cost, round) => cost + (round.kane.credits ?? 0), 0) ?? 0)
-    ), 0),
+    kaneCredits: totalKaneCredits(tested),
     model: { ...client.usage(), cacheHits: extraction.cacheHits },
   };
   writeFileSync(join(runDir, "check.json"), `${JSON.stringify(report, null, 2)}\n`);
@@ -104,55 +103,95 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   return report;
 }
 
+function validateOptions({ maxKaneRuns, appRunningSecrets, appRunning }: CheckOptions): void {
+  if (maxKaneRuns !== undefined && (!Number.isSafeInteger(maxKaneRuns) || maxKaneRuns < 0)) {
+    throw new Error("--max-kane-runs must be a whole number.");
+  }
+  if (appRunningSecrets !== undefined && !appRunning) {
+    throw new Error("appRunningSecrets requires appRunning.");
+  }
+}
+
+function totalKaneCredits(tested: ClaimRun[]): number {
+  return tested.reduce((sum, { kane, questioning }) => (
+    sum + (kane.credits ?? 0) + (questioning?.followUps.reduce((cost, round) => cost + (round.kane.credits ?? 0), 0) ?? 0)
+  ), 0);
+}
+
 /** Starts the app, runs each claim and any follow-up checks, then cleans up. */
 async function testClaims(target: ResolvedTarget, claims: Claim[], runDir: string, runId: string, options: CheckOptions, log: (line: string) => void): Promise<ClaimRun[]> {
-  const tested: ClaimRun[] = [];
-  let runsRemaining = options.maxKaneRuns ?? Infinity;
-  const canRun = () => runsRemaining > 0;
-  if (claims.length === 0 || !canRun()) return tested;
+  if (claims.length === 0 || options.maxKaneRuns === 0) return [];
   let app: RunningApp | undefined;
-  const variablesFile = join(runDir, "kane-variables.json");
-  const hasVariables = Object.keys(target.kaneVariables).length > 0;
+  const variables = options.appRunning ? runningAppVariables(target.login, options.appRunningSecrets ?? {}) : target.kaneVariables;
+  const variablesFile = writeKaneVariables(variables);
+  const managedTarget = options.appRunning ? undefined : target;
   try {
-    if (!options.appRunning) {
+    if (managedTarget) {
       log(`Starting ${target.app.image} on port ${target.app.port}...`);
-      app = await startApp(target, runId);
+      app = await startApp(managedTarget, runId);
     }
-    if (hasVariables) {
-      writeFileSync(variablesFile, JSON.stringify(target.kaneVariables), { mode: 0o600 });
-      chmodSync(variablesFile, 0o600);
-    }
-    const containerName = app?.containerName;
-    let tagSetup: Promise<void> | undefined;
-    const prepareTags = containerName ? () => (tagSetup ??= seedLinkdingTags(containerName)) : undefined;
-    for (const [index, claim] of claims.entries()) {
-      if (!canRun()) {
-        log("Kane run limit reached. Remaining claims were not tested.");
-        break;
-      }
-      log(`[${index + 1}/${claims.length}] ${claim.id}: "${claim.quote}"`);
-      const folder = safeName(claim.id);
-      const managedTarget = options.appRunning ? undefined : target;
-      const result = await questionClaim(claim, managedTarget, objectiveFor(claim, target), async (purpose, objective, assertionMode) => {
-        runsRemaining--;
-        const kane = await runKane({
-          objective,
-          startUrl: `${target.baseUrl}${target.startPath ?? "/"}`,
-          outDir: join(runDir, "claims", purpose === "initial" ? folder : `${folder}--${purpose}`),
-          assertionMode,
-          variablesFile: hasVariables ? variablesFile : undefined,
-        });
-        log(`    Kane ${purpose}: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
-        return kane;
-      }, prepareTags, canRun);
-      log(`    Claim verdict: ${result.questioning.verdict}. ${result.questioning.reason}`);
-      tested.push({ claim, ...result });
-    }
+    return await runClaims(target, claims, {
+      runDir, log, managedTarget, containerName: app?.containerName,
+      variablesFile: variablesFile?.path, maxKaneRuns: options.maxKaneRuns,
+    });
   } finally {
-    rmSync(variablesFile, { force: true });
-    if (app) await app.stop();
+    try {
+      variablesFile?.remove();
+    } finally {
+      await app?.stop();
+    }
+  }
+}
+
+interface ClaimSession {
+  runDir: string;
+  log: (line: string) => void;
+  managedTarget?: ResolvedTarget;
+  containerName?: string;
+  variablesFile?: string;
+  maxKaneRuns?: number;
+}
+
+async function runClaims(target: ResolvedTarget, claims: Claim[], session: ClaimSession): Promise<ClaimRun[]> {
+  const { runDir, log, managedTarget, containerName, variablesFile } = session;
+  const tested: ClaimRun[] = [];
+  const startUrl = `${target.baseUrl}${target.startPath ?? "/"}`;
+  let runsRemaining = session.maxKaneRuns ?? Infinity;
+  const canRun = () => runsRemaining > 0;
+  let tagSetup: Promise<void> | undefined;
+  const prepareTags = containerName ? () => (tagSetup ??= seedLinkdingTags(containerName)) : undefined;
+  for (const [index, claim] of claims.entries()) {
+    if (!canRun()) {
+      log("Kane run limit reached. Remaining claims were not tested.");
+      break;
+    }
+    log(`[${index + 1}/${claims.length}] ${claim.id}: "${claim.quote}"`);
+    const folder = safeName(claim.id);
+    const result = await questionClaim(claim, managedTarget, objectiveFor(claim, target), async (purpose, objective, assertionMode) => {
+      runsRemaining--;
+      const outDir = join(runDir, "claims", purpose === "initial" ? folder : `${folder}--${purpose}`);
+      const kane = await runKane({ objective, startUrl, outDir, assertionMode, variablesFile });
+      log(`    Kane ${purpose}: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
+      return kane;
+    }, prepareTags, canRun);
+    log(`    Claim verdict: ${result.questioning.verdict}. ${result.questioning.reason}`);
+    tested.push({ claim, ...result });
   }
   return tested;
+}
+
+function writeKaneVariables(variables: ResolvedTarget["kaneVariables"]) {
+  if (Object.keys(variables).length === 0) return undefined;
+  const directory = mkdtempSync(join(tmpdir(), "pinocchio-kane-"));
+  const path = join(directory, "variables.json");
+  const remove = () => rmSync(directory, { recursive: true, force: true });
+  try {
+    writeFileSync(path, JSON.stringify(variables), { flag: "wx", mode: 0o600 });
+  } catch (error) {
+    remove();
+    throw error;
+  }
+  return { path, remove };
 }
 
 /**

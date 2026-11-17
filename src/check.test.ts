@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { startApp } from "./app/docker.js";
 import { objectiveFor, runCheck } from "./check.js";
@@ -11,7 +11,7 @@ import { runKane } from "./kane/runner.js";
 import { CallBudget } from "./model/budget.js";
 import { ModelClient } from "./model/client.js";
 import type { ModelProvider } from "./model/types.js";
-import { loadTarget, resolveTarget, targetPathFor } from "./target.js";
+import { loadTarget, resolveTarget, runningAppVariables, targetPathFor } from "./target.js";
 
 vi.mock("./app/docker.js", { spy: true });
 vi.mock("./kane/runner.js", { spy: true });
@@ -33,6 +33,17 @@ describe("targets", () => {
     expect(target.resolvedEnv).toEqual({ A: "S3CRET", B: "x-S3CRET", C: "plain" });
     expect(target.kaneVariables).toEqual({ pw: { value: "S3CRET", secret: true } });
     expect(target.baseUrl).toBe("http://localhost:1");
+  });
+
+  it("selects only named running-app secrets and rejects inherited or missing values", () => {
+    const login = "Sign in with {{account}} and {{password}}. Confirm {{account}}.";
+    const secrets = { account: "test account", password: "disposable password", unused: "other value" };
+    expect(runningAppVariables(login, secrets)).toEqual({
+      account: { value: secrets.account, secret: true }, password: { value: secrets.password, secret: true },
+    });
+    expect(() => runningAppVariables(login, { account: secrets.account })).toThrow(/Missing Kane login variable "password"/);
+    expect(() => runningAppVariables("Use {{constructor}}.", {})).toThrow(/Missing Kane login variable "constructor"/);
+    expect(runningAppVariables(undefined, secrets)).toEqual({});
   });
 
   it("rejects a target without an app image", () => {
@@ -108,6 +119,65 @@ describe("check Kane run limit", () => {
       expect(stop).toHaveBeenCalledTimes(limit);
     } finally {
       vi.mocked(startApp).mockReset();
+      vi.mocked(runKane).mockReset();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("running app login", () => {
+  it.each([false, true])("keeps the login secret private and removes it when Kane fails (%s)", async (fails) => {
+    const dir = mkdtempSync(join(tmpdir(), "pino-login-"));
+    const stubPassword = "fake-disposable-credential";
+    const login = "Sign in using password {{app_pass}}.";
+    const logs: string[] = [];
+    let variablesFile: string | undefined;
+    vi.mocked(runKane).mockImplementation(async (options) => {
+      variablesFile = options.variablesFile;
+      expect(options.objective).toContain(login);
+      expect(options.objective).not.toContain(stubPassword);
+      if (!variablesFile) throw new Error("Expected a Kane variables file.");
+      expect(statSync(variablesFile).mode & 0o777).toBe(0o600);
+      expect(statSync(dirname(variablesFile)).mode & 0o777).toBe(0o700);
+      expect(JSON.parse(readFileSync(variablesFile, "utf8"))).toEqual({ app_pass: { value: stubPassword, secret: true } });
+      if (fails) throw new Error("Kane stub stopped.");
+      return {
+        ...parseKaneOutput('{"type":"run_end","status":"passed"}', 0),
+        objective: options.objective, startUrl: options.startUrl, outDir: options.outDir, evidence: [], evidenceError: null,
+      };
+    });
+    try {
+      const targetPath = join(dir, "target.json");
+      const app = { image: "test", port: 1, containerPort: 2, env: { APP_PASSWORD: "{{secret:app_pass}}" } };
+      writeFileSync(targetPath, JSON.stringify({ name: "t", repo: dir, app, login }));
+      writeFileSync(join(dir, "README.md"), "Toggle dark mode");
+      const provider: ModelProvider = {
+        name: "fake",
+        async generate(request, before) {
+          before();
+          expect(JSON.stringify(request)).not.toContain(stubPassword);
+          expect(request.prompt).not.toContain("app_pass");
+          const claims = [{ type: "behaviour", quote: "Toggle dark mode", startLine: 1, endLine: 1, check: "Toggle dark mode" }];
+          return { text: JSON.stringify({ claims }), model: "fake", usage: { inputTokens: 0, outputTokens: 0 } };
+        },
+      };
+      const client = new ModelClient(provider, new CallBudget({ maxCallsPerRun: 1, maxCallsTotal: 1 }, "r", join(dir, "totals"), join(dir, "ledger")));
+      const result = runCheck(client, {
+        targetPath, source: { directory: dir, commit: "fixture" }, runsDir: dir, workDir: dir,
+        appRunning: true, appRunningSecrets: { app_pass: stubPassword }, log: (line) => logs.push(line),
+      });
+      if (fails) {
+        await expect(result).rejects.toThrow("Kane stub stopped.");
+      } else {
+        const { runId } = await result;
+        expect(readFileSync(join(dir, runId, "check.json"), "utf8")).not.toContain(stubPassword);
+      }
+      expect(runKane).toHaveBeenCalledOnce();
+      expect(startApp).not.toHaveBeenCalled();
+      expect(logs.join("\n")).not.toContain(stubPassword);
+      if (!variablesFile) throw new Error("Expected the Kane stub to receive a variables file.");
+      expect(existsSync(dirname(variablesFile))).toBe(false);
+    } finally {
       vi.mocked(runKane).mockReset();
       rmSync(dir, { recursive: true, force: true });
     }
