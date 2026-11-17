@@ -18,6 +18,8 @@ interface Expected {
 interface Review extends Expected {
   line: number;
   criteria: string;
+  /** Patterns (case-insensitive) that the generated check must all contain. */
+  mustMention?: string[];
 }
 
 interface EvaluationDocument {
@@ -43,6 +45,10 @@ function scoreClaims(claims: Claim[], expected: Expected[]) {
   });
 }
 
+function mentionsAll(check: string, patterns: string[]): boolean {
+  return patterns.every((pattern) => new RegExp(pattern, "i").test(check));
+}
+
 function reviewChecks(claims: Claim[], reviews: Review[]) {
   return reviews.map((review) => {
     const candidates = claims.filter((claim) => (
@@ -51,6 +57,7 @@ function reviewChecks(claims: Claim[], reviews: Review[]) {
     const match = candidates.find((claim) => (
       review.types.includes(claim.type)
       && (claim.type === "untestable" ? claim.reason : claim.check)?.trim()
+      && mentionsAll(claim.check ?? "", review.mustMention ?? [])
       && !reviews.some((other) => other !== review && other.line === review.line && matchesQuote(claim, other))
     ));
     return { expected: review, claim: match ?? candidates[0] ?? null, ok: match !== undefined };
@@ -124,5 +131,12 @@ describe("extraction evaluation", () => {
     const adminClaim = { ...compound, id: "3", quote: admin, check: "Check the admin UI." };
     expect(reviewChecks([mainClaim, { ...adminClaim, check: "" }], expectations).map((review) => review.ok)).toEqual([true, false]);
     expect(reviewChecks([mainClaim, adminClaim], expectations).map((review) => review.ok)).toEqual([true, true]);
+  });
+
+  it("rejects a check that leaves out what the claim promises", () => {
+    const review: Review = { line: 21, quote: "Organize bookmarks with tags", types: ["behaviour"], criteria: "", mustMention: ["filter|search"] };
+    const claim: Claim = { id: "1", type: "behaviour", quote: "Organize bookmarks with tags", check: "Create a bookmark with a tag and assert the tag is shown.", source: { file: "README.md", startLine: 21, endLine: 21 } };
+    expect(reviewChecks([claim], [review])[0]?.ok).toBe(false);
+    expect(reviewChecks([{ ...claim, check: "Filter the list by the tag and assert only the matching bookmark is shown." }], [review])[0]?.ok).toBe(true);
   });
 });
