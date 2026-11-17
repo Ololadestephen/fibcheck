@@ -155,7 +155,7 @@ function renderClaim(claim: Claim, entry: ClaimRun | undefined, skipped: boolean
   const { file, startLine, endLine } = claim.source;
   const line = startLine === endLine ? `line ${startLine}` : `lines ${startLine}–${endLine}`;
   const question = entry?.questioning;
-  const status = question ? `Verdict ${question.verdict}` : entry ? RESULT_LABELS[entry.kane.status] : skipped ? "Not run" : "Untestable";
+  const status = question ? `Verdict ${question.verdict}${question.candidateFinding ? " · candidate finding, awaiting review" : ""}` : entry ? RESULT_LABELS[entry.kane.status] : skipped ? "Not run" : "Untestable";
   return `<article>
     <div class="claim-meta"><span class="status ${question ? "pending" : entry?.kane.status ?? "pending"}">${escapeHtml(status)}</span>
     <span class="meta">${escapeHtml(file)} · ${escapeHtml(line)}</span></div>

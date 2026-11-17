@@ -34,6 +34,7 @@ interface LoopState {
   overrides: Questioning["overrides"];
   diagnoses: NonNullable<Questioning["diagnoses"]>;
   rewordsLeft: number;
+  candidateFinding?: boolean;
 }
 
 interface Attempt {
@@ -48,7 +49,8 @@ interface Attempt {
  * documented claim, and proposes a reworded check, a reproduction or a
  * control. A false verdict needs two distinct Kane failures that the model
  * reads as contradictions, a recorded reason the test was not at fault, and
- * a passing control.
+ * a passing control. Even then the verdict stays unconfirmed and is marked as a
+ * candidate finding: only a person who has read the evidence may call it false.
  */
 export async function questionGenerally(
   claim: Claim,
@@ -120,7 +122,8 @@ async function confirmAfterReproduction(state: LoopState, failed: Attempt, diagn
   if (control.status !== "passed" || !distinctKaneRuns(control, failed.kane) || !distinctKaneRuns(control, reproduction.kane)) {
     return outcome(state, "unconfirmed", "The control did not pass in its own run, so a setup problem was not ruled out.");
   }
-  return outcome(state, "false", `Two separate Kane runs failed the documented result. ${diagnosis.reason} Test error ruled out: ${diagnosis.ownMistakeRuledOut} The control passed. ${NOT_OUTDATED}`);
+  state.candidateFinding = true;
+  return outcome(state, "unconfirmed", `Candidate finding, awaiting a person's review. Two separate Kane runs failed the documented result. ${diagnosis.reason} Test error ruled out: ${diagnosis.ownMistakeRuledOut} The control passed. ${NOT_OUTDATED}`);
 }
 
 async function review(state: LoopState, attempt: Attempt): Promise<Diagnosis | undefined> {
@@ -139,6 +142,6 @@ async function review(state: LoopState, attempt: Attempt): Promise<Diagnosis | u
 }
 
 function outcome(state: LoopState, verdict: ClaimVerdict, reason: string): QuestionedRun {
-  const { initial, followUps, overrides, diagnoses } = state;
-  return { kane: initial, questioning: { verdict, reason, initialReason: INITIAL_REASON, followUps, overrides, diagnoses } };
+  const { initial, followUps, overrides, diagnoses, candidateFinding } = state;
+  return { kane: initial, questioning: { verdict, reason, initialReason: INITIAL_REASON, followUps, overrides, diagnoses, ...(candidateFinding ? { candidateFinding } : {}) } };
 }

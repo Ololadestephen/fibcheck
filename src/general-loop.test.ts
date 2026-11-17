@@ -81,7 +81,7 @@ describe("questionGenerally", () => {
     expect(rounds).toHaveLength(1);
   });
 
-  it("calls a claim false only after two contradicted failures and a passing control", async () => {
+  it("marks a candidate finding only after two contradicted failures and a passing control, and never calls it false", async () => {
     const { result, rounds, reviewed } = await perform(
       [kane("failed", "a", productBlame), kane("failed", "b"), kane("passed", "c")],
       [contradiction, contradiction],
@@ -90,7 +90,7 @@ describe("questionGenerally", () => {
     expect(rounds[1]?.objective).toBe(`LOGIN. ${claim.check}`);
     expect(rounds[2]?.objective).toBe(`LOGIN. ${contradiction.controlCheck}`);
     expect(reviewed).toEqual([claim.check, claim.check]);
-    expect(result.questioning.verdict).toBe("false");
+    expect(result.questioning).toMatchObject({ verdict: "unconfirmed", candidateFinding: true });
     expect(result.questioning.reason).toContain(contradiction.ownMistakeRuledOut);
     expect(result.questioning.reason).toContain("rather than outdated");
     expect(result.questioning.diagnoses?.map(({ round }) => round)).toEqual(["initial", "retry"]);
@@ -172,7 +172,7 @@ describe("questionGenerally", () => {
     );
     expect(rounds.map(({ purpose }) => purpose)).toEqual(["initial", "reword", "retry", "control"]);
     expect(rounds[2]?.objective).toBe("LOGIN. Use the footer menu.");
-    expect(result.questioning.verdict).toBe("false");
+    expect(result.questioning).toMatchObject({ verdict: "unconfirmed", candidateFinding: true });
   });
 
   it("stays unconfirmed without a proposed control", async () => {
