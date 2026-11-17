@@ -2,6 +2,8 @@
 
 Pinocchio checks claims in public web app documentation with Kane CLI. It quotes the original claim, runs the browser check against the app, and records screenshots and questioning rounds. The local report shows Kane's outcomes alongside Pinocchio's verdicts.
 
+**[The Pinocchio index](index/README.md):** 8 popular self-hosted web apps checked on November 17, 2026. 17 README claims tested, 16 held, 1 unconfirmed, 0 confirmed false or outdated, with a screenshot for every claim.
+
 ## Quick start
 
 Use Node.js 20.12 or newer with Git, Docker, Kane CLI, and a Gemini API key. Start Docker and put `GEMINI_API_KEY` in `.env` in the directory where you run Pinocchio. Use a Gemini project on the free tier.
@@ -49,7 +51,11 @@ Gemini extracts claims from the selected documentation, so use public source mat
 
 The verified Linkding example checks an old instruction to click an Admin tab within Settings. Two independent runs found no in-page tab. A third run used the same account to find the Admin item in the top navigation's Settings dropdown and open Site administration. The control evidence overruled Kane's account diagnosis. After a documentation patch described the dropdown route, a fresh Kane run passed that route.
 
-Linkding's Admin-tab and tag-management claims have reviewed flows. Other checks retain Kane's individual browser outcomes and use an unconfirmed claim verdict until a reviewed flow covers them. Use `report` on saved checks to render evidence without calling Gemini or Kane again.
+Linkding's Admin-tab and tag-management claims have hand-reviewed flows. Every other claim goes through the general diagnosis. After each Kane run, Gemini reads the claim and Kane's result, says whether the run tested the claim as written, and names the likely cause of a failure: a Kane misstep, a wrong check, a setup problem, something Kane cannot do, or a real contradiction. It can reword the check once. A claim becomes false only after two separate Kane failures that both read as contradictions, a written reason the test was not at fault, and a passing control. The general diagnosis never reports "outdated", because it does not check the project's history. Each claim uses at most 4 Kane runs within the `--max-kane-runs` cap. If Gemini is unavailable, the claim stays unconfirmed. Where Gemini disagrees with Kane's own blame label, the report shows the override and its evidence.
+
+Only public material goes to Gemini: the documentation text, the claim, and a summary of Kane's result. Test passwords, URLs, local hosts and paths, and Kane session links are removed before sending. On Gemini's free tier, Google may use that content to improve its products.
+
+Use `report` on saved checks to render evidence without calling Gemini or Kane again.
 
 ## Development checks
 
