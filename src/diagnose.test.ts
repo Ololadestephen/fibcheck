@@ -40,6 +40,14 @@ describe("diagnosisPrompt", () => {
     for (const leak of ["Pk0123456789abcdef", "localhost", "example.test", "/Users/", "session/123"]) expect(prompt).not.toContain(leak);
   });
 
+  it("keeps public addresses so a reworded check can still use them", () => {
+    const run = failedRun();
+    run.reason = "Typed https://example.com into the URL field at http://localhost:19091/new";
+    const prompt = diagnosisPrompt(claim, "Add a bookmark for https://example.com.", run);
+    expect(prompt).toContain("https://example.com");
+    expect(prompt).not.toContain("localhost");
+  });
+
   it("removes hosts without a scheme and other local paths", () => {
     const run = failedRun();
     run.reason = "Opened localhost:8080/admin, then 127.0.0.1:3000 and [::1]:5230, read ~/notes.txt, /opt/app/x, /root/y and C:\\Users\\me\\z";

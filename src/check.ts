@@ -223,9 +223,19 @@ export function objectiveFor(claim: Claim, target: Pick<ResolvedTarget, "login">
   const parts = [
     target.login,
     `The app's documentation (${claim.source.file}, line ${claim.source.startLine}) says: "${safe(claim.quote)}".`,
-    safe(claim.check ?? ""),
+    safe(localAddressesToApp(claim.check ?? "")),
   ];
   return parts.filter(Boolean).join(" ");
+}
+
+/**
+ * Documentation often names its own default address (for example http://localhost:5230). The test app runs
+ * elsewhere and Kane already starts on it, so a local address in a check is replaced by a reference to the app.
+ */
+export function localAddressesToApp(check: string): string {
+  return check.replace(/\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?(\/[^\s"'<>]*)?/gi, (_match, path: string | undefined) => (
+    path && path !== "/" ? `the app's ${path.replace(/[.,;:]+$/, "")} page` : "the app's start page"
+  ));
 }
 
 function fetchRepo(repo: string, cloneDir: string): string {

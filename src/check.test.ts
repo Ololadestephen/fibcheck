@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { startApp } from "./app/docker.js";
-import { objectiveFor, runCheck } from "./check.js";
+import { localAddressesToApp, objectiveFor, runCheck } from "./check.js";
 import { cacheKey, extractClaimsCached } from "./claims/cache.js";
 import type { Claim } from "./claims/types.js";
 import { parseKaneOutput } from "./kane/parse.js";
@@ -66,6 +66,16 @@ describe("targets", () => {
     expect(loadTarget(targetPathFor(expected.repo + ".git"))).toEqual(expected);
     expect(() => targetPathFor(expected.repo + "/tree/main")).toThrow(/No target file or bundled repository/);
     expect(() => targetPathFor("owner/other-app")).toThrow(/target JSON/);
+  });
+});
+
+describe("localAddressesToApp", () => {
+  it.each([
+    ["Go to http://localhost:5230. Create a memo.", "Go to the app's start page. Create a memo."],
+    ["Open http://127.0.0.1:8080/settings/general and check.", "Open the app's /settings/general page and check."],
+    ["Bookmark https://example.com as a test.", "Bookmark https://example.com as a test."],
+  ])("rewrites %s", (input, output) => {
+    expect(localAddressesToApp(input)).toBe(output);
   });
 });
 

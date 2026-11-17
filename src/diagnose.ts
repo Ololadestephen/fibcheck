@@ -43,7 +43,9 @@ For a passing run, use cause "unclear".
 - revisedCheck: for agent_misstep or check_problem, a corrected sequence of browser actions and explicit assertions that still tests exactly what the claim states, in the same place, with the same control type and each stated result. Never weaken a check so that it passes. For a passing run that did not exercise the claim, a check that does. Otherwise leave it empty.
 - controlCheck: for claim_contradicted only, a nearby flow in the same app with the same login that should pass if the setup is valid and that does not depend on the disputed claim. Otherwise leave it empty.
 - ownMistakeRuledOut: for claim_contradicted, why the failure is not caused by the test itself (sign-in, test data, Kane's input method, the wrong page). Otherwise leave it empty.
-Write plain sentences. Do not include URLs, file paths or credentials. Do not ask Kane to sign in again; the login instructions are added separately.`;
+Text shown as [url], [path] or [secret] was removed before you saw it. Never copy these markers into a check: refer to pages by name, and use https://example.com when a check needs a public web address.
+For a passing run, seeing that a button, form, menu or option exists does not exercise a claim that the app can do something. The documented action must have been performed and its result observed. A claim that lists several features is exercised only when each listed feature was tried.
+Write plain sentences. Do not include local addresses, file paths or credentials. Do not ask Kane to sign in again; the login instructions are added separately.`;
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -100,11 +102,18 @@ export function diagnosisPrompt(claim: Claim, check: string, kane: KaneRun, secr
   return `Review this Kane run.\n\n${JSON.stringify(summary, null, 2)}`;
 }
 
+/** Public web addresses (such as https://example.com in a check) are kept; local, private and Kane session addresses are not. */
+function isPublicUrl(url: string): boolean {
+  if (!URL.canParse(url)) return false;
+  const host = new URL(url).hostname;
+  return !/^(?:localhost|.+\.localhost|.+\.local|\d{1,3}(?:\.\d{1,3}){3}|\[.*\])$/i.test(host) && !/lambdatest|testmu/i.test(host);
+}
+
 function sanitize(text: string, secrets: readonly string[]): string {
   let result = text;
   for (const secret of secrets) if (secret.length >= 4) result = result.split(secret).join("[secret]");
   result = result
-    .replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, "[url]")
+    .replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>]+/gi, (url) => (isPublicUrl(url) ? url : "[url]"))
     .replace(/(?:\blocalhost|\b(?:\d{1,3}\.){3}\d{1,3}|\[[0-9a-f:]+\])(?::\d+)?(?:\/\S*)?/gi, "[url]")
     .replace(/(?:~|\b[A-Za-z]:)?[\\/](?:Users|home|private|tmp|var|opt|root|mnt|Volumes)[\\/]\S+/g, "[path]")
     .replace(/~\/\S+/g, "[path]");
