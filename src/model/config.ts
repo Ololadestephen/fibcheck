@@ -33,6 +33,58 @@ export function createNearProvider(cwd = process.cwd(), env: NodeJS.ProcessEnv =
   });
 }
 
+/** Dollar cap for a user-chosen model with known prices, unless FIBCHECK_MODEL_MAX_USD says otherwise. */
+export const DEFAULT_MODEL_MAX_USD = 1;
+
+/**
+ * Any OpenAI-compatible model the user chooses with FIBCHECK_MODEL_BASE_URL, FIBCHECK_MODEL_API_KEY and
+ * FIBCHECK_MODEL (OpenAI, NEAR AI, OpenRouter, a local Ollama server and others). It replaces Gemini.
+ * With FIBCHECK_MODEL_PRICE_INPUT and FIBCHECK_MODEL_PRICE_OUTPUT (dollars per million tokens) a dollar cap
+ * applies; without them only the call cap does, and the report says so.
+ */
+export function createModelFromEnv(cwd = process.cwd(), env: NodeJS.ProcessEnv = process.env): OpenAICompatibleProvider | undefined {
+  const baseUrl = env.FIBCHECK_MODEL_BASE_URL;
+  if (!baseUrl) return undefined;
+  if (!URL.canParse(baseUrl) || !/^https?:$/.test(new URL(baseUrl).protocol)) {
+    throw new Error("FIBCHECK_MODEL_BASE_URL must be an http or https address, such as https://api.openai.com/v1.");
+  }
+  const model = env.FIBCHECK_MODEL;
+  if (!model) throw new Error("FIBCHECK_MODEL_BASE_URL is set, so FIBCHECK_MODEL must name the model, such as gpt-4.1-mini.");
+  const host = new URL(baseUrl).hostname;
+  const local = host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".localhost");
+  if (!env.FIBCHECK_MODEL_API_KEY && !local) {
+    throw new Error(`FIBCHECK_MODEL_API_KEY is missing for ${host}. Only a model on this machine (such as Ollama) can run without a key.`);
+  }
+  const prices = readPrices(env);
+  return new OpenAICompatibleProvider({
+    label: host,
+    baseUrl,
+    apiKey: env.FIBCHECK_MODEL_API_KEY || undefined,
+    model,
+    prices,
+    maxUsd: prices ? positiveNumber(env.FIBCHECK_MODEL_MAX_USD, DEFAULT_MODEL_MAX_USD, "FIBCHECK_MODEL_MAX_USD") : undefined,
+    spendPath: prices ? join(cwd, ".fibcheck", "model-spend.json") : undefined,
+  });
+}
+
+function readPrices(env: NodeJS.ProcessEnv): { inputPerMillion: number; outputPerMillion: number } | undefined {
+  const input = env.FIBCHECK_MODEL_PRICE_INPUT;
+  const output = env.FIBCHECK_MODEL_PRICE_OUTPUT;
+  if (!input && !output) return undefined;
+  if (!input || !output) throw new Error("Set both FIBCHECK_MODEL_PRICE_INPUT and FIBCHECK_MODEL_PRICE_OUTPUT, or neither.");
+  return {
+    inputPerMillion: positiveNumber(input, 0, "FIBCHECK_MODEL_PRICE_INPUT", true),
+    outputPerMillion: positiveNumber(output, 0, "FIBCHECK_MODEL_PRICE_OUTPUT", true),
+  };
+}
+
+function positiveNumber(raw: string | undefined, fallback: number, name: string, allowZero = false): number {
+  if (raw === undefined || raw === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0 || (!allowZero && value === 0)) throw new Error(`${name} must be a positive number of US dollars.`);
+  return value;
+}
+
 /** Loads `.env` from the working directory if present. Values are never printed. */
 export function loadDotEnv(cwd = process.cwd()): void {
   const path = join(cwd, ".env");
@@ -48,9 +100,14 @@ export function readLimits(env: NodeJS.ProcessEnv = process.env): BudgetLimits {
 
 /** Builds the shared model client for one run. Usage files live in `<cwd>/.fibcheck/`. */
 export function createModelClient(runId: string, cwd = process.cwd(), env: NodeJS.ProcessEnv = process.env): ModelClient {
+  const dir = join(cwd, ".fibcheck");
+  const budget = new CallBudget(readLimits(env), runId, join(dir, "usage-totals.json"), join(dir, "usage-ledger.jsonl"));
+  const chosen = createModelFromEnv(cwd, env);
+  if (chosen) return new ModelClient(chosen, budget);
   if (!env.GEMINI_API_KEY && !env.GOOGLE_API_KEY) {
     throw new Error(
-      "No Gemini API key found. Create one at https://aistudio.google.com/apikey and put it in .env as GEMINI_API_KEY=...",
+      "No model is configured. Put GEMINI_API_KEY=... in .env (a free key from https://aistudio.google.com/apikey), " +
+        "or choose any OpenAI-compatible model with FIBCHECK_MODEL_BASE_URL, FIBCHECK_MODEL_API_KEY and FIBCHECK_MODEL.",
     );
   }
   const gemini = new GeminiProvider({
@@ -59,8 +116,6 @@ export function createModelClient(runId: string, cwd = process.cwd(), env: NodeJ
   });
   const near = createNearProvider(cwd, env);
   const provider: ModelProvider = near ? new FallbackProvider(gemini, near) : gemini;
-  const dir = join(cwd, ".fibcheck");
-  const budget = new CallBudget(readLimits(env), runId, join(dir, "usage-totals.json"), join(dir, "usage-ledger.jsonl"));
   return new ModelClient(provider, budget);
 }
 

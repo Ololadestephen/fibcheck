@@ -76,7 +76,9 @@ export interface CheckReport {
   ranking?: { id: string; score: number; reasons: string[] }[];
   kaneCredits: number;
   /** `models` lists every model that answered in this check; older checks lack it. */
-  model: { calls: number; inputTokens: number; outputTokens: number; cacheHits: number; models?: string[] };
+  model: { calls: number; inputTokens: number; outputTokens: number; cacheHits: number; models?: string[]; spendingLimit?: string };
+  /** Document parts whose model reply could not be used. Their claims are missing from this check. */
+  unusableModelOutput?: { file: string; lines: string; why: string }[];
 }
 
 /** Reads a target's docs, extracts claims and runs the selected browser checks. */
@@ -101,6 +103,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
     : await extractClaimsCached(client, documents, join(workDir, "cache", "claims"));
   const testable = extraction.claims.filter((c) => c.type !== "untestable" && c.check);
   log(`Found ${extraction.claims.length} claims (${testable.length} testable), ${extraction.rejected.length} rejected quotes, ${extraction.cacheHits} document(s) from cache.`);
+  if (extraction.unusable?.length) log(`The model's reply could not be used for ${extraction.unusable.length} document part(s); their claims are missing.`);
 
   // The most specific claims first: named controls, steps, settings and defaults are what go stale.
   const ranked = rankClaims(testable);
@@ -120,6 +123,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
     documents: documents.map((d) => d.file),
     claims: extraction.claims,
     rejected: extraction.rejected,
+    ...(extraction.unusable?.length ? { unusableModelOutput: extraction.unusable } : {}),
     tested,
     notTested,
     ranking: ranked.map(({ claim, score, reasons }) => ({ id: claim.id, score, reasons })),
@@ -135,7 +139,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
 export const DEFAULT_RUNS_PER_CLAIM = 4;
 
 /** Keeps supplied claims whose quotes appear in their documents, with corrected line numbers. */
-export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[]): { claims: Claim[]; rejected: RejectedClaim[]; cacheHits: number } {
+export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[]): { claims: Claim[]; rejected: RejectedClaim[]; unusable?: { file: string; lines: string; why: string }[]; cacheHits: number } {
   const verified: Claim[] = [];
   const rejected: RejectedClaim[] = [];
   for (const claim of claims) {

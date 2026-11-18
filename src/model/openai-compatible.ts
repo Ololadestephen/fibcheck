@@ -12,12 +12,17 @@ export interface OpenAICompatibleOptions {
   /** Short provider label, recorded with the model name (for example "near"). */
   label: string;
   baseUrl: string;
-  apiKey: string;
+  /** Sent as a Bearer token when present. Local servers such as Ollama need none. */
+  apiKey?: string;
   model: string;
-  prices: TokenPrices;
-  /** Hard spending cap in US dollars across all runs, kept in `spendPath`. */
-  maxUsd: number;
-  spendPath: string;
+  /**
+   * With prices, every request is checked against `maxUsd` and its cost recorded in `spendPath`.
+   * Without prices the cost is unknown, and only the shared call cap limits use.
+   */
+  prices?: TokenPrices;
+  /** Hard spending cap in US dollars across all runs. Required with prices. */
+  maxUsd?: number;
+  spendPath?: string;
   /** Upper bound on output tokens per request, so the worst-case cost of a request is known before it is sent. */
   maxOutputTokens?: number;
   timeoutMs?: number;
@@ -40,18 +45,26 @@ export class SpendCapError extends Error {
  */
 export class OpenAICompatibleProvider implements ModelProvider {
   readonly name: string;
+  readonly spendingLimit: string;
   private readonly maxOutputTokens: number;
 
   constructor(private readonly options: OpenAICompatibleOptions) {
+    if (options.prices && (options.maxUsd === undefined || !options.spendPath)) {
+      throw new Error("A provider with known prices needs a dollar cap and a spend file.");
+    }
     this.name = `${options.label}:${options.model}`;
     this.maxOutputTokens = options.maxOutputTokens ?? 16_000;
+    this.spendingLimit = options.prices && options.maxUsd !== undefined
+      ? `dollar cap $${options.maxUsd.toFixed(2)} in total, at $${options.prices.inputPerMillion} and $${options.prices.outputPerMillion} per million input and output tokens`
+      : "call cap only (this model's prices are unknown, so its dollar cost is not tracked)";
   }
 
   async generate(request: ModelRequest, beforeAttempt: () => void = () => {}): Promise<ModelResponse> {
     const spent = this.spent();
     const worstCase = this.cost(estimateTokens(request.system + request.prompt), this.maxOutputTokens);
-    if (spent + worstCase > this.options.maxUsd) {
-      throw new SpendCapError(`The ${this.options.label} spending cap of $${this.options.maxUsd.toFixed(2)} would be exceeded ($${spent.toFixed(4)} spent).`);
+    const cap = this.options.maxUsd ?? Infinity;
+    if (spent + worstCase > cap) {
+      throw new SpendCapError(`The ${this.options.label} spending cap of $${cap.toFixed(2)} would be exceeded ($${spent.toFixed(4)} spent).`);
     }
     beforeAttempt();
     let data: { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
@@ -71,7 +84,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
   private async send(request: ModelRequest) {
     const response = await (this.options.fetch ?? fetch)(`${this.options.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.options.apiKey}` },
+      headers: { "Content-Type": "application/json", ...(this.options.apiKey ? { Authorization: `Bearer ${this.options.apiKey}` } : {}) },
       body: JSON.stringify(this.body(request)),
       signal: AbortSignal.timeout(this.options.timeoutMs ?? 90_000),
     });
@@ -81,6 +94,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
 
   /** Dollars spent so far across runs. A damaged file refuses further calls rather than resetting the count. */
   spent(): number {
+    if (!this.options.prices || !this.options.spendPath) return 0;
     if (!existsSync(this.options.spendPath)) return 0;
     let value: unknown;
     try {
@@ -107,13 +121,16 @@ export class OpenAICompatibleProvider implements ModelProvider {
   }
 
   private cost(inputTokens: number, outputTokens: number): number {
-    return (inputTokens * this.options.prices.inputPerMillion + outputTokens * this.options.prices.outputPerMillion) / 1_000_000;
+    const prices = this.options.prices;
+    return prices ? (inputTokens * prices.inputPerMillion + outputTokens * prices.outputPerMillion) / 1_000_000 : 0;
   }
 
   private record(usd: number): void {
+    const path = this.options.spendPath;
+    if (!this.options.prices || !path) return;
     const total = this.spent() + usd;
-    mkdirSync(dirname(this.options.spendPath), { recursive: true });
-    writeFileSync(this.options.spendPath, `${JSON.stringify({ usd: total }, null, 2)}\n`);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${JSON.stringify({ usd: total }, null, 2)}\n`);
   }
 }
 
@@ -135,12 +152,14 @@ function providerError(label: string, status: number): Error {
  */
 export class FallbackProvider implements ModelProvider {
   readonly name: string;
+  readonly spendingLimit: string;
 
   constructor(
     private readonly primary: ModelProvider,
     private readonly backup: ModelProvider,
   ) {
     this.name = `${primary.name}, then ${backup.name}`;
+    this.spendingLimit = `${primary.name}: ${primary.spendingLimit ?? "call cap only"}; backup ${backup.name}: ${backup.spendingLimit ?? "call cap only"}`;
   }
 
   async generate(request: ModelRequest, beforeAttempt: () => void): Promise<ModelResponse> {

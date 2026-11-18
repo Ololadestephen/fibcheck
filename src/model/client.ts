@@ -1,5 +1,5 @@
 import { CallBudget } from "./budget.js";
-import type { ModelProvider, ModelRequest, ModelResponse } from "./types.js";
+import { UnusableModelOutputError, type ModelProvider, type ModelRequest, type ModelResponse } from "./types.js";
 
 /**
  * The one entry point for model calls. The provider must announce every HTTP
@@ -37,14 +37,25 @@ export class ModelClient {
     const response = await this.generate(request);
     let parsed: unknown;
     try {
-      parsed = JSON.parse(response.text);
+      parsed = JSON.parse(stripCodeFence(response.text));
     } catch {
-      throw new Error(`The model did not return valid JSON for "${request.purpose}".`);
+      throw new UnusableModelOutputError(`The model did not return valid JSON for "${request.purpose}".`);
     }
-    return { value: validate(parsed), response };
+    try {
+      return { value: validate(parsed), response };
+    } catch (error) {
+      throw new UnusableModelOutputError(`The model's reply for "${request.purpose}" had the wrong shape: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
-  usage(): ReturnType<CallBudget["runSummary"]> {
-    return this.budget.runSummary();
+  /** Calls, tokens and answering models for this run, and how spending is limited. */
+  usage(): ReturnType<CallBudget["runSummary"]> & { spendingLimit: string } {
+    return { ...this.budget.runSummary(), spendingLimit: this.provider.spendingLimit ?? "call cap only (free tier, no dollar cost)" };
   }
+}
+
+/** Some OpenAI-compatible models wrap JSON in a Markdown code fence; the fence is removed before parsing. */
+function stripCodeFence(text: string): string {
+  const match = text.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match?.[1] ?? text;
 }

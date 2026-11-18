@@ -40,6 +40,16 @@ export interface ModelProvider {
    * so the call budget counts every real request.
    */
   generate(request: ModelRequest, beforeAttempt: () => void): Promise<ModelResponse>;
+  /** How spending is limited, for the report, for example "dollar cap $1.00" or "call cap only (prices unknown)". */
+  readonly spendingLimit?: string;
+}
+
+/** Raised when a model answered but its reply cannot be used (not JSON, or the wrong shape). */
+export class UnusableModelOutputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnusableModelOutputError";
+  }
 }
 
 /** Raised when a provider is overloaded or timing out (for example HTTP 503 or 504). */

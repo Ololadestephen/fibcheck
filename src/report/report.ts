@@ -89,7 +89,9 @@ function remainingInRankOrder(report: CheckReport, runs: Map<string, ClaimRun>):
 
 function modelNote(report: CheckReport): string {
   const models = report.model?.models;
-  return models?.length ? `Model: ${escapeHtml(models.join(", "))} · ` : "";
+  const limit = report.model?.spendingLimit ? ` (${escapeHtml(report.model.spendingLimit)})` : "";
+  const unusable = report.unusableModelOutput?.length ? `${report.unusableModelOutput.length} document part(s) with unusable model output · ` : "";
+  return models?.length ? `Model: ${escapeHtml(models.join(", "))}${limit} · ${unusable}` : unusable;
 }
 
 function renderReport(report: CheckReport, counts: ResultCounts, badge: ReturnType<typeof renderBadge>, directory: string, inputName: string): string {

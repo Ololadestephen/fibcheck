@@ -51,6 +51,7 @@ export interface GeminiOptions {
  */
 export class GeminiProvider implements ModelProvider {
   readonly name = "gemini";
+  readonly spendingLimit = "call cap only (Gemini free tier, no dollar cost)";
   private readonly fallbackModel: string;
   private readonly api: GenerateContentApi;
   private readonly initialRetryDelayMs: number;

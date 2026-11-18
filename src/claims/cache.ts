@@ -11,7 +11,7 @@ import type { SourceDocument } from "./types.js";
  * repeated checks of the same README from spending requests.
  */
 export async function extractClaimsCached(client: ModelClient, documents: SourceDocument[], cacheDir: string): Promise<ExtractionResult & { cacheHits: number }> {
-  const result: ExtractionResult & { cacheHits: number } = { claims: [], rejected: [], cacheHits: 0 };
+  const result: ExtractionResult & { cacheHits: number } = { claims: [], rejected: [], unusable: [], cacheHits: 0 };
   mkdirSync(cacheDir, { recursive: true });
   for (const document of documents) {
     const path = join(cacheDir, `${cacheKey(document)}.json`);
@@ -20,10 +20,12 @@ export async function extractClaimsCached(client: ModelClient, documents: Source
       result.cacheHits++;
     } else {
       part = await extractClaims(client, [document]);
-      writeFileSync(path, `${JSON.stringify(part, null, 2)}\n`);
+      // A document with an unusable model reply is not cached, so the next check tries it again.
+      if (!part.unusable?.length) writeFileSync(path, `${JSON.stringify(part, null, 2)}\n`);
     }
     result.claims.push(...part.claims);
     result.rejected.push(...part.rejected);
+    result.unusable?.push(...(part.unusable ?? []));
   }
   return result;
 }

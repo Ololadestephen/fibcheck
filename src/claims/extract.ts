@@ -1,4 +1,5 @@
 import type { ModelClient } from "../model/client.js";
+import { UnusableModelOutputError } from "../model/types.js";
 import { locateQuote, normalise, splitLines } from "./quotes.js";
 import { CLAIM_TYPES, type Claim, type ClaimType, type RejectedClaim, type SourceDocument } from "./types.js";
 
@@ -70,25 +71,35 @@ interface RawClaim {
 export interface ExtractionResult {
   claims: Claim[];
   rejected: RejectedClaim[];
+  /** Parts of documents whose model reply could not be used. Their claims are missing, never guessed. */
+  unusable?: { file: string; lines: string; why: string }[];
 }
 
 /** Lists the claims in each document, keeping only claims whose quote is really in the document. */
 export async function extractClaims(client: ModelClient, documents: SourceDocument[]): Promise<ExtractionResult> {
   const claims: Claim[] = [];
   const rejected: RejectedClaim[] = [];
+  const unusable: NonNullable<ExtractionResult["unusable"]> = [];
   const seen = new Set<string>();
 
   for (const document of documents) {
-    for (const chunk of chunkDocument(document)) {
-      const { value } = await client.generateJson(
-        {
-          purpose: "extract-claims",
-          system: EXTRACT_SYSTEM,
-          prompt: `File: ${document.file}\n\n${chunk}`,
-          jsonSchema: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
-        },
-        parseRawClaims,
-      );
+    for (const [index, chunk] of chunkDocument(document).entries()) {
+      let value: RawClaim[];
+      try {
+        ({ value } = await client.generateJson(
+          {
+            purpose: "extract-claims",
+            system: EXTRACT_SYSTEM,
+            prompt: `File: ${document.file}\n\n${chunk}`,
+            jsonSchema: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+          },
+          parseRawClaims,
+        ));
+      } catch (error) {
+        if (!(error instanceof UnusableModelOutputError)) throw error;
+        unusable.push({ file: document.file, lines: `${index * CHUNK_LINES + 1}-${(index + 1) * CHUNK_LINES}`, why: error.message });
+        continue;
+      }
       for (const raw of value) {
         const source = locateQuote(document.content, raw.quote, {
           file: document.file,
@@ -107,7 +118,7 @@ export async function extractClaims(client: ModelClient, documents: SourceDocume
     }
   }
   claims.sort((a, b) => a.source.file.localeCompare(b.source.file) || a.source.startLine - b.source.startLine);
-  return { claims, rejected };
+  return unusable.length ? { claims, rejected, unusable } : { claims, rejected };
 }
 
 /** Splits a document into numbered parts of at most CHUNK_LINES lines, keeping absolute line numbers. */
