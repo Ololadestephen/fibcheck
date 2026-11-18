@@ -2,6 +2,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
+import { loadFindings, writeCard } from "./card.js";
 import { runCheck } from "./check.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
 import { writeReport } from "./report/report.js";
@@ -13,6 +14,7 @@ Usage:
   fibcheck check <target.json | repository> [--max-claims N] [--max-kane-runs N] [--only CLAIM_ID ...]
                  [--url ADDRESS [--login SENTENCE] | --app-running]
   fibcheck report <check.json>
+  fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards]
   fibcheck --help
 
 Use sissbruecker/linkding or its GitHub URL for the bundled Linkding target.
@@ -25,6 +27,7 @@ login sentence; write {{NAME}} for a value and put FIBCHECK_LOGIN_NAME=... in .e
 Claims are ranked by how specific they are (named menus, buttons, settings, defaults and steps).
 The top --max-claims (default 5; 5 to 10 is a good range) are tested, and the rest are listed as not tested.
 The report command writes report.html and badge.svg beside a saved check.json.
+The card command draws a PNG share card for a recorded finding, from its verdict and Kane screenshot only.
 `;
 
 export async function main(argv: string[]): Promise<number> {
@@ -35,8 +38,24 @@ export async function main(argv: string[]): Promise<number> {
   }
   if (command === "check") return await check(rest);
   if (command === "report") return report(rest);
+  if (command === "card") return card(rest);
   process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
   return 1;
+}
+
+function card(args: string[]): number {
+  const { values, positionals } = parseArgs({
+    args, allowPositionals: true,
+    options: { all: { type: "boolean" }, findings: { type: "string" }, out: { type: "string" } },
+  });
+  const findingsPath = values.findings ?? "index/findings.json";
+  const ids = values.all ? loadFindings(findingsPath).map(({ id }) => id) : positionals;
+  if (ids.length === 0) {
+    process.stderr.write("Usage: fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards]\n");
+    return 1;
+  }
+  for (const id of ids) process.stdout.write(`Saved ${writeCard(findingsPath, id, values.out ?? "index/cards")}\n`);
+  return 0;
 }
 
 function report(args: string[]): number {

@@ -1,0 +1,77 @@
+[
+  {
+    "id": "mealie-faq-disable-ingredient-amounts",
+    "project": "Mealie",
+    "own": false,
+    "verdict": "outdated",
+    "quote": "Click the Recipe Settings gear and deselect `Disable Ingredient Amounts`",
+    "source": { "repo": "mealie-recipes/mealie", "commit": "e2c0c3b1bfd7a785dde8e9704f1c8475333613ae", "file": "docs/docs/documentation/getting-started/faq.md", "line": 30 },
+    "screenshot": "evidence/mealie-docs-faq-l30-run.jpg",
+    "evidence": {
+      "failures": ["evidence/mealie-docs-faq-l30-run.jpg", "evidence/mealie-docs-faq-l30-run2.jpg"],
+      "control": "evidence/mealie-docs-faq-l30-control.jpg",
+      "fixProof": "evidence/mealie-docs-faq-after.jpg"
+    },
+    "score": { "findings": 1, "claims": 5 }
+  },
+  {
+    "id": "uptime-kuma-wiki-maintenance-menu",
+    "project": "Uptime Kuma",
+    "own": false,
+    "verdict": "false",
+    "quote": "You can access the maintenance management via the menu at the top left.",
+    "source": { "repo": "louislam/uptime-kuma.wiki", "commit": "cf7fe32", "file": "Maintenance.md", "line": 12 },
+    "screenshot": "evidence/uptime-kuma-wiki-maintenance-run2.jpg",
+    "evidence": {
+      "failures": ["evidence/uptime-kuma-wiki-maintenance-run2.jpg", "evidence/uptime-kuma-wiki-maintenance-run.jpg"],
+      "control": "evidence/uptime-kuma-wiki-maintenance-control.jpg"
+    },
+    "score": { "findings": 1, "claims": 5 }
+  },
+  {
+    "id": "linkding-admin-tab",
+    "project": "Linkding",
+    "own": false,
+    "verdict": "outdated",
+    "quote": "To open the Admin app, go the *Settings* view and click on the *Admin* tab.",
+    "source": { "repo": "sissbruecker/linkding", "commit": "27b7303baf41bb28babc610ac8eaa486e1ddfab5", "file": "docs/src/content/docs/admin.md", "line": 14 },
+    "screenshot": "evidence/linkding-docs-l14-run1.jpg",
+    "evidence": {
+      "failures": ["evidence/linkding-docs-l14-run1.jpg", "evidence/linkding-docs-l14-run2.jpg"],
+      "control": "evidence/linkding-docs-l14-control.jpg",
+      "fixProof": "evidence/linkding-docs-l14-after.jpg"
+    },
+    "score": { "findings": 2, "claims": 7 }
+  },
+  {
+    "id": "linkding-tags-only-create-or-assign",
+    "project": "Linkding",
+    "own": false,
+    "verdict": "outdated",
+    "quote": "linkding UI currently only allows to create or assign tags",
+    "source": { "repo": "sissbruecker/linkding", "commit": "27b7303baf41bb28babc610ac8eaa486e1ddfab5", "file": "docs/src/content/docs/admin.md", "line": 55 },
+    "screenshot": "evidence/linkding-docs-l55-run1.jpg",
+    "evidence": {
+      "failures": ["evidence/linkding-docs-l55-run1.jpg", "evidence/linkding-docs-l55-run2.jpg"],
+      "control": "evidence/linkding-docs-l55-control.jpg",
+      "fixProof": "evidence/linkding-docs-l55-after.jpg"
+    },
+    "score": { "findings": 2, "claims": 7 }
+  },
+  {
+    "id": "soryn-readme-basic-attack",
+    "project": "Soryn",
+    "own": true,
+    "verdict": "worded_differently",
+    "quote": "Each fighter has Basic Attack, Defence and a distinct Special.",
+    "source": { "repo": "Soryn", "commit": "8876c08", "file": "README.md", "line": 16 },
+    "screenshot": "evidence/soryn-readme-l16-before.jpg",
+    "visibleWording": "\"Attack\"",
+    "evidence": {
+      "failures": [],
+      "held": "evidence/soryn-readme-l16-before.jpg",
+      "fixProof": "evidence/soryn-readme-l16-after.jpg"
+    },
+    "score": { "findings": 0, "claims": 7 }
+  }
+]
