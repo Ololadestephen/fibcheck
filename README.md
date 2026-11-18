@@ -2,11 +2,13 @@
 
 fibcheck is a lie detector for READMEs. It checks claims in public web app documentation with Kane CLI. It quotes the original claim, runs the browser check against the app, and records screenshots and questioning rounds. The local report shows Kane's outcomes alongside fibcheck's verdicts.
 
+fibcheck has its own agent, and that agent talks to Kane. It extracts the claims from the documentation, writes the Kane check for each one, questions every failure, and decides the verdict. Kane alone decides whether each browser run passed or failed. The agent runs on Google Gemini by default, or on any OpenAI-compatible model you choose. fibcheck itself was built with Claude Code.
+
 **[The fibcheck index](index/README.md):** 8 popular self-hosted web apps checked. 0 of 17 README claims were false. In their docs pages and wikis, 4 wrong or stale instructions were confirmed across 3 projects (Linkding, Mealie and Uptime Kuma), each with screenshots, two failing Kane runs and a passing control.
 
 ## Quick start
 
-Use Node.js 20.12 or newer with Git, Docker, Kane CLI, and a Gemini API key. Start Docker and put `GEMINI_API_KEY` in `.env` in the directory where you run fibcheck. Use a Gemini project on the free tier.
+Use Node.js 20.12 or newer with Git, Docker, Kane CLI, and a model for fibcheck's agent. Start Docker and put `GEMINI_API_KEY` in `.env` in the directory where you run fibcheck (use a Gemini project on the free tier), or choose another model as described in [Use your own model](#use-your-own-model).
 
 ```sh
 npm install -g @testmuai/kane-cli
@@ -33,6 +35,51 @@ node dist/cli.js check sissbruecker/linkding --url https://bookmarks.example.org
 
 Use `--max-kane-runs 12` to cap Kane invocations per check, including retries and controls. If the budget runs out before a required follow-up, the claim stays unconfirmed. The report lists claims that were never started. Use `--max-kane-runs 0` to extract claims without starting the app or Kane.
 
+## Use your own model
+
+Gemini's free tier is the default. To use any OpenAI-compatible model instead, set three values in `.env`. fibcheck then uses that model for every step, and no Gemini key is needed.
+
+```sh
+# OpenAI
+FIBCHECK_MODEL_BASE_URL=https://api.openai.com/v1
+FIBCHECK_MODEL_API_KEY=sk-...
+FIBCHECK_MODEL=gpt-4.1-mini
+
+# NEAR AI Cloud
+FIBCHECK_MODEL_BASE_URL=https://cloud-api.near.ai/v1
+FIBCHECK_MODEL_API_KEY=...
+FIBCHECK_MODEL=google/gemini-2.5-flash-lite
+
+# OpenRouter
+FIBCHECK_MODEL_BASE_URL=https://openrouter.ai/api/v1
+FIBCHECK_MODEL_API_KEY=sk-or-...
+FIBCHECK_MODEL=meta-llama/llama-3.3-70b-instruct
+
+# A local Ollama model (no key needed on this machine)
+FIBCHECK_MODEL_BASE_URL=http://localhost:11434/v1
+FIBCHECK_MODEL=qwen3:8b
+```
+
+Use one block at a time. The model must support JSON output; a model that cannot follow the JSON format leaves claims unconfirmed rather than guessing.
+
+The same call limits apply to every model (`FIBCHECK_MAX_CALLS_PER_RUN`, 60 by default, and `FIBCHECK_MAX_CALLS_TOTAL`, 1,500), and every call is recorded in `.fibcheck/usage-ledger.jsonl` without its prompt. If you know the model's prices, add them in dollars per million tokens, and fibcheck enforces a dollar cap across all runs (1 dollar unless `FIBCHECK_MODEL_MAX_USD` says otherwise):
+
+```sh
+FIBCHECK_MODEL_PRICE_INPUT=0.4
+FIBCHECK_MODEL_PRICE_OUTPUT=1.6
+FIBCHECK_MODEL_MAX_USD=0.5
+```
+
+Without prices, only the call cap limits use, and the report says that the dollar cost was not tracked. If the model's reply is not usable JSON, that part of a document gives no claims, or the claim stays unconfirmed, and the report lists it. Unusable output never makes a claim false.
+
+## For judges
+
+There are three ways to try fibcheck:
+
+1. **With the judges' Gemini key.** The submission form includes a Gemini API key for judging. It is never in this repository. Put it in `.env` as `GEMINI_API_KEY=...` and follow the quick start. Kane CLI needs your own TestMu AI account (`kane-cli login`).
+2. **With your own model.** Set `FIBCHECK_MODEL_BASE_URL`, `FIBCHECK_MODEL_API_KEY` and `FIBCHECK_MODEL` as shown in [Use your own model](#use-your-own-model), then follow the quick start.
+3. **With no keys at all.** `node dist/cli.js report <check.json>` rebuilds a report and badge from saved evidence without calling Kane or any model. The [fibcheck index](index/README.md) links every claim to its screenshots.
+
 ## Try the local npm package
 
 ```sh
@@ -54,15 +101,15 @@ The check job writes a counts-only summary. The comment job can post that summar
 
 ## What the evidence means
 
-Gemini extracts claims from the selected documentation, so use public source material. Kane executes the browser checks and records step screenshots. fibcheck can then question a failure and run a control. A confirmed outdated verdict requires two distinct Kane failures of the documented assertion, a passing control that rules out a test mistake, and historical evidence of the old behavior. Claims with insufficient evidence stay unconfirmed.
+fibcheck's agent (Gemini by default, or your chosen model) extracts claims from the selected documentation, so use public source material. Kane executes the browser checks and records step screenshots. fibcheck can then question a failure and run a control. A confirmed outdated verdict requires two distinct Kane failures of the documented assertion, a passing control that rules out a test mistake, and historical evidence of the old behavior. Claims with insufficient evidence stay unconfirmed.
 
 The verified Linkding example checks an old instruction to click an Admin tab within Settings. Two independent runs found no in-page tab. A third run used the same account to find the Admin item in the top navigation's Settings dropdown and open Site administration. The control evidence overruled Kane's account diagnosis. After a documentation patch described the dropdown route, a fresh Kane run passed that route.
 
-Linkding's Admin-tab and tag-management claims have hand-reviewed flows. Every other claim goes through the general diagnosis. After each Kane run, Gemini reads the claim and Kane's result, says whether the run tested the claim as written, and names the likely cause of a failure: a Kane misstep, a wrong check, a setup problem, something Kane cannot do, or a real contradiction. It can reword the check once. When two separate Kane failures both read as contradictions, with a written reason the test was not at fault and a passing control, the claim becomes a candidate finding. It stays unconfirmed until a person who has read the evidence decides; fibcheck never calls a claim false on its own. The general diagnosis never reports "outdated", because it does not check the project's history. Each claim uses at most 4 Kane runs. Without `--max-kane-runs`, a check is capped at 4 runs per tested claim. If Gemini is unavailable, the claim stays unconfirmed. Where Gemini disagrees with Kane's own blame label, the report shows the override and its evidence.
+Linkding's Admin-tab and tag-management claims have hand-reviewed flows. Every other claim goes through the general diagnosis. After each Kane run, the model reads the claim and Kane's result, says whether the run tested the claim as written, and names the likely cause of a failure: a Kane misstep, a wrong check, a setup problem, something Kane cannot do, or a real contradiction. It can reword the check once. When two separate Kane failures both read as contradictions, with a written reason the test was not at fault and a passing control, the claim becomes a candidate finding. It stays unconfirmed until a person who has read the evidence decides; fibcheck never calls a claim false on its own. The general diagnosis never reports "outdated", because it does not check the project's history. Each claim uses at most 4 Kane runs. Without `--max-kane-runs`, a check is capped at 4 runs per tested claim. If the model is unavailable or its reply is unusable, the claim stays unconfirmed. Where the model disagrees with Kane's own blame label, the report shows the override and its evidence.
 
-Only public material goes to Gemini: the documentation text, the claim, and a summary of Kane's result. Test passwords, local and private addresses, the address of the app under test, file paths and Kane session links are removed before sending. Public example addresses such as https://example.com are kept, because checks type them into forms. On Gemini's free tier, Google may use that content to improve its products. If `NEAR_AI_API_KEY` is set, the same public content goes to NEAR AI Cloud (model `google/gemini-2.5-flash-lite`) only when Gemini refuses or is overloaded, with a hard $0.20 spending cap.
+Only public material goes to the model: the documentation text, the claim, and a summary of Kane's result. Test passwords, local and private addresses, the address of the app under test, file paths and Kane session links are removed before sending. Public example addresses such as https://example.com are kept, because checks type them into forms. On Gemini's free tier, Google may use that content to improve its products. If `NEAR_AI_API_KEY` is set, the same public content goes to NEAR AI Cloud (model `google/gemini-2.5-flash-lite`) only when Gemini refuses or is overloaded, with a hard $0.20 spending cap.
 
-Use `report` on saved checks to render evidence without calling Gemini or Kane again.
+Use `report` on saved checks to render evidence without calling any model or Kane again.
 
 ## Development checks
 
