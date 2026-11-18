@@ -35,6 +35,13 @@ export interface CheckOptions {
   /** A trusted caller supplies login variables for an already-running disposable app. */
   appRunningSecrets?: Readonly<Record<string, string>>;
   /**
+   * Check an app that is already running at this address instead of starting Docker. Implies `appRunning`.
+   * The address must be http or https and carry no user name or password.
+   */
+  appUrl?: string;
+  /** Replaces the target's login sentence, for example for your own account on an app at `appUrl`. */
+  login?: string;
+  /**
    * A trusted caller can supply reviewed claims instead of model extraction. Each quote must be found in the named
    * document near its cited lines, or the claim is rejected and not tested.
    */
@@ -77,7 +84,8 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   const workDir = options.workDir ?? ".fibcheck";
   const runDir = resolve(options.runsDir ?? "runs", runId);
   mkdirSync(runDir, { recursive: true });
-  const target = resolveTarget(loadTarget(options.targetPath));
+  const loaded = loadTarget(options.targetPath);
+  const target = withAppUrl(resolveTarget(options.login === undefined ? loaded : { ...loaded, login: options.login }), options.appUrl);
   const startedAt = new Date().toISOString();
 
   const repoDir = options.source?.directory ?? fetchRepo(target.repo, join(workDir, "repos", target.name));
@@ -129,11 +137,22 @@ export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[
   return { claims: verified, rejected, cacheHits: 0 };
 }
 
-function validateOptions({ maxKaneRuns, appRunningSecrets, appRunning }: CheckOptions): void {
+/** Points a target at an app that is already running somewhere else. */
+export function withAppUrl(target: ResolvedTarget, appUrl: string | undefined): ResolvedTarget {
+  if (appUrl === undefined) return target;
+  if (!URL.canParse(appUrl)) throw new Error("--url must be a full address such as https://bookmarks.example.org.");
+  const url = new URL(appUrl);
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("--url must start with http:// or https://.");
+  if (url.username || url.password) throw new Error("--url must not contain a user name or password. Put login values in .env instead.");
+  const baseUrl = `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+  return { ...target, baseUrl };
+}
+
+function validateOptions({ maxKaneRuns, appRunningSecrets, appRunning, appUrl }: CheckOptions): void {
   if (maxKaneRuns !== undefined && (!Number.isSafeInteger(maxKaneRuns) || maxKaneRuns < 0)) {
     throw new Error("--max-kane-runs must be a whole number.");
   }
-  if (appRunningSecrets !== undefined && !appRunning) {
+  if (appRunningSecrets !== undefined && !appRunning && !appUrl) {
     throw new Error("appRunningSecrets requires appRunning.");
   }
 }
@@ -157,9 +176,10 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], context: Test
   const { runDir, runId, options, log, client } = context;
   if (claims.length === 0 || options.maxKaneRuns === 0) return [];
   let app: RunningApp | undefined;
-  const variables = options.appRunning ? runningAppVariables(target.login, options.appRunningSecrets ?? {}) : target.kaneVariables;
+  const alreadyRunning = Boolean(options.appRunning || options.appUrl);
+  const variables = alreadyRunning ? runningAppVariables(target.login, options.appRunningSecrets ?? {}) : target.kaneVariables;
   const variablesFile = writeKaneVariables(variables);
-  const managedTarget = options.appRunning ? undefined : target;
+  const managedTarget = alreadyRunning ? undefined : target;
   try {
     if (managedTarget) {
       log(`Starting ${target.app.image} on port ${target.app.port}...`);

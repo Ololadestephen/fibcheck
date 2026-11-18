@@ -5,19 +5,23 @@ import { pathToFileURL } from "node:url";
 import { runCheck } from "./check.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
 import { writeReport } from "./report/report.js";
-import { targetPathFor } from "./target.js";
+import { loadTarget, loginSecretsFromEnv, targetPathFor } from "./target.js";
 
 export const USAGE = `fibcheck: finds the false claims in a web app's README with Kane CLI.
 
 Usage:
-  fibcheck check <target.json | repository> [--max-claims N] [--max-kane-runs N] [--only CLAIM_ID ...] [--app-running]
+  fibcheck check <target.json | repository> [--max-claims N] [--max-kane-runs N] [--only CLAIM_ID ...]
+                 [--url ADDRESS [--login SENTENCE] | --app-running]
   fibcheck report <check.json>
   fibcheck --help
 
 Use sissbruecker/linkding or its GitHub URL for the bundled Linkding target.
 A target file names the repository, its docs, and how to run the app (see targets/).
-The check command needs Kane CLI (npm install -g @testmuai/kane-cli, then kane-cli login),
-Docker, and GEMINI_API_KEY in .env.
+The check command needs Kane CLI (npm install -g @testmuai/kane-cli, then kane-cli login)
+and GEMINI_API_KEY in .env. Without --url it also needs Docker, to start the app from the target.
+--url checks an app that is already running there, with no Docker. --login replaces the target's
+login sentence; write {{NAME}} for a value and put FIBCHECK_LOGIN_NAME=... in .env, for example
+--login "Sign in as {{user}} with password {{pass}}." with FIBCHECK_LOGIN_USER and FIBCHECK_LOGIN_PASS.
 The report command writes report.html and badge.svg beside a saved check.json.
 `;
 
@@ -53,6 +57,8 @@ async function check(args: string[]): Promise<number> {
       "max-kane-runs": { type: "string" },
       only: { type: "string", multiple: true },
       "app-running": { type: "boolean" },
+      url: { type: "string" },
+      login: { type: "string" },
     },
   });
   const [target] = positionals;
@@ -70,8 +76,18 @@ async function check(args: string[]): Promise<number> {
     process.stderr.write("--max-kane-runs must be a whole number.\n");
     return 1;
   }
+  if (values.login !== undefined && values.url === undefined) {
+    process.stderr.write("--login needs --url.\n");
+    return 1;
+  }
+  if (values.url !== undefined && values["app-running"]) {
+    process.stderr.write("Use either --url or --app-running, not both.\n");
+    return 1;
+  }
   const targetPath = targetPathFor(target);
   loadDotEnv();
+  const alreadyRunning = values.url !== undefined || values["app-running"] === true;
+  const login = values.login ?? loadTarget(targetPath).login;
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
   const client = createModelClient(runId);
   const report = await runCheck(client, {
@@ -80,6 +96,9 @@ async function check(args: string[]): Promise<number> {
     maxKaneRuns,
     only: values.only,
     appRunning: values["app-running"],
+    appUrl: values.url,
+    login: values.login,
+    appRunningSecrets: alreadyRunning ? loginSecretsFromEnv(login) : undefined,
     log: (line) => process.stdout.write(`${line}\n`),
   });
   const counts = report.tested.reduce<Record<string, number>>((acc, t) => ((acc[t.kane.status] = (acc[t.kane.status] ?? 0) + 1), acc), {});

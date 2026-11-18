@@ -25,4 +25,22 @@ describe("cli", () => {
       write.mockRestore();
     }
   });
+
+  it("rejects --login without --url, and --url with --app-running, before loading a target", async () => {
+    const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(await main(["check", "missing-target", "--login", "Sign in as {{user}}."])).toBe(1);
+      expect(await main(["check", "missing-target", "--url", "https://example.org", "--app-running"])).toBe(1);
+      expect(write.mock.calls).toEqual([["--login needs --url.\n"], ["Use either --url or --app-running, not both.\n"]]);
+    } finally {
+      write.mockRestore();
+    }
+  });
+
+  it("describes --url in the help text", async () => {
+    const write = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await main(["--help"]);
+    expect(String(write.mock.calls[0]?.[0])).toContain("--url checks an app that is already running there, with no Docker");
+    write.mockRestore();
+  });
 });

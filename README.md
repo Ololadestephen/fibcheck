@@ -24,6 +24,13 @@ node dist/cli.js report runs/REPLACE_WITH_RUN_ID/check.json
 
 The Linkding GitHub clone URL also selects the bundled target. For another public web app, create a target JSON describing its repository, Docker image, port, and any login steps. Use `targets/linkding.json` as an example and pass your file to `check`. `--only` selects a claim by ID, and `--max-claims` limits the number of claims checked.
 
+To check an app that is already running somewhere, with no Docker, pass its address with `--url`. Use `--login` to describe your own sign-in, writing `{{NAME}}` for each value, and put the values in `.env` as `FIBCHECK_LOGIN_NAME=...`. They are passed to Kane as secret variables and are never sent to Gemini.
+
+```sh
+node dist/cli.js check sissbruecker/linkding --url https://bookmarks.example.org \
+  --login "If the login form is shown, sign in as {{user}} with password {{pass}}." --max-claims 2
+```
+
 Use `--max-kane-runs 12` to cap Kane invocations per check, including retries and controls. If the budget runs out before a required follow-up, the claim stays unconfirmed. The report lists claims that were never started. Use `--max-kane-runs 0` to extract claims without starting the app or Kane.
 
 ## Try the local npm package

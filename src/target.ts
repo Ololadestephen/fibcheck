@@ -39,6 +39,20 @@ export interface ResolvedTarget extends Target {
   kaneVariables: Record<string, { value: string; secret: boolean }>;
 }
 
+/** The .env name that holds a login value for an app that is already running, for example FIBCHECK_LOGIN_APP_PASS. */
+export function loginEnvName(name: string): string {
+  return `FIBCHECK_LOGIN_${name.toUpperCase()}`;
+}
+
+/** Reads the login values a login sentence refers to ({{NAME}}) from the environment. Missing values are left out. */
+export function loginSecretsFromEnv(login: Target["login"], env: NodeJS.ProcessEnv = process.env): Record<string, string> {
+  const names = Array.from((login ?? "").matchAll(/\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g), (match) => match[1]!);
+  return Object.fromEntries(names.flatMap((name) => {
+    const value = env[loginEnvName(name)];
+    return value ? [[name, value]] : [];
+  }));
+}
+
 export function runningAppVariables(
   login: Target["login"], secrets: Readonly<Record<string, string>>,
 ): ResolvedTarget["kaneVariables"] {
@@ -46,7 +60,7 @@ export function runningAppVariables(
   return Object.fromEntries(Array.from(names, (name) => {
     const value = Object.hasOwn(secrets, name) ? secrets[name] : undefined;
     if (typeof value !== "string" || value.length === 0) {
-      throw new Error(`Missing Kane login variable "${name}" for the running app. Supply it through appRunningSecrets.`);
+      throw new Error(`Missing login value "${name}" for the running app. Put ${loginEnvName(name)}=... in .env.`);
     }
     return [name, { value, secret: true }];
   }));

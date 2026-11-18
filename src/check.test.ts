@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { startApp } from "./app/docker.js";
-import { localAddressesToApp, objectiveFor, runCheck, verifyReviewedClaims } from "./check.js";
+import { localAddressesToApp, objectiveFor, runCheck, verifyReviewedClaims, withAppUrl } from "./check.js";
 import { cacheKey, extractClaimsCached } from "./claims/cache.js";
 import type { Claim } from "./claims/types.js";
 import { parseKaneOutput } from "./kane/parse.js";
@@ -11,7 +11,7 @@ import { runKane } from "./kane/runner.js";
 import { CallBudget } from "./model/budget.js";
 import { ModelClient } from "./model/client.js";
 import type { ModelProvider } from "./model/types.js";
-import { loadTarget, resolveTarget, runningAppVariables, targetPathFor } from "./target.js";
+import { loadTarget, loginSecretsFromEnv, resolveTarget, runningAppVariables, targetPathFor } from "./target.js";
 
 vi.mock("./app/docker.js", { spy: true });
 vi.mock("./kane/runner.js", { spy: true });
@@ -41,8 +41,8 @@ describe("targets", () => {
     expect(runningAppVariables(login, secrets)).toEqual({
       account: { value: secrets.account, secret: true }, password: { value: secrets.password, secret: true },
     });
-    expect(() => runningAppVariables(login, { account: secrets.account })).toThrow(/Missing Kane login variable "password"/);
-    expect(() => runningAppVariables("Use {{constructor}}.", {})).toThrow(/Missing Kane login variable "constructor"/);
+    expect(() => runningAppVariables(login, { account: secrets.account })).toThrow(/Missing login value "password".*FIBCHECK_LOGIN_PASSWORD/);
+    expect(() => runningAppVariables("Use {{constructor}}.", {})).toThrow(/Missing login value "constructor"/);
     expect(runningAppVariables(undefined, secrets)).toEqual({});
   });
 
@@ -86,6 +86,30 @@ describe("verifyReviewedClaims", () => {
     ]);
     expect(result.claims).toEqual([]);
     expect(result.rejected.map(({ why }) => why)).toEqual(["The quote was not found in the document.", "The document was not read."]);
+  });
+});
+
+describe("withAppUrl and login values", () => {
+  const resolved = { name: "x", repo: "r", app: { image: "i", port: 1, containerPort: 1 }, baseUrl: "http://localhost:1", resolvedEnv: {}, kaneVariables: {} };
+
+  it("points the target at a running app and drops a trailing slash", () => {
+    expect(withAppUrl(resolved, "https://bookmarks.example.org/app/").baseUrl).toBe("https://bookmarks.example.org/app");
+    expect(withAppUrl(resolved, undefined).baseUrl).toBe("http://localhost:1");
+  });
+
+  it.each([
+    ["bookmarks.example.org", "full address"],
+    ["ftp://example.org", "http:// or https://"],
+    ["https://me:secret@example.org", "must not contain a user name or password"],
+  ])("rejects %s", (url, message) => {
+    expect(() => withAppUrl(resolved, url)).toThrow(message);
+  });
+
+  it("reads only the login values the sentence names from FIBCHECK_LOGIN_*", () => {
+    const env = { FIBCHECK_LOGIN_USER: "ada", FIBCHECK_LOGIN_PASS: "pw-1234", FIBCHECK_LOGIN_OTHER: "unused" };
+    expect(loginSecretsFromEnv("Sign in as {{user}} with password {{pass}}.", env)).toEqual({ user: "ada", pass: "pw-1234" });
+    expect(loginSecretsFromEnv("Sign in as {{missing}}.", env)).toEqual({});
+    expect(loginSecretsFromEnv(undefined, env)).toEqual({});
   });
 });
 
