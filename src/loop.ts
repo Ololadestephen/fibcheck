@@ -34,9 +34,9 @@ export async function questionClaim(
   general?: GeneralQuestioning,
 ): Promise<QuestionedRun> {
   const linkding = managedTarget && isLinkdingRepo(managedTarget.repo)
-    && managedTarget.app.image === "sissbruecker/linkding:1.47.0"
-    && managedTarget.app.env?.LD_SUPERUSER_NAME === "pinotest"
-    && managedTarget.app.env.LD_SUPERUSER_PASSWORD === "{{secret:app_pass}}"
+    && managedTarget.app?.image === "sissbruecker/linkding:1.47.0"
+    && managedTarget.app?.env?.LD_SUPERUSER_NAME === "pinotest"
+    && managedTarget.app?.env?.LD_SUPERUSER_PASSWORD === "{{secret:app_pass}}"
     && managedTarget.login?.includes("pinotest and password {{app_pass}}");
   if (linkding && managedTarget.login && prepareTags) {
     const tags = linkdingTagClaim(claim);

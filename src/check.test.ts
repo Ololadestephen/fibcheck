@@ -46,6 +46,16 @@ describe("targets", () => {
     expect(runningAppVariables(undefined, secrets)).toEqual({});
   });
 
+  it("accepts a target without an app section for --url, and refuses to start one in Docker", async () => {
+    const path = join(mkdtempSync(join(tmpdir(), "fibcheck-t-")), "t.json");
+    writeFileSync(path, JSON.stringify({ name: "web", repo: "." }));
+    const target = resolveTarget(loadTarget(path));
+    expect(target.baseUrl).toBe("");
+    expect(withAppUrl(target, "https://game.example.org").baseUrl).toBe("https://game.example.org");
+    const docker = await vi.importActual<typeof import("./app/docker.js")>("./app/docker.js");
+    await expect(docker.startApp(target, "r")).rejects.toThrow("can only be checked with --url");
+  });
+
   it("rejects a target without an app image", () => {
     const path = join(mkdtempSync(join(tmpdir(), "pino-t-")), "t.json");
     writeFileSync(path, JSON.stringify({ name: "t", repo: ".", app: { port: 1, containerPort: 2 } }));
@@ -55,7 +65,7 @@ describe("targets", () => {
   it("loads the shipped linkding target", () => {
     const target = loadTarget("targets/linkding.json");
     expect(target.login).toContain("{{app_pass}}");
-    expect(target.app.env?.LD_SUPERUSER_PASSWORD).toBe("{{secret:app_pass}}");
+    expect(target.app?.env?.LD_SUPERUSER_PASSWORD).toBe("{{secret:app_pass}}");
   });
 
   it("locates the bundled profile by repository or GitHub clone URL", () => {

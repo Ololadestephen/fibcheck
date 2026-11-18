@@ -16,7 +16,8 @@ export interface Target {
   repo: string;
   /** Extra documentation files or folders inside the repository, besides the README and what it links to. */
   docs?: string[];
-  app: {
+  /** How to start the app in Docker. A target used only with `--url` can leave it out. */
+  app?: {
     image: string;
     /** Port on this machine. */
     port: number;
@@ -89,11 +90,11 @@ export function loadTarget(path: string): Target {
   } catch (error) {
     throw new Error(`Could not read target ${path}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  for (const key of ["name", "repo", "app"] as const) {
+  for (const key of ["name", "repo"] as const) {
     if (!target[key]) throw new Error(`Target ${path} is missing "${key}".`);
   }
-  if (!target.app.image || !target.app.port || !target.app.containerPort) {
-    throw new Error(`Target ${path} needs app.image, app.port and app.containerPort.`);
+  if (target.app && (!target.app.image || !target.app.port || !target.app.containerPort)) {
+    throw new Error(`Target ${path} needs app.image, app.port and app.containerPort, or no app section at all for use with --url.`);
   }
   return target;
 }
@@ -106,7 +107,7 @@ export function resolveTarget(target: Target, generate: () => string = () => `Pk
       if (!secrets.has(name)) secrets.set(name, generate());
       return secrets.get(name) ?? "";
     });
-  const resolvedEnv = Object.fromEntries(Object.entries(target.app.env ?? {}).map(([k, v]) => [k, fill(v)]));
+  const resolvedEnv = Object.fromEntries(Object.entries(target.app?.env ?? {}).map(([k, v]) => [k, fill(v)]));
   const kaneVariables = Object.fromEntries([...secrets].map(([name, value]) => [name, { value, secret: true }]));
-  return { ...target, baseUrl: `http://localhost:${target.app.port}`, resolvedEnv, kaneVariables };
+  return { ...target, baseUrl: target.app ? `http://localhost:${target.app.port}` : "", resolvedEnv, kaneVariables };
 }

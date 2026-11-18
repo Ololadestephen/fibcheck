@@ -196,7 +196,7 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], context: Test
   const managedTarget = alreadyRunning ? undefined : target;
   try {
     if (managedTarget) {
-      log(`Starting ${target.app.image} on port ${target.app.port}...`);
+      log(`Starting ${target.app?.image ?? "the app"} on port ${target.app?.port ?? "?"}...`);
       app = await startApp(managedTarget, runId);
     }
     return await runClaims(target, claims, {

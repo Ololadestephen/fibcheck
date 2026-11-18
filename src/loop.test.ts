@@ -148,7 +148,7 @@ function observation(condition: string, expectedValue: string, extractedValue: s
 }
 
 function run(status: "passed" | "failed", id: string, paths: string[], observations: KaneObservation[]): KaneRun {
-  const start = new URL("/login", `http://localhost:${target.app.port}`);
+  const start = new URL("/login", `http://localhost:${target.app?.port ?? 0}`);
   const reason_code = status === "failed" ? "assertion_error.final_verification" : "success.complete";
   const summary = `assert: ${observations[0]?.condition ?? ""}`;
   const failedStep = status === "failed" ? { step: 1, status: "failed" as const, remark: summary } : null;

@@ -16,16 +16,18 @@ export interface RunningApp {
  * the environment of the `docker` process, never on its command line.
  */
 export async function startApp(target: ResolvedTarget, runId: string, timeoutMs = 180_000): Promise<RunningApp> {
+  const spec = target.app;
+  if (!spec) throw new Error(`Target ${target.name} has no app section, so it can only be checked with --url.`);
   const containerName = `fibcheck-${target.name}-${runId}`.replace(/[^a-zA-Z0-9_.-]/g, "-");
   const envArgs = Object.keys(target.resolvedEnv).flatMap((key) => ["-e", key]);
   try {
     await exec(
       "docker",
-      ["run", "-d", "--name", containerName, "-p", `${target.app.port}:${target.app.containerPort}`, ...envArgs, target.app.image],
+      ["run", "-d", "--name", containerName, "-p", `${spec.port}:${spec.containerPort}`, ...envArgs, spec.image],
       { env: { ...process.env, ...target.resolvedEnv } },
     );
   } catch (error) {
-    throw new Error(`Could not start ${target.app.image} with Docker: ${firstLine(error)}`);
+    throw new Error(`Could not start ${spec.image} with Docker: ${firstLine(error)}`);
   }
   const app: RunningApp = {
     containerName,
@@ -35,7 +37,7 @@ export async function startApp(target: ResolvedTarget, runId: string, timeoutMs 
     },
   };
   try {
-    await waitForHttp(`${target.baseUrl}${target.app.readyPath ?? "/"}`, timeoutMs);
+    await waitForHttp(`${target.baseUrl}${spec.readyPath ?? "/"}`, timeoutMs);
   } catch (error) {
     await app.stop();
     throw error;
