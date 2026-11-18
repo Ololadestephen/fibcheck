@@ -1,10 +1,15 @@
 # The fibcheck index
 
-**8 apps checked, 0 README claims confirmed false or outdated.**
+**8 self-hosted apps checked. 0 of 17 README claims were false. In their docs pages and wikis, we confirmed 4 stale instructions across 3 projects: Linkding (2), Mealie (1) and Uptime Kuma (1).**
 
-On November 17, 2026, fibcheck checked 17 claims from the READMEs of 8 popular self-hosted web apps. It used Kane CLI to run each claim in a real browser against the app. 16 claims held. 1 is unconfirmed, because the failure came from how the test typed text, not from the app. No claim met our bar for calling it false.
+On November 17 and 18, 2026, fibcheck checked claims from 8 popular self-hosted web apps, using Kane CLI to run each claim in a real browser against the app.
 
-This is a good result for these projects, and we report it as it is. A tool that checks claims is only useful if it can also say "this held".
+| Where the claim was written | Claims tested | Held | Unconfirmed | Confirmed false or outdated |
+|---|---|---|---|---|
+| README files (8 apps) | 17 | 16 | 1 | 0 |
+| Docs pages and wikis (7 apps, plus Linkding's earlier checks) | 18 | 9 | 5 | 4 |
+
+The READMEs held up well, and we report that as it is. A tool that checks claims is only useful if it can also say "this held". The stale instructions were deeper in the documentation, in step-by-step pages that name exact menus and settings. Those are the lines that quietly go out of date when an interface changes.
 
 ## The rule
 
@@ -16,7 +21,7 @@ A claim counts as false or outdated only when all of these are true:
 
 Kane decides every pass and fail. fibcheck's own model never does. Kane's own guess about who is at fault is a hypothesis, and we override it when the screenshots show otherwise.
 
-## Results
+## README claims
 
 | App | README at | App image | Claims tested | Held | Unconfirmed | False or outdated |
 |---|---|---|---|---|---|---|
@@ -65,19 +70,48 @@ Kane failed this claim twice, and a plain-text control memo passed, so it met th
 - **Mealie, "or entering data manually".** On the first try, Kane blamed Mealie: "the name is already taken". The screenshot shows no error, only the help text "New recipe names must be unique", and Kane left the page before the new recipe opened. A clearer run passed.
 - **Shiori, "add, edit".** In one browser setup, Kane said the add button did nothing and blamed Shiori. The same button opened the add dialog in Kane's own browser, before and after. We treated it as a problem with that setup.
 
-## What a confirmed finding looks like
+## Docs pages and wikis
 
-The index found nothing false, but fibcheck has confirmed two outdated statements in Linkding's documentation (`docs/src/content/docs/admin.md` at `27b7303`, not its README). Both passed the full rule above.
+We read each project's documentation pages and wiki at a pinned commit, not its README, and picked the sentences with exact interface names: menu and button labels, settings names, default values, shortcuts and "go to X, then Y" steps. Memos keeps its user documentation on a separate website, so it has no docs-page claims here. Each check was written by hand next to the quoted sentence, and every quote was verified against the document before Kane ran.
 
-- **Line 14:** "To open the Admin app, go the *Settings* view and click on the *Admin* tab." Two separate Kane runs found no Admin tab inside the Settings page ([run 1](evidence/linkding-docs-l14-run1.jpg)). A control with the same account opened Site administration through the Settings menu in the top navigation ([control](evidence/linkding-docs-l14-control.jpg)). Kane blamed the test account for missing admin rights; the control showed the account had them. Linkding's history shows the tab existed in the Settings template and was later removed, which makes the statement outdated rather than false.
-- **Line 55:** "linkding UI currently only allows to create or assign tags". Two separate Kane runs found Edit and Remove actions on an existing tag on the ordinary Tags page ([run 1](evidence/linkding-docs-l55-run1.jpg)). A passing control renamed a tag on that same page and saw the new name ([control](evidence/linkding-docs-l55-control.jpg)). The second half of the sentence, that the admin app can manage tags, held.
+### Confirmed findings
 
-We have not contacted the Linkding project about these. Any issue or pull request will be shared with them in a friendly way, and only after a person on our side has approved the exact text.
+Each of these failed twice in separate Kane runs, had a passing control, and was read by hand from the screenshots.
+
+- **Mealie, [FAQ line 30](https://github.com/mealie-recipes/mealie/blob/e2c0c3b1bfd7a785dde8e9704f1c8475333613ae/docs/docs/documentation/getting-started/faq.md?plain=1#L30): outdated.** "Click the Recipe Settings gear and deselect `Disable Ingredient Amounts`". In four runs, the Recipe Settings panel opened with six switches and none of them was Disable Ingredient Amounts ([run](evidence/mealie-docs-faq-l30-run.jpg), [control](evidence/mealie-docs-faq-l30-control.jpg)). The six switches match Mealie's own `RecipeSettingsSwitches.vue` at the same commit. The switch was removed in Mealie's commit `245ca5f` on July 31, 2025 ("Remove 'Is Food' and 'Disable Amounts' Flags", #5684).
+- **Uptime Kuma, [wiki Maintenance page](https://github.com/louislam/uptime-kuma/wiki/Maintenance) line 12 (wiki commit `cf7fe32`): false.** "You can access the maintenance management via the menu at the top left." In two strict runs, clicking the top left of the header opened no menu ([run](evidence/uptime-kuma-wiki-maintenance-run.jpg)). The control reached Maintenance through the profile menu at the top right ([control](evidence/uptime-kuma-wiki-maintenance-control.jpg)), which is also what the wiki's own screenshot shows, so this is most likely a slip of wording. A first, looser Kane run had passed this claim by asserting a menu that was not on screen, which is why every pass is read by hand.
+- **Linkding, [admin.md line 14](https://github.com/sissbruecker/linkding/blob/27b7303baf41bb28babc610ac8eaa486e1ddfab5/docs/src/content/docs/admin.md?plain=1#L14): outdated.** "To open the Admin app, go the *Settings* view and click on the *Admin* tab." Two separate Kane runs found no Admin tab inside the Settings page ([run 1](evidence/linkding-docs-l14-run1.jpg)). A control with the same account opened Site administration through the Settings menu in the top navigation ([control](evidence/linkding-docs-l14-control.jpg)). Kane blamed the test account for missing admin rights; the control showed the account had them. Linkding's history shows the tab existed in the Settings template and was later removed.
+- **Linkding, [admin.md line 55](https://github.com/sissbruecker/linkding/blob/27b7303baf41bb28babc610ac8eaa486e1ddfab5/docs/src/content/docs/admin.md?plain=1#L55): outdated.** "linkding UI currently only allows to create or assign tags". Two separate Kane runs found Edit and Remove actions on an existing tag on the ordinary Tags page ([run 1](evidence/linkding-docs-l55-run1.jpg)). A passing control renamed a tag on that same page and saw the new name ([control](evidence/linkding-docs-l55-control.jpg)). The second half of the sentence, that the admin app can manage tags, held.
+
+We have not contacted these projects. Any issue or pull request will be shared with them in a friendly way, and only after a person on our side has approved the exact text.
+
+### Every docs-page claim
+
+| App | Where | Claim | Result |
+|---|---|---|---|
+| Uptime Kuma | wiki, Maintenance | "via the menu at the top left" | False |
+| Uptime Kuma | wiki, Reverse Proxy | "Go to `Settings` → `Reverse Proxy` → `HTTP Headers` and set `Trust Proxy` to Yes." | Held |
+| Uptime Kuma | wiki, Badge | Badge maker from a status page in edit mode | Unconfirmed: Kane's run ended in an error |
+| Mealie | features.md line 83 | The planner "shows you the previous day and the next 6 days by default" | Unconfirmed (see below) |
+| Mealie | faq.md line 15 | "Click on your name in the upper left corner to get to your settings", then Manage Data | Held |
+| Mealie | faq.md line 30 | "deselect `Disable Ingredient Amounts`" | Outdated |
+| Linkding | shortcuts.md line 10 | The `n` key adds a new bookmark | Held |
+| Linkding | search.md line 32 | A "lax" tag search mode in the settings | Unconfirmed: the check changed the setting after searching |
+| File Browser | customization.md line 16 | Branding options under Settings → Global Settings | Held |
+| File Browser | customization.md line 11 | "Disable Used Percentage" hides disk usage on the sidebar | Unconfirmed: the two failures had different causes |
+| FreshRSS | 04_Subscriptions.md line 102 | Export through Subscriptions management, then Import / export | Held |
+| FreshRSS | 08_sharing_services.md line 48 | The sharing menu is under Configuration / Display | Unconfirmed: the check did not match how the setting is shown |
+| Shiori | Usage.md line 102 | `tag:` and `-tag:` in the search bar | Held |
+| Shiori | Usage.md line 104 | Clicking a tag name in the tags dialog includes it | Held |
+| PrivateBin | wiki, Configuration | Open discussion is not preselected by default | Held |
+| PrivateBin | wiki, Configuration | File upload is off by default | Held |
+
+**Mealie's planner range** is the one we would most like to finish. Both runs saw the default view as Sunday 15 to Saturday 21 November, with today on the 18th, not the previous day through six days ahead ([screenshot](evidence/mealie-docs-planner-run2.jpg)). Kane still marked the second run as passed, contradicting its own recorded dates, and the budget ran out before a third run. So it stays unconfirmed.
 
 ## Cost and discarded runs
 
-- **Kane runs:** 45 in all, at most 9 for any app.
-- **Credits:** Kane's own run reports add up to 1,928 credits. The account balance fell by 2,469 credits, because Kane charges a little more than its runs report.
+- **README index, November 17:** 45 Kane runs, at most 9 for any app. Kane's own run reports add up to 1,928 credits; the account balance fell by 2,469 credits, because Kane charges a little more than its runs report.
+- **Docs-page hunt, November 18:** the account balance fell by 1,392 credits for the 16 docs claims, their reproductions and controls.
 - **Discarded runs.** These never count for or against a claim, and their evidence is kept:
   - early runs that shared one browser in parallel and opened the wrong app;
   - runs in a separate browser setup where sign-in did not submit;
@@ -88,4 +122,5 @@ We have not contacted the Linkding project about these. Any issue or pull reques
 
 - A claim that held rests on one passing Kane run that tested it as written. That shows the feature worked in this version and setup. It does not prove every part of a broad claim.
 - Kane cannot check new browser tabs or windows, and its text entry can bypass editors that format as you type. Claims like these stay unconfirmed.
-- The index covers 2 or 3 claims per app, chosen because they can be tested in a browser. It is not a full audit of any README.
+- The index covers 2 or 3 claims per app, chosen because they can be tested in a browser. It is not a full audit of any README or documentation site.
+- Wikis change without releases, so the Uptime Kuma and PrivateBin wiki claims are pinned to the wiki commit we read, not to an app version.
