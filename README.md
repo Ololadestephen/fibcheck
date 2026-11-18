@@ -2,7 +2,7 @@
 
 fibcheck is a lie detector for READMEs. It checks claims in public web app documentation with Kane CLI. It quotes the original claim, runs the browser check against the app, and records screenshots and questioning rounds. The local report shows Kane's outcomes alongside fibcheck's verdicts.
 
-**[The fibcheck index](index/README.md):** 8 popular self-hosted web apps checked. 0 of 17 README claims were false. In their docs pages and wikis, 4 stale instructions were confirmed across 3 projects (Linkding, Mealie and Uptime Kuma), each with screenshots, two failing Kane runs and a passing control.
+**[The fibcheck index](index/README.md):** 8 popular self-hosted web apps checked. 0 of 17 README claims were false. In their docs pages and wikis, 4 wrong or stale instructions were confirmed across 3 projects (Linkding, Mealie and Uptime Kuma), each with screenshots, two failing Kane runs and a passing control.
 
 ## Quick start
 
