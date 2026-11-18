@@ -6,6 +6,7 @@ import { startApp, type RunningApp } from "./app/docker.js";
 import { extractClaimsCached } from "./claims/cache.js";
 import { collectDocuments } from "./claims/documents.js";
 import { locateQuote } from "./claims/quotes.js";
+import { rankClaims } from "./claims/rank.js";
 import type { Claim, RejectedClaim, SourceDocument } from "./claims/types.js";
 import { runKane, type KaneRun } from "./kane/runner.js";
 import { seedLinkdingTags } from "./linkding-tags.js";
@@ -71,6 +72,8 @@ export interface CheckReport {
   tested: ClaimRun[];
   /** Testable claims not run in this check (over the limit or not selected). */
   notTested: string[];
+  /** Testable claims from most to least specific, with the reasons for each score. Older checks lack it. */
+  ranking?: { id: string; score: number; reasons: string[] }[];
   kaneCredits: number;
   /** `models` lists every model that answered in this check; older checks lack it. */
   model: { calls: number; inputTokens: number; outputTokens: number; cacheHits: number; models?: string[] };
@@ -99,10 +102,13 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   const testable = extraction.claims.filter((c) => c.type !== "untestable" && c.check);
   log(`Found ${extraction.claims.length} claims (${testable.length} testable), ${extraction.rejected.length} rejected quotes, ${extraction.cacheHits} document(s) from cache.`);
 
-  const selected = (options.only?.length ? testable.filter((c) => options.only?.includes(c.id)) : testable).slice(0, options.maxClaims ?? 5);
+  // The most specific claims first: named controls, steps, settings and defaults are what go stale.
+  const ranked = rankClaims(testable);
+  const candidates = ranked.map(({ claim }) => claim);
+  const selected = (options.only?.length ? candidates.filter((c) => options.only?.includes(c.id)) : candidates).slice(0, options.maxClaims ?? 5);
   const tested = await testClaims(target, selected, { runDir, runId, options, log, client });
   const testedClaims = new Set(tested.map(({ claim }) => claim.id));
-  const notTested = testable.filter((claim) => !testedClaims.has(claim.id)).map((claim) => claim.id);
+  const notTested = candidates.filter((claim) => !testedClaims.has(claim.id)).map((claim) => claim.id);
 
   const report: CheckReport = {
     runId,
@@ -116,6 +122,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
     rejected: extraction.rejected,
     tested,
     notTested,
+    ranking: ranked.map(({ claim, score, reasons }) => ({ id: claim.id, score, reasons })),
     kaneCredits: totalKaneCredits(tested),
     model: { ...client.usage(), cacheHits: extraction.cacheHits },
   };

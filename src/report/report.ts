@@ -84,7 +84,10 @@ function renderReport(report: CheckReport, counts: ResultCounts, badge: ReturnTy
   const runs = runByClaim(report);
   const skipped = new Set(report.notTested);
   const tested = report.claims.filter((claim) => runs.has(claim.id));
-  const remaining = report.claims.filter((claim) => !runs.has(claim.id));
+  // Claims that were not run come first, in the order the specificity ranking put them; untestable claims follow.
+  const order = new Map(report.notTested.map((id, index) => [id, index]));
+  const remaining = report.claims.filter((claim) => !runs.has(claim.id))
+    .sort((a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER));
   const name = escapeHtml(report.target);
   const questioned = counts.withoutVerdict < counts.tested;
   return `<!doctype html>

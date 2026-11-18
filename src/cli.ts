@@ -22,6 +22,8 @@ and GEMINI_API_KEY in .env. Without --url it also needs Docker, to start the app
 --url checks an app that is already running there, with no Docker. --login replaces the target's
 login sentence; write {{NAME}} for a value and put FIBCHECK_LOGIN_NAME=... in .env, for example
 --login "Sign in as {{user}} with password {{pass}}." with FIBCHECK_LOGIN_USER and FIBCHECK_LOGIN_PASS.
+Claims are ranked by how specific they are (named menus, buttons, settings, defaults and steps).
+The top --max-claims (default 5; 5 to 10 is a good range) are tested, and the rest are listed as not tested.
 The report command writes report.html and badge.svg beside a saved check.json.
 `;
 

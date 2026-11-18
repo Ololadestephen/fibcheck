@@ -22,7 +22,7 @@ The check prints the path to its `check.json`. Pass that path to `report` to wri
 node dist/cli.js report runs/REPLACE_WITH_RUN_ID/check.json
 ```
 
-The Linkding GitHub clone URL also selects the bundled target. For another public web app, create a target JSON describing its repository, Docker image, port, and any login steps. Use `targets/linkding.json` as an example and pass your file to `check`. `--only` selects a claim by ID, and `--max-claims` limits the number of claims checked.
+The Linkding GitHub clone URL also selects the bundled target. For another public web app, create a target JSON describing its repository, Docker image, port, and any login steps. Use `targets/linkding.json` as an example and pass your file to `check`. `--only` selects a claim by ID. fibcheck ranks the testable claims by how specific they are: named menus, tabs, buttons and settings, default values, shortcuts and step-by-step instructions come first, because those are the lines that go stale when an interface changes. The top `--max-claims` claims are tested (5 by default; 5 to 10 is a good range), and the rest are listed in the report as not tested, in ranked order, with the reasons for each score in `check.json`.
 
 To check an app that is already running somewhere, with no Docker, pass its address with `--url`. Use `--login` to describe your own sign-in, writing `{{NAME}}` for each value, and put the values in `.env` as `FIBCHECK_LOGIN_NAME=...`. They are passed to Kane as secret variables and are never sent to Gemini.
 

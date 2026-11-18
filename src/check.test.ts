@@ -184,6 +184,29 @@ describe("check Kane run limit", () => {
   });
 });
 
+describe("claim ranking in a check", () => {
+  it("lists untested claims from most to least specific and saves the ranking", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "fibcheck-rank-"));
+    try {
+      const quotes = ["Clean and simple to use", "Click the `Admin` tab in the Settings page"];
+      writeFileSync(join(dir, "README.md"), quotes.join("\n"));
+      const targetPath = join(dir, "target.json");
+      writeFileSync(targetPath, JSON.stringify({ name: "t", repo: dir, app: { image: "test", port: 1, containerPort: 2 } }));
+      const client = new ModelClient({ name: "unused", async generate() { throw new Error("not called"); } },
+        new CallBudget({ maxCallsPerRun: 1, maxCallsTotal: 1 }, "r", join(dir, "totals"), join(dir, "ledger")));
+      const reviewedClaims = quotes.map((quote, i) => ({
+        id: `README.md#L${i + 1}`, type: "behaviour" as const, quote, check: quote, source: { file: "README.md", startLine: i + 1, endLine: i + 1 },
+      }));
+      const report = await runCheck(client, { targetPath, source: { directory: dir, commit: "fixture" }, runsDir: dir, workDir: dir, maxKaneRuns: 0, reviewedClaims });
+      expect(report.notTested).toEqual(["README.md#L2", "README.md#L1"]);
+      expect(report.ranking?.map(({ id }) => id)).toEqual(["README.md#L2", "README.md#L1"]);
+      expect(report.ranking?.[0]?.reasons).toEqual(expect.arrayContaining(["1 named item"]));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("running app login", () => {
   it.each([false, true])("keeps the login secret private and removes it when Kane fails (%s)", async (fails) => {
     const dir = mkdtempSync(join(tmpdir(), "pino-login-"));
