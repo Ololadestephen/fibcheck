@@ -49,17 +49,20 @@ function mentionsAll(check: string, patterns: string[]): boolean {
   return patterns.every((pattern) => new RegExp(pattern, "i").test(check));
 }
 
+/** The claim has the right type, a check or reason, the required wording, and does not also cover another reviewed clause. */
+function passesReview(claim: Claim, review: Review, reviews: Review[]): boolean {
+  const explanation = claim.type === "untestable" ? claim.reason : claim.check;
+  if (!review.types.includes(claim.type) || !explanation?.trim()) return false;
+  if (!mentionsAll(claim.check ?? "", review.mustMention ?? [])) return false;
+  return !reviews.some((other) => other !== review && other.line === review.line && matchesQuote(claim, other));
+}
+
 function reviewChecks(claims: Claim[], reviews: Review[]) {
   return reviews.map((review) => {
     const candidates = claims.filter((claim) => (
       claim.source.startLine === review.line && matchesQuote(claim, review)
     ));
-    const match = candidates.find((claim) => (
-      review.types.includes(claim.type)
-      && (claim.type === "untestable" ? claim.reason : claim.check)?.trim()
-      && mentionsAll(claim.check ?? "", review.mustMention ?? [])
-      && !reviews.some((other) => other !== review && other.line === review.line && matchesQuote(claim, other))
-    ));
+    const match = candidates.find((claim) => passesReview(claim, review, reviews));
     return { expected: review, claim: match ?? candidates[0] ?? null, ok: match !== undefined };
   });
 }

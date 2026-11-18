@@ -80,14 +80,23 @@ export function countResults(report: CheckReport) {
 
 type ResultCounts = ReturnType<typeof countResults>;
 
+/** Claims that were not run come first, in the order the specificity ranking put them; untestable claims follow. */
+function remainingInRankOrder(report: CheckReport, runs: Map<string, ClaimRun>): Claim[] {
+  const order = new Map(report.notTested.map((id, index) => [id, index]));
+  const position = (claim: Claim) => order.get(claim.id) ?? Number.MAX_SAFE_INTEGER;
+  return report.claims.filter((claim) => !runs.has(claim.id)).sort((a, b) => position(a) - position(b));
+}
+
+function modelNote(report: CheckReport): string {
+  const models = report.model?.models;
+  return models?.length ? `Model: ${escapeHtml(models.join(", "))} · ` : "";
+}
+
 function renderReport(report: CheckReport, counts: ResultCounts, badge: ReturnType<typeof renderBadge>, directory: string, inputName: string): string {
   const runs = runByClaim(report);
   const skipped = new Set(report.notTested);
   const tested = report.claims.filter((claim) => runs.has(claim.id));
-  // Claims that were not run come first, in the order the specificity ranking put them; untestable claims follow.
-  const order = new Map(report.notTested.map((id, index) => [id, index]));
-  const remaining = report.claims.filter((claim) => !runs.has(claim.id))
-    .sort((a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+  const remaining = remainingInRankOrder(report, runs);
   const name = escapeHtml(report.target);
   const questioned = counts.withoutVerdict < counts.tested;
   return `<!doctype html>
@@ -105,7 +114,7 @@ function renderReport(report: CheckReport, counts: ResultCounts, badge: ReturnTy
     <img src="badge.svg" alt="fibcheck · ${escapeHtml(badge.label)}" width="${badge.width}" height="34">
     <h1>${name}</h1>
     <p class="meta">${escapeHtml(report.repo)}${report.commit ? ` · <code>${escapeHtml(report.commit.slice(0, 12))}</code>` : ""}</p>
-    <p class="meta">Run <time datetime="${escapeHtml(report.startedAt)}">${escapeHtml(report.startedAt)}</time> · ${report.kaneCredits.toFixed(1)} Kane credits reported · ${report.model?.models?.length ? `Model: ${escapeHtml(report.model.models.join(", "))} · ` : ""}<a href="${encodeURIComponent(inputName)}">Check JSON</a></p>
+    <p class="meta">Run <time datetime="${escapeHtml(report.startedAt)}">${escapeHtml(report.startedAt)}</time> · ${report.kaneCredits.toFixed(1)} Kane credits reported · ${modelNote(report)}<a href="${encodeURIComponent(inputName)}">Check JSON</a></p>
   </header>
   ${questioned ? renderVerdictScore(counts) : ""}
   <section aria-labelledby="results">

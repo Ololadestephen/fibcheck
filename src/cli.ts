@@ -50,7 +50,18 @@ function report(args: string[]): number {
   return 0;
 }
 
-async function check(args: string[]): Promise<number> {
+interface CheckArgs {
+  target: string;
+  maxClaims?: number;
+  maxKaneRuns?: number;
+  only?: string[];
+  appRunning?: boolean;
+  url?: string;
+  login?: string;
+}
+
+/** Parses and validates `check` arguments, returning an error message instead of throwing. */
+export function parseCheckArgs(args: string[]): CheckArgs | string {
   const { values, positionals } = parseArgs({
     args,
     allowPositionals: true,
@@ -64,51 +75,55 @@ async function check(args: string[]): Promise<number> {
     },
   });
   const [target] = positionals;
-  if (!target || positionals.length !== 1) {
-    process.stderr.write(`check needs one target file or repository.\n\n${USAGE}`);
+  if (!target || positionals.length !== 1) return `check needs one target file or repository.\n\n${USAGE}`;
+  const maxClaims = wholeNumber(values["max-claims"], Number.isInteger);
+  if (maxClaims === null) return "--max-claims must be a whole number.\n";
+  const maxKaneRuns = wholeNumber(values["max-kane-runs"], Number.isSafeInteger);
+  if (maxKaneRuns === null) return "--max-kane-runs must be a whole number.\n";
+  if (values.login !== undefined && values.url === undefined) return "--login needs --url.\n";
+  if (values.url !== undefined && values["app-running"]) return "Use either --url or --app-running, not both.\n";
+  return { target, maxClaims, maxKaneRuns, only: values.only, appRunning: values["app-running"], url: values.url, login: values.login };
+}
+
+/** undefined when absent, null when not a non-negative whole number. */
+function wholeNumber(raw: string | undefined, isWhole: (value: number) => boolean): number | undefined | null {
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  return isWhole(value) && value >= 0 ? value : null;
+}
+
+async function check(args: string[]): Promise<number> {
+  const parsed = parseCheckArgs(args);
+  if (typeof parsed === "string") {
+    process.stderr.write(parsed);
     return 1;
   }
-  const maxClaims = values["max-claims"] === undefined ? undefined : Number(values["max-claims"]);
-  if (maxClaims !== undefined && (!Number.isInteger(maxClaims) || maxClaims < 0)) {
-    process.stderr.write("--max-claims must be a whole number.\n");
-    return 1;
-  }
-  const maxKaneRuns = values["max-kane-runs"] === undefined ? undefined : Number(values["max-kane-runs"]);
-  if (maxKaneRuns !== undefined && (!Number.isSafeInteger(maxKaneRuns) || maxKaneRuns < 0)) {
-    process.stderr.write("--max-kane-runs must be a whole number.\n");
-    return 1;
-  }
-  if (values.login !== undefined && values.url === undefined) {
-    process.stderr.write("--login needs --url.\n");
-    return 1;
-  }
-  if (values.url !== undefined && values["app-running"]) {
-    process.stderr.write("Use either --url or --app-running, not both.\n");
-    return 1;
-  }
-  const targetPath = targetPathFor(target);
+  const targetPath = targetPathFor(parsed.target);
   loadDotEnv();
-  const alreadyRunning = values.url !== undefined || values["app-running"] === true;
-  const login = values.login ?? loadTarget(targetPath).login;
+  const alreadyRunning = parsed.url !== undefined || parsed.appRunning === true;
+  const login = parsed.login ?? loadTarget(targetPath).login;
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
-  const client = createModelClient(runId);
-  const report = await runCheck(client, {
+  const report = await runCheck(createModelClient(runId), {
     targetPath,
-    maxClaims,
-    maxKaneRuns,
-    only: values.only,
-    appRunning: values["app-running"],
-    appUrl: values.url,
-    login: values.login,
+    maxClaims: parsed.maxClaims,
+    maxKaneRuns: parsed.maxKaneRuns,
+    only: parsed.only,
+    appRunning: parsed.appRunning,
+    appUrl: parsed.url,
+    login: parsed.login,
     appRunningSecrets: alreadyRunning ? loginSecretsFromEnv(login) : undefined,
     log: (line) => process.stdout.write(`${line}\n`),
   });
-  const counts = report.tested.reduce<Record<string, number>>((acc, t) => ((acc[t.kane.status] = (acc[t.kane.status] ?? 0) + 1), acc), {});
-  process.stdout.write(
-    `\nTested ${report.tested.length} claim(s). Initial Kane results: ${Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(", ") || "none"}. ` +
-      `Not tested: ${report.notTested.length}. Kane credits: ${report.kaneCredits.toFixed(1)}. Model calls: ${report.model.calls}${report.model.models?.length ? ` (${report.model.models.join(", ")})` : ""}.\n`,
-  );
+  process.stdout.write(summaryLine(report));
   return 0;
+}
+
+function summaryLine(report: Awaited<ReturnType<typeof runCheck>>): string {
+  const counts = report.tested.reduce<Record<string, number>>((acc, t) => ((acc[t.kane.status] = (acc[t.kane.status] ?? 0) + 1), acc), {});
+  const results = Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(", ") || "none";
+  const models = report.model.models?.length ? ` (${report.model.models.join(", ")})` : "";
+  return `\nTested ${report.tested.length} claim(s). Initial Kane results: ${results}. ` +
+    `Not tested: ${report.notTested.length}. Kane credits: ${report.kaneCredits.toFixed(1)}. Model calls: ${report.model.calls}${models}.\n`;
 }
 
 const executable = process.argv[1];

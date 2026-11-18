@@ -88,7 +88,7 @@ export class CallBudget {
   /** Calls and tokens used so far in this run. */
   /** Calls and tokens for this run, and every model that answered. */
   runSummary(): { calls: number; models: string[] } & TokenUsage {
-    return { calls: this.runCalls, ...this.runUsage, models: [...this.runModels].sort() };
+    return { calls: this.runCalls, ...this.runUsage, models: [...this.runModels].sort((a, b) => a.localeCompare(b)) };
   }
 
   private readTotals(): TotalsFile {
