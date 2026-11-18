@@ -28,7 +28,7 @@ function kane(status: KaneRun["status"], id: string, blame: KaneBlame | null = n
 function diagnosis(overrides: Partial<Diagnosis>): Diagnosis {
   return {
     exercisedClaim: true, cause: "unclear", reason: "Reason.", ownMistakeRuledOut: "", kaneBlame: "none",
-    blameEvidence: "", revisedCheck: "", controlCheck: "", ...overrides,
+    blameEvidence: "", revisedCheck: "", controlCheck: "", visibleWording: "", ...overrides,
   };
 }
 
@@ -63,6 +63,22 @@ describe("questionGenerally", () => {
     const { result, rounds } = await perform([kane("passed", "a")], [diagnosis({})]);
     expect(result.questioning.verdict).toBe("true");
     expect(rounds).toEqual([{ purpose: "initial", objective: `LOGIN. ${claim.check}` }]);
+  });
+
+  it("reports a pass whose visible text differs from the docs as worded differently, never as a fib", async () => {
+    const { result, rounds } = await perform([kane("passed", "a")], [diagnosis({ visibleWording: 'Button labelled "Attack" (documentation: "Basic Attack")' })]);
+    expect(rounds).toHaveLength(1);
+    expect(result.questioning).toMatchObject({
+      verdict: "worded_differently",
+      wording: { documented: claim.quote, visible: 'Button labelled "Attack" (documentation: "Basic Attack")' },
+    });
+    expect(result.questioning.reason).toContain("not a fib");
+  });
+
+  it("does not report wording for a failed or unfaithful run", async () => {
+    const { result } = await perform([kane("passed", "a")], [diagnosis({ exercisedClaim: false, visibleWording: "Attack" })]);
+    expect(result.questioning.verdict).toBe("unconfirmed");
+    expect(result.questioning.wording).toBeUndefined();
   });
 
   it("rewords a pass that did not exercise the claim, then accepts a faithful pass", async () => {

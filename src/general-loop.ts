@@ -35,6 +35,7 @@ interface LoopState {
   diagnoses: NonNullable<Questioning["diagnoses"]>;
   rewordsLeft: number;
   candidateFinding?: boolean;
+  wording?: { documented: string; visible: string };
 }
 
 interface Attempt {
@@ -76,6 +77,10 @@ export async function questionGenerally(
 
 async function decide(state: LoopState, attempt: Attempt, diagnosis: Diagnosis): Promise<QuestionedRun | Attempt> {
   if (attempt.kane.status === "passed") {
+    if (diagnosis.exercisedClaim && diagnosis.visibleWording) {
+      state.wording = { documented: state.claim.quote, visible: diagnosis.visibleWording };
+      return outcome(state, "worded_differently", `Kane passed a run that exercised the documented behaviour, but the interface words it differently: ${diagnosis.visibleWording}. This is a wording suggestion, not a fib.`);
+    }
     if (diagnosis.exercisedClaim) return outcome(state, "true", `Kane passed a run that exercised the documented claim. ${diagnosis.reason}`);
     return await reword(state, diagnosis)
       ?? outcome(state, "unconfirmed", `Kane passed, but the run did not exercise the documented claim. ${diagnosis.reason}`);
@@ -142,6 +147,9 @@ async function review(state: LoopState, attempt: Attempt): Promise<Diagnosis | u
 }
 
 function outcome(state: LoopState, verdict: ClaimVerdict, reason: string): QuestionedRun {
-  const { initial, followUps, overrides, diagnoses, candidateFinding } = state;
-  return { kane: initial, questioning: { verdict, reason, initialReason: INITIAL_REASON, followUps, overrides, diagnoses, ...(candidateFinding ? { candidateFinding } : {}) } };
+  const { initial, followUps, overrides, diagnoses, candidateFinding, wording } = state;
+  return {
+    kane: initial,
+    questioning: { verdict, reason, initialReason: INITIAL_REASON, followUps, overrides, diagnoses, ...(candidateFinding ? { candidateFinding } : {}), ...(wording ? { wording } : {}) },
+  };
 }

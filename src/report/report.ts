@@ -42,6 +42,7 @@ const RESULT_LABELS = {
 
 const VERDICT_LABELS = {
   true: "True",
+  worded_differently: "True, worded differently",
   false: "False",
   outdated: "Outdated",
   unconfirmed: "Unconfirmed",
@@ -56,7 +57,7 @@ export function countResults(report: CheckReport) {
   const skipped = new Set(report.notTested);
   const counts = {
     tested: runs.size, passed: 0, failed: 0, error: 0, cancelled: 0, skipped: 0, untestable: 0, withoutVerdict: 0, verifiedPasses: 0,
-    verdicts: { true: 0, false: 0, outdated: 0, unconfirmed: 0 } satisfies Record<ClaimVerdict, number>,
+    verdicts: { true: 0, worded_differently: 0, false: 0, outdated: 0, unconfirmed: 0 } satisfies Record<ClaimVerdict, number>,
   };
   for (const { kane, questioning } of runs.values()) {
     if (!Object.hasOwn(RESULT_LABELS, kane.status)) throw new Error("Unknown Kane result status.");
@@ -65,7 +66,8 @@ export function countResults(report: CheckReport) {
       if (!Object.hasOwn(VERDICT_LABELS, questioning.verdict)) throw new Error("Unknown claim verdict.");
       counts.verdicts[questioning.verdict]++;
       const decisive = questioning.followUps.at(-1)?.kane ?? kane;
-      if (questioning.verdict === "true" && decisive.status === "passed" && decisive.exitCode === 0) counts.verifiedPasses++;
+      const held = questioning.verdict === "true" || questioning.verdict === "worded_differently";
+      if (held && decisive.status === "passed" && decisive.exitCode === 0) counts.verifiedPasses++;
     } else {
       counts.withoutVerdict++;
     }
@@ -85,6 +87,19 @@ function remainingInRankOrder(report: CheckReport, runs: Map<string, ClaimRun>):
   const order = new Map(report.notTested.map((id, index) => [id, index]));
   const position = (claim: Claim) => order.get(claim.id) ?? Number.MAX_SAFE_INTEGER;
   return report.claims.filter((claim) => !runs.has(claim.id)).sort((a, b) => position(a) - position(b));
+}
+
+/** Claims whose behaviour held but whose visible wording differs from the docs. Suggestions, never fibs. */
+function renderWordingSuggestions(report: CheckReport): string {
+  const items = report.tested.flatMap(({ claim, questioning }) => (
+    questioning?.verdict === "worded_differently" && questioning.wording ? [{ claim, wording: questioning.wording }] : []
+  ));
+  if (items.length === 0) return "";
+  return `<section aria-labelledby="wording">
+    <h2 id="wording">Wording suggestions</h2>
+    <p class="meta">The behaviour held in each case, so none of these counts as a fib. The documentation could use the interface's own words.</p>
+    <ul>${items.map(({ claim, wording }) => `<li><strong>${escapeHtml(claim.source.file)}, line ${claim.source.startLine}:</strong> “${escapeHtml(wording.documented)}”. The app shows ${escapeHtml(wording.visible)}.</li>`).join("")}</ul>
+  </section>`;
 }
 
 function modelNote(report: CheckReport): string {
@@ -119,6 +134,7 @@ function renderReport(report: CheckReport, counts: ResultCounts, badge: ReturnTy
     <p class="meta">Run <time datetime="${escapeHtml(report.startedAt)}">${escapeHtml(report.startedAt)}</time> · ${report.kaneCredits.toFixed(1)} Kane credits reported · ${modelNote(report)}<a href="${encodeURIComponent(inputName)}">Check JSON</a></p>
   </header>
   ${questioned ? renderVerdictScore(counts) : ""}
+  ${renderWordingSuggestions(report)}
   <section aria-labelledby="results">
     <h2 id="results">${questioned ? "Initial Kane results" : "Kane results"}</h2>
     ${questioned ? "" : "<p>These results describe individual browser checks. Claim verdicts require the questioning loop.</p>"}

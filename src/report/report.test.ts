@@ -128,6 +128,23 @@ describe("fibcheck report", () => {
     expect(badge).toContain('data-state="findings"');
   });
 
+  it("lists worded-differently claims as wording suggestions and never counts them as findings", () => {
+    const kane = sampleRun(directory, "passed", 0);
+    const questioning = {
+      verdict: "worded_differently" as const, reason: "Behaviour held; the button says Attack.", initialReason: "Run the check.", followUps: [], overrides: [],
+      wording: { documented: "Each fighter has Basic Attack, Defence and a distinct Special.", visible: 'Button labelled "Attack"' },
+    };
+    saveCheck(input, [tab], [{ claim: tab, kane, questioning }], []);
+    const { htmlPath, badgePath } = writeReport(input);
+    const html = readFileSync(htmlPath, "utf8");
+    expect(html).toContain("Wording suggestions");
+    expect(html).toContain("Button labelled &quot;Attack&quot;");
+    expect(html).toContain("<dt>True, worded differently</dt><dd>1</dd>");
+    const badge = readFileSync(badgePath, "utf8");
+    expect(badge).not.toContain("confirmed finding");
+    expect(badge).toContain('data-state="verified"');
+  });
+
   it("distinguishes false, unconfirmed and legacy runs in the score and marks findings on the badge", () => {
     const first = { ...tab, id: "first" };
     const second = { ...tab, id: "second" };

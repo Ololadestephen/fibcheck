@@ -21,6 +21,11 @@ export interface Diagnosis {
   revisedCheck: string;
   /** For a contradiction: a nearby flow that should pass if the setup is valid. */
   controlCheck: string;
+  /**
+   * For a passing run: the visible interface text, when it differs from the documentation's wording for the
+   * same control or page (for example "Attack" where the docs say "Basic Attack"). Empty when the words match.
+   */
+  visibleWording: string;
 }
 
 export type Diagnose = (claim: Claim, check: string, kane: KaneRun) => Promise<Diagnosis>;
@@ -45,6 +50,7 @@ For a passing run, use cause "unclear".
 - ownMistakeRuledOut: for claim_contradicted, why the failure is not caused by the test itself (sign-in, test data, Kane's input method, the wrong page). Otherwise leave it empty.
 Text shown as [url], [path] or [secret] was removed before you saw it. Never copy these markers into a check: refer to pages by name. Never ask Kane to open, visit or sign in at any web address; the test always starts on the app. If a check needs a web address typed into a form field, use https://example.com and say it is typed into that field.
 For a passing run, seeing that a button, form, menu or option exists does not exercise a claim that the app can do something. The documented action must have been performed and its result observed. A claim that lists several features is exercised only when each listed feature was tried.
+5. For a passing run that exercised the claim, compare the documentation's names for controls, pages and settings with the visible text in Kane's steps and observations. If the behaviour holds but the visible text is different (for example the documentation says "Basic Attack" and the button shows "Attack"), put the visible text in visibleWording, for example: Button labelled "Attack" (documentation: "Basic Attack"). Ignore differences only in capital letters or punctuation. Otherwise leave it empty.
 Write plain sentences. Do not include local addresses, file paths or credentials. Do not ask Kane to sign in again; the login instructions are added separately.`;
 
 const RESPONSE_SCHEMA = {
@@ -58,6 +64,7 @@ const RESPONSE_SCHEMA = {
     blameEvidence: { type: "string" },
     revisedCheck: { type: "string" },
     controlCheck: { type: "string" },
+    visibleWording: { type: "string" },
   },
   required: ["exercisedClaim", "cause", "reason", "ownMistakeRuledOut", "kaneBlame", "blameEvidence", "revisedCheck", "controlCheck"],
 } as const;
@@ -143,5 +150,6 @@ export function parseDiagnosis(value: unknown): Diagnosis {
     blameEvidence: text("blameEvidence"),
     revisedCheck: text("revisedCheck"),
     controlCheck: text("controlCheck"),
+    visibleWording: text("visibleWording"),
   };
 }
