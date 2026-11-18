@@ -37,6 +37,16 @@ describe("cli", () => {
     }
   });
 
+  it("rejects a --login sentence without {{NAME}} values, so no password is typed into the command", async () => {
+    const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(await main(["check", "missing-target", "--url", "https://example.org", "--login", "Sign in as ada with password hunter2."])).toBe(1);
+      expect(String(write.mock.calls[0]?.[0])).toContain("--login must name its values as {{NAME}}");
+    } finally {
+      write.mockRestore();
+    }
+  });
+
   it("describes --url in the help text", async () => {
     const write = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     await main(["--help"]);

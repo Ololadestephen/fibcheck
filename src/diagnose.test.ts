@@ -40,6 +40,13 @@ describe("diagnosisPrompt", () => {
     for (const leak of ["Pk0123456789abcdef", "localhost", "example.test", "/Users/", "session/123"]) expect(prompt).not.toContain(leak);
   });
 
+  it("removes the address of the app under test even when it is public", () => {
+    const run = failedRun();
+    run.reason = "Opened https://bookmarks.example.org/settings and bookmarks.example.org/tags";
+    const prompt = diagnosisPrompt(claim, "", run, ["bookmarks.example.org"]);
+    expect(prompt).not.toContain("bookmarks.example.org");
+  });
+
   it("keeps public addresses so a reworded check can still use them", () => {
     const run = failedRun();
     run.reason = "Typed https://example.com into the URL field at http://localhost:19091/new";

@@ -81,6 +81,9 @@ export function parseCheckArgs(args: string[]): CheckArgs | string {
   const maxKaneRuns = wholeNumber(values["max-kane-runs"], Number.isSafeInteger);
   if (maxKaneRuns === null) return "--max-kane-runs must be a whole number.\n";
   if (values.login !== undefined && values.url === undefined) return "--login needs --url.\n";
+  if (values.login !== undefined && !/\{\{[A-Za-z_][A-Za-z0-9_]*\}\}/.test(values.login)) {
+    return "--login must name its values as {{NAME}} and keep them in .env as FIBCHECK_LOGIN_NAME, never type a password into the command.\n";
+  }
   if (values.url !== undefined && values["app-running"]) return "Use either --url or --app-running, not both.\n";
   return { target, maxClaims, maxKaneRuns, only: values.only, appRunning: values["app-running"], url: values.url, login: values.login };
 }

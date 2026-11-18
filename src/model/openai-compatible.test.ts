@@ -49,6 +49,18 @@ describe("OpenAICompatibleProvider", () => {
     expect(attempts).toBe(0);
   });
 
+  it("counts the worst case when the response has no token usage", async () => {
+    const { near, spendPath } = provider(reply(200, { choices: [{ message: { content: "{}" } }] }));
+    await near.generate(request, () => {});
+    expect(JSON.parse(readFileSync(spendPath, "utf8")).usd).toBeGreaterThan(0.0003);
+  });
+
+  it("counts the worst case when the request fails after it was sent", async () => {
+    const { near, spendPath } = provider(reply(500));
+    await expect(near.generate(request, () => {})).rejects.toThrow("HTTP 500");
+    expect(JSON.parse(readFileSync(spendPath, "utf8")).usd).toBeGreaterThan(0.0003);
+  });
+
   it("refuses when the spend file is damaged", async () => {
     const { near, spendPath } = provider(reply(200));
     writeFileSync(spendPath, "not json");

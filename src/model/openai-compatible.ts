@@ -54,6 +54,21 @@ export class OpenAICompatibleProvider implements ModelProvider {
       throw new SpendCapError(`The ${this.options.label} spending cap of $${this.options.maxUsd.toFixed(2)} would be exceeded ($${spent.toFixed(4)} spent).`);
     }
     beforeAttempt();
+    let data: { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    try {
+      data = await this.send(request);
+    } catch (error) {
+      // The request may have been billed even though it failed, so count the worst case.
+      this.record(worstCase);
+      throw error;
+    }
+    const inputTokens = data.usage?.prompt_tokens ?? 0;
+    const outputTokens = data.usage?.completion_tokens ?? 0;
+    this.record(data.usage ? this.cost(inputTokens, outputTokens) : worstCase);
+    return { text: data.choices?.[0]?.message?.content ?? "", model: this.name, usage: { inputTokens, outputTokens } };
+  }
+
+  private async send(request: ModelRequest) {
     const response = await (this.options.fetch ?? fetch)(`${this.options.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.options.apiKey}` },
@@ -61,14 +76,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       signal: AbortSignal.timeout(this.options.timeoutMs ?? 90_000),
     });
     if (!response.ok) throw providerError(this.options.label, response.status);
-    const data = (await response.json()) as {
-      choices?: { message?: { content?: string } }[];
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
-    };
-    const inputTokens = data.usage?.prompt_tokens ?? 0;
-    const outputTokens = data.usage?.completion_tokens ?? 0;
-    this.record(this.cost(inputTokens, outputTokens));
-    return { text: data.choices?.[0]?.message?.content ?? "", model: this.name, usage: { inputTokens, outputTokens } };
+    return (await response.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
   }
 
   /** Dollars spent so far across runs. A damaged file refuses further calls rather than resetting the count. */

@@ -132,6 +132,12 @@ describe("questionGenerally", () => {
     expect(result.questioning.verdict).toBe("unconfirmed");
   });
 
+  it("stays unconfirmed when the reproduction's reading gives no reason the test was not at fault", async () => {
+    const { result } = await perform([kane("failed", "a"), kane("failed", "b")], [contradiction, { ...contradiction, ownMistakeRuledOut: "" }]);
+    expect(result.questioning.verdict).toBe("unconfirmed");
+    expect(result.questioning.candidateFinding).toBeUndefined();
+  });
+
   it("stays unconfirmed when the reproduction passes", async () => {
     const { result, rounds } = await perform([kane("failed", "a"), kane("passed", "b")], [contradiction]);
     expect(rounds.map(({ purpose }) => purpose)).toEqual(["initial", "retry"]);

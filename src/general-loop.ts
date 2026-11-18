@@ -111,7 +111,7 @@ async function confirmAfterReproduction(state: LoopState, failed: Attempt, diagn
     return outcome(state, "unconfirmed", "Kane did not fail the documented assertion again in a separate run.");
   }
   const second = await review(state, reproduction);
-  if (!second || second.cause !== "claim_contradicted" || !second.exercisedClaim) {
+  if (!second || second.cause !== "claim_contradicted" || !second.exercisedClaim || !second.ownMistakeRuledOut) {
     return outcome(state, "unconfirmed", "The reproduction failed for a different reason, so the result is not consistent.");
   }
   if (!diagnosis.controlCheck || !state.canRunFollowUp()) {

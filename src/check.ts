@@ -131,6 +131,9 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   return report;
 }
 
+/** The most Kane runs one claim can use: initial check, one rewording, a reproduction and a control. */
+export const DEFAULT_RUNS_PER_CLAIM = 4;
+
 /** Keeps supplied claims whose quotes appear in their documents, with corrected line numbers. */
 export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[]): { claims: Claim[]; rejected: RejectedClaim[]; cacheHits: number } {
   const verified: Claim[] = [];
@@ -195,7 +198,7 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], context: Test
     return await runClaims(target, claims, {
       runDir, log, managedTarget, containerName: app?.containerName,
       variablesFile: variablesFile?.path, maxKaneRuns: options.maxKaneRuns,
-      diagnose: options.diagnose === false ? undefined : modelDiagnoser(client, Object.values(variables).map(({ value }) => value)),
+      diagnose: options.diagnose === false ? undefined : modelDiagnoser(client, [...Object.values(variables).map(({ value }) => value), new URL(target.baseUrl).host]),
     });
   } finally {
     try {
@@ -220,7 +223,8 @@ async function runClaims(target: ResolvedTarget, claims: Claim[], session: Claim
   const { runDir, log, managedTarget, containerName, variablesFile } = session;
   const tested: ClaimRun[] = [];
   const startUrl = `${target.baseUrl}${target.startPath ?? "/"}`;
-  let runsRemaining = session.maxKaneRuns ?? Infinity;
+  // Without an explicit cap, each claim may use its full questioning budget of 4 Kane runs and no more.
+  let runsRemaining = session.maxKaneRuns ?? DEFAULT_RUNS_PER_CLAIM * claims.length;
   const canRun = () => runsRemaining > 0;
   let tagSetup: Promise<void> | undefined;
   const prepareTags = containerName ? () => (tagSetup ??= seedLinkdingTags(containerName)) : undefined;
