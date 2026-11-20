@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Claim } from "./claims/types.js";
-import { DIAGNOSE_SYSTEM, diagnosisPrompt, modelDiagnoser, parseDiagnosis } from "./diagnose.js";
+import { applyFixedRules, DIAGNOSE_SYSTEM, diagnosisPrompt, menuRoutedTab, modelDiagnoser, parseDiagnosis } from "./diagnose.js";
 import { parseKaneOutput } from "./kane/parse.js";
 import type { KaneRun } from "./kane/runner.js";
 import { CallBudget } from "./model/budget.js";
@@ -108,5 +108,33 @@ describe("modelDiagnoser", () => {
     expect(result.cause).toBe("agent_misstep");
     expect(prompts[0]).not.toContain("Pk0123456789abcdef");
     expect(client.usage().calls).toBe(1);
+  });
+});
+
+describe("menuRoutedTab", () => {
+  const tabClaim: Claim = { ...claim, quote: "To open the Admin app, go to the *Settings* view and click on the *Admin* tab." };
+  // The steps of the real demo run 44756357432 that passed through the Settings dropdown.
+  const steps = [
+    { step: 5, status: "done" as const, remark: "click: Clicking Settings in the top navigation" },
+    { step: 6, status: "done" as const, remark: "click: Clicking General in the expanded Settings menu" },
+    { step: 10, status: "done" as const, remark: "assert: The Settings page content shows a tab named Admin. Expected: true." },
+    { step: 11, status: "done" as const, remark: "click: Clicking the Admin tab in the top settings navigation" },
+  ];
+  const passed = { ...reading, kaneBlame: "none" as const, exercisedClaim: true, cause: "unclear" as const, reason: "Clicked the Admin tab.", visibleWording: "" };
+
+  it("does not count a tab claim passed through a navigation dropdown", () => {
+    expect(menuRoutedTab(tabClaim, { steps })).toContain("Step 11");
+    expect(applyFixedRules(tabClaim, { steps }, passed)).toMatchObject({ exercisedClaim: false, reason: expect.stringContaining("not a tab inside the page") });
+  });
+
+  it("turns a contradiction found through a menu into an agent misstep", () => {
+    expect(applyFixedRules(tabClaim, { steps }, { ...passed, cause: "claim_contradicted" }).cause).toBe("agent_misstep");
+  });
+
+  it("leaves a tab clicked inside the page, and claims without a tab, alone", () => {
+    const inPage = [{ step: 7, status: "done" as const, remark: "click: Clicking the Admin tab on the Settings page" }];
+    expect(applyFixedRules(tabClaim, { steps: inPage }, passed).exercisedClaim).toBe(true);
+    const dropdownClaim: Claim = { ...claim, quote: "Select *Admin* from the *Settings* dropdown in the top navigation." };
+    expect(menuRoutedTab(dropdownClaim, { steps })).toBeUndefined();
   });
 });
