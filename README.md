@@ -11,6 +11,22 @@ Built for the Kane CLI Hackathon, with Claude Code.
 - **Live on pull requests:** in [this demo pull request](https://github.com/Ololadestephen/fibcheck/pull/1), the GitHub Action started Linkding in Docker on GitHub's free runner, Kane failed an outdated "Admin tab" step twice while the control passed, and the comment flagged the line for review ([run log and screenshots](https://github.com/Ololadestephen/fibcheck/actions/runs/44762871602)).
 - **Share cards** for each finding are in [index/cards](index/cards), drawn from Kane's own screenshots.
 
+## See it
+
+The comment fibcheck posted on the [demo pull request](https://github.com/Ololadestephen/fibcheck/pull/1), after a change put back Linkding's old "click the *Admin* tab" step (rendered from the comment's text):
+
+<img src="docs/images/pr-comment.png" alt="fibcheck's pull request comment: line 5 unconfirmed, Kane failed it twice and the control passed, listed for a person's review" width="600">
+
+Kane's own screenshot from that run, at the moment the check failed: the Settings page, with no menu open and no Admin tab in its content.
+
+<img src="docs/images/kane-settings-no-admin-tab.jpg" alt="Kane screenshot of Linkding's Settings page with no Admin tab" width="600">
+
+The HTML report for a saved check (`fibcheck report examples/sample-check/check.json`), and a share card drawn from a finding:
+
+<img src="docs/images/report.png" alt="fibcheck HTML report for the Linkding check: one outdated claim, with its Kane runs" width="600">
+
+<img src="index/cards/mealie-faq-disable-ingredient-amounts.png" alt="Share card for the Mealie FAQ finding: caught twice by Kane, control passed, fix proven, fix merged by the maintainers" width="600">
+
 ## How it works
 
 1. **Read and rank.** fibcheck's agent reads the README and docs, quotes each claim a browser can test, and ranks the most specific first: named menus, tabs, buttons and settings, defaults, shortcuts and step-by-step instructions, because those go stale when an interface changes.
@@ -58,6 +74,32 @@ node dist/cli.js check sissbruecker/linkding --url https://bookmarks.example.org
 ```
 
 Use `--max-kane-runs 12` to cap Kane invocations per check, including retries and controls. If the budget runs out before a required follow-up, the claim stays unconfirmed. The report lists claims that were never started. Use `--max-kane-runs 0` to extract claims without starting the app or Kane.
+
+## Use it on your own project
+
+fibcheck is not on npm yet, so run it from a clone: `npm ci && npm run build`, then `node dist/cli.js <command>`. Once it is published, the same commands run as `npx fibcheck <command>`.
+
+1. **Describe your app** in a target file. Point `repo` at your repository (a Git URL or a local folder) and list any docs beyond the README. Either give a Docker image to start, or leave `app` out and pass `--url` for an app that is already running:
+
+   ```json
+   {
+     "name": "my-app",
+     "repo": "https://github.com/me/my-app",
+     "docs": ["docs/getting-started.md"],
+     "app": {
+       "image": "me/my-app:1.4.0", "port": 8080, "containerPort": 80, "readyPath": "/",
+       "env": { "ADMIN_USER": "demo", "ADMIN_PASSWORD": "{{secret:app_pass}}" }
+     },
+     "login": "If a login form is shown, sign in as demo with password {{app_pass}}."
+   }
+   ```
+
+   `{{secret:app_pass}}` makes fibcheck generate a fresh password for each run, pass it to the container, and give it to Kane as a secret variable. With `--url`, write `{{pass}}` in `--login` instead and put `FIBCHECK_LOGIN_PASS=...` in `.env`. [targets/linkding.json](targets/linkding.json) is a working example.
+
+2. **Run a check:** `node dist/cli.js check my-app.json --max-claims 5`. fibcheck ranks the claims, Kane tests the top five, and `report` turns the saved `check.json` into an HTML report with every screenshot.
+3. **Read the candidates.** A line that Kane failed twice while a control passed is a candidate finding. Open its screenshots and decide. fibcheck never calls a line false on its own.
+4. **Fix the docs, then attack the fix.** Record the finding and the corrected sentence (the one a fresh Kane run passed) in a findings file, shaped like [index/findings.json](index/findings.json), and run `node dist/cli.js attack <finding-id> --url <app address> --findings <your findings.json>`. The attacker must fail to make the old check pass with a shortcut before you send the fix.
+5. **Keep it checked on every pull request.** Freeze the checks with `node dist/cli.js freeze docs/getting-started.md --out docs/fibcheck.claims.json`, review each one, and add the [GitHub Action](#check-docs-changes-in-github-actions) with that file as `claims-file`.
 
 ## Commands
 
@@ -136,6 +178,8 @@ The comment lists counts, a row per checked line with its result and every Kane 
 A failing check can be made to pass without fixing anything. Before fibcheck suggests a docs fix, its attacker plays a hurried editor and proposes four shortcuts: delete the line, make it vague, hedge it ("usually at the top left"), or swap in a confident wrong detail. Each must be rejected. Deletions, vaguer lines and hedges are rejected by fixed rules: they have fewer checkable details than the proven fix. A wrong detail goes to Kane, and it only counts as rejected when Kane fails it in the exact place it names.
 
 On the four index findings, all 12 delete, vague and hedge attempts were rejected. The 4 wrong-detail attempts stay "can't tell": Kane failed them, but none of those runs tested the wrong sentence in the place it names, so none is counted. Every attempt is recorded in [index/attacks](index/attacks), and the index explains [what we learned](index/README.md#lazy-fixes-we-tried-and-rejected).
+
+The attacker ships with fibcheck as the `attack` command. It works on a finding a person has already confirmed (verdict false or outdated) with a proven fix recorded, against the running app at `--url` (add `--login` if it needs a sign-in). It uses two model calls, one to write the shortcuts and one to read Kane's run, and at most one Kane run, for the wrong-detail attempt. It saves every attempt next to the findings file in `attacks/<finding-id>.json` and records the rejected count on the finding.
 
 ## What the evidence means
 
