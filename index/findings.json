@@ -24,7 +24,11 @@
       "findings": 1,
       "claims": 5
     },
-    "fix": "Scroll to the ingredients and you should see fields for Amount, Unit, Food, and Note."
+    "fix": "Scroll to the ingredients and you should see fields for Amount, Unit, Food, and Note.",
+    "lazyFixes": {
+      "rejected": 3,
+      "byKane": 0
+    }
   },
   {
     "id": "uptime-kuma-wiki-maintenance-menu",
@@ -50,7 +54,11 @@
       "findings": 1,
       "claims": 5
     },
-    "fix": "You can access the maintenance management via the menu at the top right."
+    "fix": "You can access the maintenance management via the menu at the top right.",
+    "lazyFixes": {
+      "rejected": 3,
+      "byKane": 0
+    }
   },
   {
     "id": "linkding-admin-tab",
@@ -77,7 +85,11 @@
       "findings": 2,
       "claims": 7
     },
-    "fix": "To open the Admin app, select *Admin* from the *Settings* dropdown in the top navigation. This opens the *Site administration* page."
+    "fix": "To open the Admin app, select *Admin* from the *Settings* dropdown in the top navigation. This opens the *Site administration* page.",
+    "lazyFixes": {
+      "rejected": 3,
+      "byKane": 0
+    }
   },
   {
     "id": "linkding-tags-only-create-or-assign",
@@ -104,7 +116,11 @@
       "findings": 2,
       "claims": 7
     },
-    "fix": "To rename a tag in Linkding, open the *Tags* page, select *Edit* in the tag's row, update the *Name*, and select *Save*."
+    "fix": "To rename a tag in Linkding, open the *Tags* page, select *Edit* in the tag's row, update the *Name*, and select *Save*.",
+    "lazyFixes": {
+      "rejected": 3,
+      "byKane": 0
+    }
   },
   {
     "id": "soryn-readme-basic-attack",

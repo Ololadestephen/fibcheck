@@ -35,7 +35,8 @@ export const DIAGNOSE_SYSTEM = `You review one Kane CLI browser test run. The ru
 1. Decide whether the run exercised the documented claim: the same page or place, the same kind of control (tab, menu item, button, field), and each stated result. A pass that reached the result through a different place or a different kind of control did not exercise the claim.
 2. For a failed or unfinished run, name the most likely cause:
 - agent_misstep: Kane used the wrong control or page, misread the screen, ran out of steps, or stopped although a valid path was visible.
-- check_problem: the check was wrong or ambiguous, named a control that does not exist, or asserted something the claim does not state.
+- check_problem: the check was wrong or ambiguous, named a control that the documentation sentence does not name and that does not exist, or asserted something the claim does not state.
+If the documentation sentence itself names a control, menu, page or position, and Kane loaded the area the sentence points to and found that named thing absent there, that is claim_contradicted, not check_problem: the sentence is what is wrong. It is only claim_contradicted if Kane looked in the place the sentence names; a search somewhere else is agent_misstep.
 - setup_problem: sign-in did not complete, test data or a fixture was missing, or the environment blocked the test.
 - kane_limitation: Kane cannot observe or perform what the claim needs. Known limits: Kane cannot inspect new browser tabs or windows; Kane's text entry can bypass editors that convert Markdown or other syntax as you type, so literal syntax in a saved result can come from the input method; a word used as a stored variable name can drop out of a condition.
 - claim_contradicted: the right page was loaded, the setup was valid, Kane performed the documented action in the documented place, and the documented result was observably absent.

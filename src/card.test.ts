@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cardText, evidenceLine, loadFindings, renderCardHtml, type Finding } from "./card.js";
 
@@ -72,11 +73,20 @@ describe("the recorded findings", () => {
     ]);
   });
 
+  it("record lazy-fix counts that match the saved attack attempts", () => {
+    for (const finding of findings.filter(({ lazyFixes }) => lazyFixes)) {
+      const record = JSON.parse(readFileSync(`index/attacks/${finding.id}.json`, "utf8")) as { results: { outcome: string }[] };
+      const rejected = record.results.filter(({ outcome }) => outcome === "rejected_by_rule" || outcome === "rejected_by_kane").length;
+      const byKane = record.results.filter(({ outcome }) => outcome === "rejected_by_kane").length;
+      expect(finding.lazyFixes).toEqual({ rejected, byKane });
+    }
+  });
+
   it("make cards whose text matches each recorded verdict and its evidence", () => {
     const byId = Object.fromEntries(findings.map((finding) => [finding.id, cardText(finding)]));
-    expect(byId["mealie-faq-disable-ingredient-amounts"]).toMatchObject({ stamp: "OUTDATED", evidence: "Caught twice by Kane. Control passed. Fix proven ✓" });
-    expect(byId["uptime-kuma-wiki-maintenance-menu"]).toMatchObject({ stamp: "DOESN'T MATCH THE APP", evidence: "Caught twice by Kane. Control passed." });
-    expect(byId["linkding-admin-tab"]?.evidence).toBe("Caught twice by Kane. Control passed. Fix proven ✓");
+    expect(byId["mealie-faq-disable-ingredient-amounts"]).toMatchObject({ stamp: "OUTDATED", evidence: "Caught twice by Kane. Control passed. Fix proven ✓ 3 lazy fixes rejected." });
+    expect(byId["uptime-kuma-wiki-maintenance-menu"]).toMatchObject({ stamp: "DOESN'T MATCH THE APP", evidence: "Caught twice by Kane. Control passed. 3 lazy fixes rejected." });
+    expect(byId["linkding-admin-tab"]?.evidence).toBe("Caught twice by Kane. Control passed. Fix proven ✓ 3 lazy fixes rejected.");
     expect(byId["soryn-readme-basic-attack"]).toMatchObject({ stamp: "WORDED DIFFERENTLY", evidence: "Behaviour held in Kane's run. Fix proven ✓", score: "0 fibs in 7 claims" });
   });
 });

@@ -1,0 +1,40 @@
+{
+  "id": "uptime-kuma-wiki-maintenance-menu",
+  "at": "2026-11-20T08:39:57.478Z",
+  "original": "You can access the maintenance management via the menu at the top left.",
+  "fix": "You can access the maintenance management via the menu at the top right.",
+  "appUrl": "http://127.0.0.1:19093/",
+  "results": [
+    {
+      "kind": "delete",
+      "text": "",
+      "outcome": "rejected_by_rule",
+      "reason": "Deleting the line hides the problem: readers lose the instruction and nothing is left to check."
+    },
+    {
+      "kind": "vague",
+      "text": "You can access the maintenance management via the navigation system.",
+      "outcome": "rejected_by_rule",
+      "reason": "Less specific than the proven fix (0 checkable details against 2; specificity 3 against 5), so it hides the detail instead of fixing it."
+    },
+    {
+      "kind": "hedge",
+      "text": "You can usually access the maintenance management via the menu at the top left in some setups.",
+      "outcome": "rejected_by_rule",
+      "reason": "Hedging (\"usually\") softens a wrong detail instead of correcting it."
+    },
+    {
+      "kind": "wrong",
+      "text": "You can access the maintenance management via the sidebar menu on the bottom left.",
+      "check": "Assert exactly: The sidebar menu on the bottom left exists. Expected: true. Do not use any other menu, page or route to reach the result. Click the sidebar menu on the bottom left. Assert that maintenance management is visible.",
+      "outcome": "inconclusive",
+      "reason": "Lead review: Kane's failed assertion came before it clicked Log in, so it looked at the sign-in page and never tested this attempt. The model's re-reading had counted it as a rejection; the lead vetoed that.",
+      "kane": {
+        "status": "failed",
+        "oneLiner": "The signed-in dashboard does not show the documented sidebar menu at the bottom left, so maintenance management cannot be reached as instructed."
+      },
+      "leadOverride": "rejected_by_kane -> inconclusive"
+    }
+  ],
+  "reread": "2026-11-20T08:45:41.405Z"
+}

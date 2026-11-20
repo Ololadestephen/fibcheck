@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Claim } from "./claims/types.js";
-import { diagnosisPrompt, modelDiagnoser, parseDiagnosis } from "./diagnose.js";
+import { DIAGNOSE_SYSTEM, diagnosisPrompt, modelDiagnoser, parseDiagnosis } from "./diagnose.js";
 import { parseKaneOutput } from "./kane/parse.js";
 import type { KaneRun } from "./kane/runner.js";
 import { CallBudget } from "./model/budget.js";
@@ -60,6 +60,13 @@ describe("diagnosisPrompt", () => {
     run.reason = "Opened localhost:8080/admin, then 127.0.0.1:3000 and [::1]:5230, read ~/notes.txt, /opt/app/x, /root/y and C:\\Users\\me\\z";
     const prompt = diagnosisPrompt(claim, "", run);
     for (const leak of ["localhost", "127.0.0.1", "::1", "~/notes", "/opt/app", "/root/y", "Users\\\\me"]) expect(prompt).not.toContain(leak);
+  });
+});
+
+describe("DIAGNOSE_SYSTEM", () => {
+  it("treats a control the sentence itself names, absent where it says, as a contradiction", () => {
+    expect(DIAGNOSE_SYSTEM).toContain("If the documentation sentence itself names a control, menu, page or position");
+    expect(DIAGNOSE_SYSTEM).toContain("a search somewhere else is agent_misstep");
   });
 });
 

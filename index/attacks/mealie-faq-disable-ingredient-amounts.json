@@ -1,0 +1,39 @@
+{
+  "id": "mealie-faq-disable-ingredient-amounts",
+  "at": "2026-11-20T08:38:05.039Z",
+  "original": "Click the Recipe Settings gear and deselect `Disable Ingredient Amounts`",
+  "fix": "Scroll to the ingredients and you should see fields for Amount, Unit, Food, and Note.",
+  "appUrl": "http://127.0.0.1:19094/",
+  "results": [
+    {
+      "kind": "delete",
+      "text": "",
+      "outcome": "rejected_by_rule",
+      "reason": "Deleting the line hides the problem: readers lose the instruction and nothing is left to check."
+    },
+    {
+      "kind": "vague",
+      "text": "Adjust the recipe configuration options.",
+      "outcome": "rejected_by_rule",
+      "reason": "Less specific than the proven fix (0 checkable details against 4; specificity 5 against 5), so it hides the detail instead of fixing it."
+    },
+    {
+      "kind": "hedge",
+      "text": "Usually, you may want to check the recipe settings to adjust ingredient amounts in some setups.",
+      "outcome": "rejected_by_rule",
+      "reason": "Hedging (\"Usually\") softens a wrong detail instead of correcting it."
+    },
+    {
+      "kind": "wrong",
+      "text": "Click the Advanced Preferences tab and select Enable Metric Quantities.",
+      "check": "Assert exactly: The Advanced Preferences tab exists. Expected: true. Do not use any other menu, page or route to reach the result. Click the Advanced Preferences tab. Click the Enable Metric Quantities checkbox. Assert that Enable Metric Quantities is checked. Expected: true.",
+      "outcome": "inconclusive",
+      "reason": "Kane failed, but not on this attempt's own claim: Kane navigated through the profile, user, admin, and household settings areas and did not find the documented Advanced Preferences tab or the Enable Metric Quantities option.",
+      "kane": {
+        "status": "failed",
+        "oneLiner": "The test expected an Advanced Preferences tab and Enable Metric Quantities option that are not present in this installed version of Mealie."
+      }
+    }
+  ],
+  "reread": "2026-11-20T08:45:40.059Z"
+}

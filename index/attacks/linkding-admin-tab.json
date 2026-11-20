@@ -1,0 +1,39 @@
+{
+  "id": "linkding-admin-tab",
+  "at": "2026-11-20T08:41:37.960Z",
+  "original": "To open the Admin app, go the *Settings* view and click on the *Admin* tab.",
+  "fix": "To open the Admin app, select *Admin* from the *Settings* dropdown in the top navigation. This opens the *Site administration* page.",
+  "appUrl": "http://127.0.0.1:19090/login/",
+  "results": [
+    {
+      "kind": "delete",
+      "text": "",
+      "outcome": "rejected_by_rule",
+      "reason": "Deleting the line hides the problem: readers lose the instruction and nothing is left to check."
+    },
+    {
+      "kind": "vague",
+      "text": "To open the Admin app, navigate to the appropriate section and access the tool.",
+      "outcome": "rejected_by_rule",
+      "reason": "Less specific than the proven fix (1 checkable details against 6; specificity 9 against 22), so it hides the detail instead of fixing it."
+    },
+    {
+      "kind": "hedge",
+      "text": "To open the Admin app, you usually go to the *Settings* view and may click on the *Admin* tab in some setups.",
+      "outcome": "rejected_by_rule",
+      "reason": "Hedging (\"usually\") softens a wrong detail instead of correcting it."
+    },
+    {
+      "kind": "wrong",
+      "text": "To open the Admin app, go to the *Preferences* menu and click on the *System Console* link.",
+      "check": "Assert exactly: The Preferences menu shows a System Console link at the top left. Expected: true. Do not use any other menu, page or route to reach the result. Click the Preferences menu. Click the System Console link. Assert the Admin app is open.",
+      "outcome": "inconclusive",
+      "reason": "Kane failed, but not on this attempt's own claim: The documentation states to go to the Preferences menu and click the System Console link, but the application displays a Settings menu with General, Integrations, and Admin options instead of the documented menu and link names.",
+      "kane": {
+        "status": "failed",
+        "oneLiner": "The test expected a Preferences menu and a System Console link, but this Linkding page shows Settings with General, Integrations, and Admin instead."
+      }
+    }
+  ],
+  "reread": "2026-11-20T08:45:42.693Z"
+}
