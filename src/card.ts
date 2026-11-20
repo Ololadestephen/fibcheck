@@ -30,6 +30,10 @@ export interface Finding {
   };
   /** For "worded_differently": what the interface actually shows. */
   visibleWording?: string;
+  /** The proven fix: the sentence a fresh Kane run passed. Lazy fixes are judged against it. */
+  fix?: string;
+  /** Lazy-fix attempts that were rejected (T10), as recorded in index/attacks/<id>.json. */
+  lazyFixes?: { rejected: number; byKane: number };
   /** Counts for the project, not percentages: findings among claims tested. */
   score: { findings: number; claims: number };
 }
@@ -95,6 +99,8 @@ export function evidenceLine(finding: Finding): string {
   if (held) parts.push("Behaviour held in Kane's run.");
   if (control) parts.push("Control passed.");
   if (fixProof) parts.push("Fix proven ✓");
+  const lazy = finding.lazyFixes;
+  if (lazy && lazy.rejected > 0) parts.push(`${lazy.rejected} lazy ${lazy.rejected === 1 ? "fix" : "fixes"} rejected${lazy.byKane ? ` (${lazy.byKane} by Kane)` : ""}.`);
   return parts.join(" ");
 }
 

@@ -43,6 +43,8 @@ describe("cardText", () => {
     expect(evidenceLine({ ...base, evidence: { failures: ["a"] } })).toBe("Caught once by Kane.");
     expect(evidenceLine({ ...base, evidence: { failures: ["a", "b"], control: "c" } })).toBe("Caught twice by Kane. Control passed.");
     expect(evidenceLine({ ...base, evidence: { failures: [], held: "h", fixProof: "f" } })).toBe("Behaviour held in Kane's run. Fix proven ✓");
+    expect(evidenceLine({ ...base, lazyFixes: { rejected: 4, byKane: 1 } })).toBe("Caught twice by Kane. Control passed. Fix proven ✓ 4 lazy fixes rejected (1 by Kane).");
+    expect(evidenceLine({ ...base, lazyFixes: { rejected: 0, byKane: 0 } })).toBe("Caught twice by Kane. Control passed. Fix proven ✓");
   });
 
   it("names the visible wording for a worded-differently card", () => {

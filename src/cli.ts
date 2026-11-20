@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { existsSync, realpathSync } from "node:fs";
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
+import { attackFinding } from "./attack-run.js";
+import { attackSummary } from "./attack.js";
 import { loadFindings, writeCard } from "./card.js";
 import { runCheck } from "./check.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
@@ -15,6 +18,7 @@ Usage:
                  [--url ADDRESS [--login SENTENCE] | --app-running]
   fibcheck report <check.json>
   fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards]
+  fibcheck attack <finding-id> --url ADDRESS [--login SENTENCE] [--findings index/findings.json]
   fibcheck --help
 
 Use sissbruecker/linkding or its GitHub URL for the bundled Linkding target.
@@ -28,6 +32,8 @@ Claims are ranked by how specific they are (named menus, buttons, settings, defa
 The top --max-claims (default 5; 5 to 10 is a good range) are tested, and the rest are listed as not tested.
 The report command writes report.html and badge.svg beside a saved check.json.
 The card command draws a PNG share card for a recorded finding, from its verdict and Kane screenshot only.
+The attack command tries lazy fixes for a finding (delete the line, make it vague, hedge it, or guess a
+wrong detail) against the app at --url; each must be rejected by rule or failed by Kane.
 `;
 
 export async function main(argv: string[]): Promise<number> {
@@ -39,8 +45,31 @@ export async function main(argv: string[]): Promise<number> {
   if (command === "check") return await check(rest);
   if (command === "report") return report(rest);
   if (command === "card") return card(rest);
+  if (command === "attack") return await attack(rest);
   process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
   return 1;
+}
+
+async function attack(args: string[]): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args, allowPositionals: true,
+    options: { url: { type: "string" }, login: { type: "string" }, findings: { type: "string" } },
+  });
+  const [id] = positionals;
+  if (!id || !values.url) {
+    process.stderr.write("Usage: fibcheck attack <finding-id> --url ADDRESS [--login SENTENCE] [--findings index/findings.json]\n");
+    return 1;
+  }
+  loadDotEnv();
+  const runId = new Date().toISOString().replace(/[:.]/g, "-");
+  const record = await attackFinding(createModelClient(runId), {
+    findingsPath: values.findings ?? "index/findings.json", id, appUrl: values.url, login: values.login,
+    secrets: loginSecretsFromEnv(values.login), runsDir: join("runs", `attack-${runId}`),
+    log: (line) => process.stdout.write(`${line}\n`),
+  });
+  for (const result of record.results) process.stdout.write(`${result.kind}: ${result.outcome}. ${result.reason}\n`);
+  process.stdout.write(`${attackSummary(record.results) || "No lazy fix was rejected."}\n`);
+  return 0;
 }
 
 function card(args: string[]): number {

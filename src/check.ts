@@ -255,7 +255,7 @@ async function runClaims(target: ResolvedTarget, claims: Claim[], session: Claim
   return tested;
 }
 
-function writeKaneVariables(variables: ResolvedTarget["kaneVariables"]) {
+export function writeKaneVariables(variables: ResolvedTarget["kaneVariables"]) {
   if (Object.keys(variables).length === 0) return undefined;
   const directory = mkdtempSync(join(tmpdir(), "fibcheck-kane-"));
   const path = join(directory, "variables.json");
