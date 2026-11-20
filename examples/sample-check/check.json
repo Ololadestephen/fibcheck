@@ -1,0 +1,1343 @@
+{
+  "runId": "2026-11-16T17-29-36-030Z",
+  "target": "linkding",
+  "repo": "https://github.com/sissbruecker/linkding",
+  "commit": "27b7303baf41bb28babc610ac8eaa486e1ddfab5",
+  "startedAt": "2026-11-16T17:29:36.033Z",
+  "finishedAt": "2026-11-16T17:37:15.047Z",
+  "documents": [
+    "README.md",
+    "docs/src/content/docs/admin.md"
+  ],
+  "claims": [
+    {
+      "id": "README.md#L12",
+      "type": "untestable",
+      "quote": "It's designed be to be minimal, fast, and easy to set up using Docker.",
+      "source": {
+        "file": "README.md",
+        "startLine": 12,
+        "endLine": 12
+      },
+      "reason": "Contains marketing adjectives ('fast', 'minimal') which are subjective and cannot be verified by a simple browser test."
+    },
+    {
+      "id": "README.md#L20",
+      "type": "behaviour",
+      "quote": "- Clean UI optimized for readability",
+      "source": {
+        "file": "README.md",
+        "startLine": 20,
+        "endLine": 20
+      },
+      "check": "Open the web app and verify that bookmarks and text are displayed in a clean layout."
+    },
+    {
+      "id": "README.md#L21",
+      "type": "behaviour",
+      "quote": "- Organize bookmarks with tags",
+      "source": {
+        "file": "README.md",
+        "startLine": 21,
+        "endLine": 21
+      },
+      "check": "Create or edit a bookmark and verify that tags can be added and used for organization."
+    },
+    {
+      "id": "README.md#L22",
+      "type": "behaviour",
+      "quote": "- Bulk editing, Markdown notes, read it later functionality",
+      "source": {
+        "file": "README.md",
+        "startLine": 22,
+        "endLine": 22
+      },
+      "check": "Select multiple bookmarks to check bulk editing options, verify Markdown note inputs, and look for read-it-later features."
+    },
+    {
+      "id": "README.md#L23",
+      "type": "behaviour",
+      "quote": "- Share bookmarks with other users or guests",
+      "source": {
+        "file": "README.md",
+        "startLine": 23,
+        "endLine": 23
+      },
+      "check": "Check the bookmark options for sharing features with other users or guests."
+    },
+    {
+      "id": "README.md#L24",
+      "type": "behaviour",
+      "quote": "- Automatically provides titles, descriptions and icons of bookmarked websites",
+      "source": {
+        "file": "README.md",
+        "startLine": 24,
+        "endLine": 24
+      },
+      "check": "Add a new bookmark with a URL and check if the title, description, and icon are automatically populated."
+    },
+    {
+      "id": "README.md#L25",
+      "type": "behaviour",
+      "quote": "- Automatically archive websites, either as local HTML file or on Internet Archive",
+      "source": {
+        "file": "README.md",
+        "startLine": 25,
+        "endLine": 25
+      },
+      "check": "Check settings or bookmark creation options for automatic website archiving settings."
+    },
+    {
+      "id": "README.md#L26",
+      "type": "behaviour",
+      "quote": "- Import and export bookmarks in Netscape HTML format",
+      "source": {
+        "file": "README.md",
+        "startLine": 26,
+        "endLine": 26
+      },
+      "check": "Navigate to the import/export section and verify options to import or export Netscape HTML files."
+    },
+    {
+      "id": "README.md#L27",
+      "type": "mobile",
+      "quote": "- Installable as a Progressive Web App (PWA)",
+      "source": {
+        "file": "README.md",
+        "startLine": 27,
+        "endLine": 27
+      },
+      "check": "Check the web app manifest and browser toolbar for PWA installation prompts."
+    },
+    {
+      "id": "README.md#L28",
+      "type": "behaviour",
+      "quote": "- Extensions for [Firefox](https://addons.mozilla.org/firefox/addon/linkding-extension/) and [Chrome](https://chrome.google.com/webstore/detail/linkding-extension/beakmhbijpdhipnjhnclmhgjlddhidpe), as well as a bookmarklet",
+      "source": {
+        "file": "README.md",
+        "startLine": 28,
+        "endLine": 28
+      },
+      "check": "Verify that a bookmarklet or references to browser extensions are available in the application."
+    },
+    {
+      "id": "README.md#L29",
+      "type": "behaviour",
+      "quote": "- SSO support via OIDC or authentication proxies",
+      "source": {
+        "file": "README.md",
+        "startLine": 29,
+        "endLine": 29
+      },
+      "check": "Check the login page or settings for OIDC or SSO authentication options."
+    },
+    {
+      "id": "README.md#L30",
+      "type": "behaviour",
+      "quote": "- REST API for developing 3rd party apps",
+      "source": {
+        "file": "README.md",
+        "startLine": 30,
+        "endLine": 30
+      },
+      "check": "Navigate to the API documentation or endpoint URL and verify that REST API responses are returned."
+    },
+    {
+      "id": "README.md#L31",
+      "type": "ui_flow",
+      "quote": "- Admin panel for user self-service and raw data access",
+      "source": {
+        "file": "README.md",
+        "startLine": 31,
+        "endLine": 31
+      },
+      "check": "Log in as an admin user, navigate to the admin panel, and verify user management and raw data access sections."
+    },
+    {
+      "id": "README.md#L90",
+      "type": "setup",
+      "quote": "The frontend is now available under http://localhost:8000",
+      "source": {
+        "file": "README.md",
+        "startLine": 90,
+        "endLine": 90
+      },
+      "check": "Open http://localhost:8000 in the browser and verify that the application login or home page loads successfully."
+    },
+    {
+      "id": "README.md#L132",
+      "type": "setup",
+      "quote": "The frontend is now available under http://localhost:8000",
+      "source": {
+        "file": "README.md",
+        "startLine": 132,
+        "endLine": 132
+      },
+      "check": "Open http://localhost:8000 in the browser and verify that the application loads successfully inside the DevContainer."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L6",
+      "type": "behaviour",
+      "quote": "This is the default Django admin app with some linkding specific customizations.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 6,
+        "endLine": 6
+      },
+      "check": "A browser test cannot directly inspect Django internals, but can check that the admin interface page loads successfully with linkding-specific branding or elements."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L8",
+      "type": "behaviour",
+      "quote": "The admin app provides several features that are not available in the linkding UI: - User management and user self-management - Bookmark and tag management, including bulk operations",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 8,
+        "endLine": 10
+      },
+      "check": "Navigate to the admin app and verify that user management, bookmark management, and tag management sections are present."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L14",
+      "type": "ui_flow",
+      "quote": "To open the Admin app, go the *Settings* view and click on the *Admin* tab.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 14,
+        "endLine": 14
+      },
+      "check": "Go to the Settings view in the app, click the Admin tab, and verify that the user is navigated to the admin interface."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L14-2",
+      "type": "ui_flow",
+      "quote": "This should open a new window with the admin app.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 14,
+        "endLine": 14
+      },
+      "check": "Click the Admin tab and verify that a new window or tab opens containing the admin app."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L16",
+      "type": "setup",
+      "quote": "Alternatively you can open the URL directly by adding `/admin` to the URL of your linkding installation.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 16,
+        "endLine": 16
+      },
+      "check": "Navigate directly to the base URL appended with `/admin` and verify that the admin login or dashboard page loads."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L20",
+      "type": "ui_flow",
+      "quote": "Go to the linkding administration page and select *Users*.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 20,
+        "endLine": 20
+      },
+      "check": "On the admin page, click on *Users* and verify that the user management list is displayed."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L21",
+      "type": "behaviour",
+      "quote": "Here you can add and delete users, and change the password of a user.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 21,
+        "endLine": 21
+      },
+      "check": "On the Users page, check that options to add, delete, and change the password of users are available."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L23",
+      "type": "behaviour",
+      "quote": "Once you have added a user you can, if needed, give the user staff status, which means this user can also access the linkding administration page.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 23,
+        "endLine": 23
+      },
+      "check": "Check that user edit forms include a staff status toggle or checkbox."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L25",
+      "type": "behaviour",
+      "quote": "This page also allows you to change your own password if necessary.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 25,
+        "endLine": 25
+      },
+      "check": "Verify that a password change link or form is present on the user management page."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L29",
+      "type": "behaviour",
+      "quote": "While the linkding UI itself now has a bulk edit feature for bookmarks you can also use the admin app to manage bookmarks or to do bulk operations.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 29,
+        "endLine": 29
+      },
+      "check": "Navigate to the bookmarks section in the admin app and verify bookmark management and bulk operations are available."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L31",
+      "type": "ui_flow",
+      "quote": "In the main linkding administration page, choose *Bookmarks*.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 31,
+        "endLine": 31
+      },
+      "check": "On the main admin page, click *Bookmarks* and verify the bookmark list view opens."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L36",
+      "type": "ui_flow",
+      "quote": "In the column *by username*, you can choose to filter for bookmarks for a specific user",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 36,
+        "endLine": 36
+      },
+      "check": "Check that the filter sidebar or column contains a filter option for username."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L37",
+      "type": "ui_flow",
+      "quote": "In the column *by is archived*, you can choose to filter for bookmarks that are either archived or not",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 37,
+        "endLine": 37
+      },
+      "check": "Check that the filter sidebar or column contains a filter option for archived status."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L38",
+      "type": "ui_flow",
+      "quote": "In the column *by tags*, you can choose to filter for specific tags",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 38,
+        "endLine": 38
+      },
+      "check": "Check that the filter sidebar or column contains a filter option for tags."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L39",
+      "type": "ui_flow",
+      "quote": "In the search box you can also add a text filter (note that this doesn't use the same search syntax as the linkding UI itself)",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 39,
+        "endLine": 39
+      },
+      "check": "Verify that a text search box is present in the bookmark administration view."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L41",
+      "type": "behaviour",
+      "quote": "Now a list of bookmarks which match your filter is displayed, each bookmark on a separate line.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 41,
+        "endLine": 41
+      },
+      "check": "Apply a filter and verify that a list of matching bookmarks is displayed with each item on a separate line."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L42",
+      "type": "behaviour",
+      "quote": "Each line starts with a checkbox.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 42,
+        "endLine": 42
+      },
+      "check": "Verify that every bookmark row in the admin list starts with a checkbox input element."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L43",
+      "type": "ui_flow",
+      "quote": "Either choose the individual bookmarks you want to do a bulk operation on, or choose the top checkbox to select all shown bookmarks.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 43,
+        "endLine": 43
+      },
+      "check": "Click individual checkboxes or the master header checkbox and verify that the corresponding rows become selected."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L45",
+      "type": "ui_flow",
+      "quote": "Open the \"Action\" select box to choose the desired bulk operation: - Delete - Archive - Unarchive",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 45,
+        "endLine": 49
+      },
+      "check": "Open the Action select dropdown and verify it contains options for Delete, Archive, and Unarchive."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L51",
+      "type": "ui_flow",
+      "quote": "Click the button next to the checkbox to execute the operation.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 51,
+        "endLine": 51
+      },
+      "check": "Select a bulk action and click the execution button next to the action dropdown, verifying the action is triggered."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L55",
+      "type": "behaviour",
+      "quote": "While linkding UI currently only allows to create or assign tags, you can use the admin app to manage your tags.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 55,
+        "endLine": 55
+      },
+      "check": "Navigate to the Tags section in the admin app and verify that management interfaces for tags are available."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L55-2",
+      "type": "untestable",
+      "quote": "This can be especially useful if you want to clean up your tag collection.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 55,
+        "endLine": 55
+      },
+      "reason": "This is a subjective statement about usefulness and user intent, which cannot be tested by a browser."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L57",
+      "type": "ui_flow",
+      "quote": "In the main linkding administration page, choose *Tags*.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 57,
+        "endLine": 57
+      },
+      "check": "On the main admin page, click *Tags* and verify the tag list view opens."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L59",
+      "type": "ui_flow",
+      "quote": "Similar to bookmarks management described above you can now specify which tags to operate on by specifying a filter and then selecting the individual tags.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 59,
+        "endLine": 59
+      },
+      "check": "Apply a tag filter and select individual tag checkboxes, verifying they can be checked."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L61",
+      "type": "ui_flow",
+      "quote": "Open the \"Action\" select box to choose the desired bulk operation: - Delete - Delete unused tags - this will only delete the selected tags that are currently not assigned to any bookmark",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 61,
+        "endLine": 64
+      },
+      "check": "Open the Action select dropdown on the tags page and verify it contains options to Delete and Delete unused tags."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L66",
+      "type": "ui_flow",
+      "quote": "Click the button next to the checkbox to execute the operation.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 66,
+        "endLine": 66
+      },
+      "check": "Select an action in the tags view and click the execution button, verifying the operation runs."
+    },
+    {
+      "id": "docs/src/content/docs/admin.md#L68",
+      "type": "behaviour",
+      "quote": "Note that deleting a tag does not affect the bookmarks that are tagged with this tag, it only removes the tag from those bookmarks.",
+      "source": {
+        "file": "docs/src/content/docs/admin.md",
+        "startLine": 68,
+        "endLine": 68
+      },
+      "check": "Delete a tag attached to a bookmark and verify via the UI that the bookmark itself still exists without that tag."
+    }
+  ],
+  "rejected": [],
+  "tested": [
+    {
+      "claim": {
+        "id": "docs/src/content/docs/admin.md#L14",
+        "type": "ui_flow",
+        "quote": "To open the Admin app, go the *Settings* view and click on the *Admin* tab.",
+        "source": {
+          "file": "docs/src/content/docs/admin.md",
+          "startLine": 14,
+          "endLine": 14
+        },
+        "check": "Go to the Settings view in the app, click the Admin tab, and verify that the user is navigated to the admin interface."
+      },
+      "kane": {
+        "status": "failed",
+        "exitCode": 1,
+        "oneLiner": "The settings page loaded normally, but the logged-in test account did not have an in-page Admin tab.",
+        "summary": "The run used an account or fixture that does not expose administrator settings, while the test required that tab to be present. The visible Settings page shows the Profile form and ordinary preferences only.\nUse a test account that is explicitly configured as an administrator, or update the scenario so that it does not require the Admin tab for a standard user.",
+        "reason": "Checkpoint assertion failed: \"The Settings page contains an in-page Admin tab. Expect true.\"",
+        "reasonCode": "assertion_error.checkpoint_failed",
+        "durationSec": 119.5,
+        "credits": 31.798283499999997,
+        "testUrl": null,
+        "sessionDir": null,
+        "evidencePack": null,
+        "steps": [
+          {
+            "step": 2,
+            "status": "done",
+            "remark": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Login\""
+          },
+          {
+            "step": 3,
+            "status": "done",
+            "remark": "type: Type \"pinotest\" into \"Username\""
+          },
+          {
+            "step": 4,
+            "status": "done",
+            "remark": "type: Type \"{{secrets.user.app_pass}}\" into \"Password\""
+          },
+          {
+            "step": 5,
+            "status": "done",
+            "remark": "navigate: PRIMARY: Open /settings/general after login"
+          },
+          {
+            "step": 6,
+            "status": "done",
+            "remark": "wait: PRIMARY: wait for /settings/general to load"
+          },
+          {
+            "step": 7,
+            "status": "done",
+            "remark": "analyze: The Settings page contains an in-page Admin tab"
+          },
+          {
+            "step": 8,
+            "status": "done",
+            "remark": "assert: The Settings page shows the Profile form. Expect true."
+          },
+          {
+            "step": 9,
+            "status": "failed",
+            "remark": "assert: The Settings page contains an in-page Admin tab. Expect true."
+          }
+        ],
+        "failedStep": {
+          "step": 9,
+          "status": "failed",
+          "remark": "assert: The Settings page contains an in-page Admin tab. Expect true."
+        },
+        "observations": [
+          {
+            "name": "login_form_shown",
+            "condition": "a login form is shown",
+            "extractedValue": "true",
+            "expectedValue": "true",
+            "analyzerType": "textual_visual",
+            "usedDomCode": true
+          },
+          {
+            "name": "settings_profile_form_shown",
+            "condition": "The Settings page shows the Profile form. Expect true.",
+            "extractedValue": "true",
+            "expectedValue": "true",
+            "analyzerType": "textual_visual",
+            "usedDomCode": true
+          },
+          {
+            "name": "in_page_admin_tab_absent",
+            "condition": "The Settings page does not contain an in-page Admin tab",
+            "extractedValue": "false",
+            "expectedValue": "false",
+            "analyzerType": "visual",
+            "usedDomCode": false
+          },
+          {
+            "name": "in_page_admin_tab_present",
+            "condition": "The Settings page contains an in-page Admin tab. Expect true.",
+            "extractedValue": "false",
+            "expectedValue": "true",
+            "analyzerType": "visual",
+            "usedDomCode": false
+          },
+          {
+            "name": "in_page_admin_tab_passes",
+            "condition": "The Settings page contains an in-page Admin tab",
+            "extractedValue": "false",
+            "expectedValue": "true",
+            "analyzerType": "visual",
+            "usedDomCode": false
+          }
+        ],
+        "blame": {
+          "family": "automation_bug",
+          "category": "test_data_issue",
+          "rootCause": "The run used an account or fixture that does not expose administrator settings, while the test required that tab to be present. The visible Settings page shows the Profile form and ordinary preferences only.",
+          "confidence": 0.93,
+          "agentFaultAssessment": "The agent did not cause the outcome. It navigated to /settings/general successfully and inspected the loaded Settings page as instructed, including the in-page area rather than the top navigation. The assertion failed because the required Admin tab was not available for the current account state."
+        },
+        "ignoredLines": 0,
+        "objective": "If a login form is shown, log in with username pinotest and password {{app_pass}}. Open /settings/general after login and wait for it to load. First assert exactly: The Settings page shows the Profile form. Expect true. Use visual inspection and check tabs implemented as links as well as native tabs. Assert exactly: The Settings page contains an in-page Admin tab. Expect true. Ignore the top navigation dropdown. If the assertion fails, stop there. If it passes, click the in-page Admin tab and assert that the administration page title contains Site administration.",
+        "startUrl": "http://localhost:9090/login/",
+        "outDir": "claims/docs_src_content_docs_admin.md_L14",
+        "evidence": [
+          {
+            "ordinal": 1,
+            "kind": "navigate",
+            "status": "passed",
+            "summary": "navigate: Navigate to http://localhost:9090/login/",
+            "url": "http://localhost:9090/login/",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/1-0-1/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          },
+          {
+            "ordinal": 2,
+            "kind": "analyze",
+            "status": "passed",
+            "summary": "analyze: a login form is shown",
+            "url": "http://localhost:9090/login/",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/2-0-2/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          },
+          {
+            "ordinal": 3,
+            "kind": "wait",
+            "status": "passed",
+            "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Login\"",
+            "url": "http://localhost:9090/login/",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/3-0-c4397ef7-1/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          },
+          {
+            "ordinal": 4,
+            "kind": "type",
+            "status": "passed",
+            "summary": "type: Type \"pinotest\" into \"Username\"",
+            "url": "http://localhost:9090/login/",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/4-0-c4397ef7-2/screenshot.jpg",
+            "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/4-0-c4397ef7-2/annotated.png",
+            "failureYaml": null
+          },
+          {
+            "ordinal": 5,
+            "kind": "type",
+            "status": "passed",
+            "summary": "type: Type \"{{secrets.user.app_pass}}\" into \"Password\"",
+            "url": "http://localhost:9090/login/",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/5-0-c4397ef7-3/screenshot.jpg",
+            "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/5-0-c4397ef7-3/annotated.png",
+            "failureYaml": null
+          },
+          {
+            "ordinal": 6,
+            "kind": "",
+            "status": "passed",
+            "summary": "",
+            "url": "http://localhost:9090/login/",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/6-0-c4397ef7-4/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          },
+          {
+            "ordinal": 7,
+            "kind": "click",
+            "status": "passed",
+            "summary": "click: Clicking the Login button in the login form",
+            "url": "http://localhost:9090/login/",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/7-0-c4397ef7-5/screenshot.jpg",
+            "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/7-0-c4397ef7-5/annotated.png",
+            "failureYaml": null
+          },
+          {
+            "ordinal": 8,
+            "kind": "",
+            "status": "passed",
+            "summary": "wait: Waiting after successful login",
+            "url": "http://localhost:9090/bookmarks",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/8-0-c4397ef7-6/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          },
+          {
+            "ordinal": 9,
+            "kind": "navigate",
+            "status": "passed",
+            "summary": "navigate: PRIMARY: Open /settings/general after login",
+            "url": "http://localhost:9090/bookmarks",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/9-0-4/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          },
+          {
+            "ordinal": 10,
+            "kind": "wait",
+            "status": "passed",
+            "summary": "wait: PRIMARY: wait for /settings/general to load",
+            "url": "http://localhost:9090/settings/general",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/10-0-5/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          },
+          {
+            "ordinal": 11,
+            "kind": "analyze",
+            "status": "passed",
+            "summary": "analyze: The Settings page contains an in-page Admin tab",
+            "url": "http://localhost:9090/settings/general",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/11-0-6/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": "step: 0-6\nstatus: broken\nerror:\n  message: 'Checkpoint assertion failed: \"The Settings page contains an in-page Admin\n    tab. Expect true.\"'\npage_state:\n  url: http://localhost:9090/settings/general\n  screenshot: steps/11-0-6/screenshot.jpg\nconsole_at_failure:\n  ref: logs/0-console.ndjson\n  step: 0-6\nnetwork_at_failure:\n  ref: logs/0-network.har\n  step: 0-6\ntitle: Test account lacks the required Admin tab\ntriage:\n  status: triaged\n  by:\n    kind: agent\n    id: v16-investigation/terminal\n    at: '2026-11-16T17:31:59.920335+00:00'\n  rca:\n    root_cause: The run used an account or fixture that does not expose administrator\n      settings, while the test required that tab to be present. The visible Settings\n      page shows the Profile form and ordinary preferences only.\n    category: automation_bug/test_data_issue\n    confidence: 0.93\n  verification:\n    status: not_verified\n  severity: minor\n  suggested_fix:\n    summary: Use a test account that is explicitly configured as an administrator,\n      or update the scenario so that it does not require the Admin tab for a standard\n      user.\n"
+          },
+          {
+            "ordinal": 12,
+            "kind": "assert",
+            "status": "passed",
+            "summary": "assert: The Settings page shows the Profile form. Expect true.",
+            "url": "http://localhost:9090/settings/general",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/12-0-7/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          },
+          {
+            "ordinal": 13,
+            "kind": "assert",
+            "status": "failed",
+            "summary": "assert: The Settings page contains an in-page Admin tab. Expect true.",
+            "url": "http://localhost:9090/settings/general",
+            "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-29dc98ff/steps/13-0-8/screenshot.jpg",
+            "annotated": null,
+            "failureYaml": null
+          }
+        ],
+        "evidenceError": null
+      },
+      "questioning": {
+        "verdict": "outdated",
+        "reason": "Two separate Kane runs found no Admin tab inside the Settings page. The same test login opened Site administration through the top navigation’s Settings dropdown in the passing control run. Linkding’s historical source had an Admin tab in the Settings template at 3ae9cf0. The template was removed at 226eb69.",
+        "initialReason": "Verify that Settings loaded, then look for the tab inside the page before following it.",
+        "followUps": [
+          {
+            "purpose": "retry",
+            "reason": "Repeat the in-page tab assertion in a separate run with the same logged-in account.",
+            "kane": {
+              "status": "failed",
+              "exitCode": 1,
+              "oneLiner": "The run checked for an Admin tab while signed in with an account that does not show administrative options.",
+              "summary": "The test expected an Admin tab for the `pinotest` login, but the visible Settings page only shows the Profile settings and no in-page Admin tab. Nothing in the evidence says every user should have that tab, so the account or test expectation is mismatched rather than the page being proven broken.\nUse a test account explicitly provisioned with administrator access for this check, or change the scenario to expect no Admin tab for the regular `pinotest` account. Add the required Profile-form assertion before the Admin-tab check.",
+              "reason": "Checkpoint assertion failed: \"The Settings page contains an in-page Admin tab. Expect true.\"",
+              "reasonCode": "assertion_error.checkpoint_failed",
+              "durationSec": 156,
+              "credits": 41.692870000000006,
+              "testUrl": null,
+              "sessionDir": null,
+              "evidencePack": null,
+              "steps": [
+                {
+                  "step": 2,
+                  "status": "done",
+                  "remark": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Login\""
+                },
+                {
+                  "step": 3,
+                  "status": "done",
+                  "remark": "type: Type \"pinotest\" into \"Username\""
+                },
+                {
+                  "step": 4,
+                  "status": "done",
+                  "remark": "type: Type \"{{secrets.user.app_pass}}\" into \"Password\""
+                },
+                {
+                  "step": 5,
+                  "status": "done",
+                  "remark": "navigate: PRIMARY: Go directly to /settings/general after login."
+                },
+                {
+                  "step": 6,
+                  "status": "done",
+                  "remark": "wait: PRIMARY: wait for the Profile heading to appear on the Settings page"
+                },
+                {
+                  "step": 7,
+                  "status": "done",
+                  "remark": "analyze: The Settings page shows the Profile form. Expect true."
+                },
+                {
+                  "step": 8,
+                  "status": "done",
+                  "remark": "assert: The Settings page shows the Profile form. Expect true."
+                },
+                {
+                  "step": 9,
+                  "status": "done",
+                  "remark": "analyze: The Settings page contains an in-page Admin tab. Expect true."
+                },
+                {
+                  "step": 10,
+                  "status": "failed",
+                  "remark": "assert: The Settings page contains an in-page Admin tab. Expect true."
+                }
+              ],
+              "failedStep": {
+                "step": 10,
+                "status": "failed",
+                "remark": "assert: The Settings page contains an in-page Admin tab. Expect true."
+              },
+              "observations": [
+                {
+                  "name": "login_form_shown",
+                  "condition": "a login form is shown",
+                  "extractedValue": "true",
+                  "expectedValue": "true",
+                  "analyzerType": "visual",
+                  "usedDomCode": false
+                },
+                {
+                  "name": "settings_profile_form_visible",
+                  "condition": "The Settings page shows the Profile form. Expect true.",
+                  "extractedValue": "true",
+                  "expectedValue": "true",
+                  "analyzerType": "textual_visual",
+                  "usedDomCode": true
+                },
+                {
+                  "name": "settings_in_page_admin_tab_present",
+                  "condition": "The Settings page contains an in-page Admin tab. Expect true.",
+                  "extractedValue": "false",
+                  "expectedValue": "true",
+                  "analyzerType": "visual",
+                  "usedDomCode": false
+                }
+              ],
+              "blame": {
+                "family": "automation_bug",
+                "category": "test_data_issue",
+                "rootCause": "The test expected an Admin tab for the `pinotest` login, but the visible Settings page only shows the Profile settings and no in-page Admin tab. Nothing in the evidence says every user should have that tab, so the account or test expectation is mismatched rather than the page being proven broken.",
+                "confidence": 0.93,
+                "agentFaultAssessment": "The agent reached `/settings/general` successfully and checked the visible Settings content before making the required Admin-tab assertion. Its actions did not remove or hide the tab. However, the run also appears to have skipped the required preceding Profile-form assertion, and the test proceeded with an unsupported assumption that this login should have administrator access."
+              },
+              "ignoredLines": 0,
+              "objective": "If a login form is shown, log in with username pinotest and password {{app_pass}}. Go directly to /settings/general after login. First assert exactly: The Settings page shows the Profile form. Expect true. Independently inspect the visible navigation inside the Settings page content and look for an Admin tab, including links styled as tabs. Reuse this exact boolean assertion: The Settings page contains an in-page Admin tab. Expect true. Capture the failed assertion if there is no tab. If present, click the in-page Admin tab and verify the Site administration page title.",
+              "startUrl": "http://localhost:9090/login/",
+              "outDir": "claims/docs_src_content_docs_admin.md_L14--retry",
+              "evidence": [
+                {
+                  "ordinal": 1,
+                  "kind": "navigate",
+                  "status": "passed",
+                  "summary": "navigate: Navigate to http://localhost:9090/login/",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/1-0-1/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 2,
+                  "kind": "analyze",
+                  "status": "passed",
+                  "summary": "analyze: a login form is shown",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/2-0-2/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 3,
+                  "kind": "wait",
+                  "status": "passed",
+                  "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Login\"",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/3-0-b322c520-1/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 4,
+                  "kind": "type",
+                  "status": "passed",
+                  "summary": "type: Type \"pinotest\" into \"Username\"",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/4-0-b322c520-2/screenshot.jpg",
+                  "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/4-0-b322c520-2/annotated.png",
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 5,
+                  "kind": "type",
+                  "status": "passed",
+                  "summary": "type: Type \"{{secrets.user.app_pass}}\" into \"Password\"",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/5-0-b322c520-3/screenshot.jpg",
+                  "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/5-0-b322c520-3/annotated.png",
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 6,
+                  "kind": "",
+                  "status": "passed",
+                  "summary": "",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/6-0-b322c520-4/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 7,
+                  "kind": "click",
+                  "status": "passed",
+                  "summary": "click: Clicking Log in button",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/7-0-b322c520-5/screenshot.jpg",
+                  "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/7-0-b322c520-5/annotated.png",
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 8,
+                  "kind": "",
+                  "status": "passed",
+                  "summary": "wait: Waiting confirm logged-in bookmarks page is displayed",
+                  "url": "http://localhost:9090/bookmarks",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/8-0-b322c520-6/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 9,
+                  "kind": "navigate",
+                  "status": "passed",
+                  "summary": "navigate: PRIMARY: Go directly to /settings/general after login.",
+                  "url": "http://localhost:9090/bookmarks",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/9-0-4/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 10,
+                  "kind": "wait",
+                  "status": "passed",
+                  "summary": "wait: PRIMARY: wait for the Profile heading to appear on the Settings page",
+                  "url": "http://localhost:9090/settings/general",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/10-0-5/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 11,
+                  "kind": "analyze",
+                  "status": "passed",
+                  "summary": "analyze: The Settings page shows the Profile form. Expect true.",
+                  "url": "http://localhost:9090/settings/general",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/11-0-6/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 12,
+                  "kind": "assert",
+                  "status": "passed",
+                  "summary": "assert: The Settings page shows the Profile form. Expect true.",
+                  "url": "http://localhost:9090/settings/general",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/12-0-7/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 13,
+                  "kind": "analyze",
+                  "status": "passed",
+                  "summary": "analyze: The Settings page contains an in-page Admin tab. Expect true.",
+                  "url": "http://localhost:9090/settings/general",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/13-0-8/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 14,
+                  "kind": "assert",
+                  "status": "failed",
+                  "summary": "assert: The Settings page contains an in-page Admin tab. Expect true.",
+                  "url": "http://localhost:9090/settings/general",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-b5f031d6/steps/14-0-9/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": "step: 0-9\nstatus: broken\nerror:\n  message: 'Checkpoint assertion failed: \"The Settings page contains an in-page Admin\n    tab. Expect true.\"'\npage_state:\n  url: http://localhost:9090/settings/general\n  screenshot: steps/14-0-9/screenshot.jpg\nconsole_at_failure:\n  ref: logs/0-console.ndjson\n  step: 0-9\nnetwork_at_failure:\n  ref: logs/0-network.har\n  step: 0-9\ntitle: Non-admin test account used for Admin-tab check\ntriage:\n  status: triaged\n  by:\n    kind: agent\n    id: v16-investigation/terminal\n    at: '2026-11-16T17:34:58.118012+00:00'\n  rca:\n    root_cause: The test expected an Admin tab for the `pinotest` login, but the visible\n      Settings page only shows the Profile settings and no in-page Admin tab. Nothing\n      in the evidence says every user should have that tab, so the account or test\n      expectation is mismatched rather than the page being proven broken.\n    category: automation_bug/test_data_issue\n    confidence: 0.93\n  verification:\n    status: not_verified\n  severity: minor\n  suggested_fix:\n    summary: Use a test account explicitly provisioned with administrator access for\n      this check, or change the scenario to expect no Admin tab for the regular `pinotest`\n      account. Add the required Profile-form assertion before the Admin-tab check.\n"
+                }
+              ],
+              "evidenceError": null
+            }
+          },
+          {
+            "purpose": "control",
+            "reason": "Check whether this account can reach the admin dashboard through the Settings dropdown.",
+            "kane": {
+              "status": "passed",
+              "exitCode": 0,
+              "oneLiner": "opened the Site administration dashboard on linkding",
+              "summary": "The requested path to the administration area was completed.\nA sign-in form was shown, so the pinotest account was signed in.\nThe Settings menu was opened and its Admin option was selected.\nThe Site administration dashboard loaded successfully, showing the pinotest account and a Users link.",
+              "reason": "Objective completed",
+              "reasonCode": "success.complete",
+              "durationSec": 99.4,
+              "credits": 32.676745999999994,
+              "testUrl": null,
+              "sessionDir": null,
+              "evidencePack": null,
+              "steps": [
+                {
+                  "step": 2,
+                  "status": "done",
+                  "remark": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Login\""
+                },
+                {
+                  "step": 3,
+                  "status": "done",
+                  "remark": "type: Type \"pinotest\" into \"Username\""
+                },
+                {
+                  "step": 4,
+                  "status": "done",
+                  "remark": "type: Type \"{{secrets.user.app_pass}}\" into \"Password\""
+                },
+                {
+                  "step": 5,
+                  "status": "done",
+                  "remark": "click: Clicking Settings in the top navigation dropdown"
+                },
+                {
+                  "step": 6,
+                  "status": "done",
+                  "remark": "analyze: The Settings dropdown contains an Admin menu item."
+                },
+                {
+                  "step": 7,
+                  "status": "done",
+                  "remark": "assert: The Settings dropdown contains an Admin menu item."
+                },
+                {
+                  "step": 8,
+                  "status": "done",
+                  "remark": "click: Clicking Admin in the expanded top navigation dropdown"
+                },
+                {
+                  "step": 9,
+                  "status": "done",
+                  "remark": "wait: PRIMARY: wait for the Site administration page to load"
+                },
+                {
+                  "step": 10,
+                  "status": "done",
+                  "remark": "analyze: The Site administration dashboard shows a Users link."
+                },
+                {
+                  "step": 11,
+                  "status": "done",
+                  "remark": "assert: The administration page title contains Site administration."
+                },
+                {
+                  "step": 12,
+                  "status": "done",
+                  "remark": "assert: The Site administration dashboard shows the account pinotest."
+                },
+                {
+                  "step": 13,
+                  "status": "done",
+                  "remark": "assert: The Site administration dashboard shows a Users link."
+                }
+              ],
+              "failedStep": null,
+              "observations": [
+                {
+                  "name": "login_form_shown",
+                  "condition": "a login form is shown",
+                  "extractedValue": "true",
+                  "expectedValue": "true",
+                  "analyzerType": "textual_visual",
+                  "usedDomCode": true
+                },
+                {
+                  "name": "settings_dropdown_admin_menu_item",
+                  "condition": "The Settings dropdown contains an Admin menu item.",
+                  "extractedValue": "true",
+                  "expectedValue": "true",
+                  "analyzerType": "textual_visual",
+                  "usedDomCode": true
+                },
+                {
+                  "name": "administration_page_title",
+                  "condition": "The administration page title contains Site administration.",
+                  "extractedValue": "Site administration | linkding Admin",
+                  "expectedValue": "Site administration",
+                  "analyzerType": "title",
+                  "usedDomCode": false
+                },
+                {
+                  "name": "site_administration_dashboard_pinotest_account",
+                  "condition": "The Site administration dashboard shows the account pinotest.",
+                  "extractedValue": "true",
+                  "expectedValue": "true",
+                  "analyzerType": "textual_visual",
+                  "usedDomCode": true
+                },
+                {
+                  "name": "site_administration_dashboard_users_link",
+                  "condition": "The Site administration dashboard shows a Users link.",
+                  "extractedValue": "true",
+                  "expectedValue": "true",
+                  "analyzerType": "textual_visual",
+                  "usedDomCode": true
+                }
+              ],
+              "blame": null,
+              "ignoredLines": 0,
+              "objective": "If a login form is shown, log in with username pinotest and password {{app_pass}}. From the signed-in bookmarks page, open the Settings dropdown in the top navigation. Assert exactly: The Settings dropdown contains an Admin menu item. Expect true. Click Admin inside that dropdown. Make these as separate assertions: The administration page title contains Site administration. The Site administration dashboard shows the account pinotest. The Site administration dashboard shows a Users link. Expect true for each.",
+              "startUrl": "http://localhost:9090/login/",
+              "outDir": "claims/docs_src_content_docs_admin.md_L14--control",
+              "evidence": [
+                {
+                  "ordinal": 1,
+                  "kind": "navigate",
+                  "status": "passed",
+                  "summary": "navigate: Navigate to http://localhost:9090/login/",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/1-0-1/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 2,
+                  "kind": "analyze",
+                  "status": "passed",
+                  "summary": "analyze: a login form is shown",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/2-0-2/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 3,
+                  "kind": "wait",
+                  "status": "passed",
+                  "summary": "wait: queued plan (3 steps): type \"Username\"; type \"Password\"; click \"Login\"",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/3-0-b324b5c8-1/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 4,
+                  "kind": "type",
+                  "status": "passed",
+                  "summary": "type: Type \"pinotest\" into \"Username\"",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/4-0-b324b5c8-2/screenshot.jpg",
+                  "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/4-0-b324b5c8-2/annotated.png",
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 5,
+                  "kind": "type",
+                  "status": "passed",
+                  "summary": "type: Type \"{{secrets.user.app_pass}}\" into \"Password\"",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/5-0-b324b5c8-3/screenshot.jpg",
+                  "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/5-0-b324b5c8-3/annotated.png",
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 6,
+                  "kind": "",
+                  "status": "passed",
+                  "summary": "",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/6-0-b324b5c8-4/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 7,
+                  "kind": "click",
+                  "status": "passed",
+                  "summary": "click: Clicking Login button to sign in",
+                  "url": "http://localhost:9090/login/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/7-0-b324b5c8-5/screenshot.jpg",
+                  "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/7-0-b324b5c8-5/annotated.png",
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 8,
+                  "kind": "",
+                  "status": "passed",
+                  "summary": "wait: Waiting for the signed-in bookmarks page to remain visible",
+                  "url": "http://localhost:9090/bookmarks",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/8-0-b324b5c8-6/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 9,
+                  "kind": "click",
+                  "status": "passed",
+                  "summary": "click: Clicking Settings in the top navigation dropdown",
+                  "url": "http://localhost:9090/bookmarks",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/9-0-4/screenshot.jpg",
+                  "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/9-0-4/annotated.png",
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 10,
+                  "kind": "analyze",
+                  "status": "passed",
+                  "summary": "analyze: The Settings dropdown contains an Admin menu item.",
+                  "url": "http://localhost:9090/bookmarks",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/10-0-5/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 11,
+                  "kind": "assert",
+                  "status": "passed",
+                  "summary": "assert: The Settings dropdown contains an Admin menu item.",
+                  "url": "http://localhost:9090/bookmarks",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/11-0-6/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 12,
+                  "kind": "click",
+                  "status": "passed",
+                  "summary": "click: Clicking Admin in the expanded top navigation dropdown",
+                  "url": "http://localhost:9090/bookmarks",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/12-0-7/screenshot.jpg",
+                  "annotated": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/12-0-7/annotated.png",
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 13,
+                  "kind": "wait",
+                  "status": "passed",
+                  "summary": "wait: PRIMARY: wait for the Site administration page to load",
+                  "url": "http://localhost:9090/admin/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/13-0-8/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 14,
+                  "kind": "analyze",
+                  "status": "passed",
+                  "summary": "analyze: The Site administration dashboard shows a Users link.",
+                  "url": "http://localhost:9090/admin/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/14-0-9/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 15,
+                  "kind": "assert",
+                  "status": "passed",
+                  "summary": "assert: The administration page title contains Site administration.",
+                  "url": "http://localhost:9090/admin/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/15-0-10/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 16,
+                  "kind": "assert",
+                  "status": "passed",
+                  "summary": "assert: The Site administration dashboard shows the account pinotest.",
+                  "url": "http://localhost:9090/admin/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/16-0-11/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                },
+                {
+                  "ordinal": 17,
+                  "kind": "assert",
+                  "status": "passed",
+                  "summary": "assert: The Site administration dashboard shows a Users link.",
+                  "url": "http://localhost:9090/admin/",
+                  "screenshot": "tests/if-a-login-form-is-shown-log-in-with-use-33f7eb31/steps/17-0-12/screenshot.jpg",
+                  "annotated": null,
+                  "failureYaml": null
+                }
+              ],
+              "evidenceError": null
+            }
+          }
+        ],
+        "overrides": []
+      }
+    }
+  ],
+  "notTested": [
+    "README.md#L20",
+    "README.md#L21",
+    "README.md#L22",
+    "README.md#L23",
+    "README.md#L24",
+    "README.md#L25",
+    "README.md#L26",
+    "README.md#L27",
+    "README.md#L28",
+    "README.md#L29",
+    "README.md#L30",
+    "README.md#L31",
+    "README.md#L90",
+    "README.md#L132",
+    "docs/src/content/docs/admin.md#L6",
+    "docs/src/content/docs/admin.md#L8",
+    "docs/src/content/docs/admin.md#L14-2",
+    "docs/src/content/docs/admin.md#L16",
+    "docs/src/content/docs/admin.md#L20",
+    "docs/src/content/docs/admin.md#L21",
+    "docs/src/content/docs/admin.md#L23",
+    "docs/src/content/docs/admin.md#L25",
+    "docs/src/content/docs/admin.md#L29",
+    "docs/src/content/docs/admin.md#L31",
+    "docs/src/content/docs/admin.md#L36",
+    "docs/src/content/docs/admin.md#L37",
+    "docs/src/content/docs/admin.md#L38",
+    "docs/src/content/docs/admin.md#L39",
+    "docs/src/content/docs/admin.md#L41",
+    "docs/src/content/docs/admin.md#L42",
+    "docs/src/content/docs/admin.md#L43",
+    "docs/src/content/docs/admin.md#L45",
+    "docs/src/content/docs/admin.md#L51",
+    "docs/src/content/docs/admin.md#L55",
+    "docs/src/content/docs/admin.md#L57",
+    "docs/src/content/docs/admin.md#L59",
+    "docs/src/content/docs/admin.md#L61",
+    "docs/src/content/docs/admin.md#L66",
+    "docs/src/content/docs/admin.md#L68"
+  ],
+  "kaneCredits": 106.1678995,
+  "model": {
+    "calls": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "cacheHits": 2
+  }
+}

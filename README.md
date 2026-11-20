@@ -78,7 +78,7 @@ There are three ways to try fibcheck:
 
 1. **With the judges' Gemini key.** The submission form includes a Gemini API key for judging. It is never in this repository. Put it in `.env` as `GEMINI_API_KEY=...` and follow the quick start. Kane CLI needs your own TestMu AI account (`kane-cli login`).
 2. **With your own model.** Set `FIBCHECK_MODEL_BASE_URL`, `FIBCHECK_MODEL_API_KEY` and `FIBCHECK_MODEL` as shown in [Use your own model](#use-your-own-model), then follow the quick start.
-3. **With no keys at all.** `node dist/cli.js report <check.json>` rebuilds a report and badge from saved evidence without calling Kane or any model. The [fibcheck index](index/README.md) links every claim to its screenshots.
+3. **With no keys at all.** After `npm ci && npm run build`, run `node dist/cli.js report examples/sample-check/check.json`. It rebuilds `report.html` and `badge.svg` from a real saved check, without calling Kane or any model: the Linkding check that found the outdated Admin tab step, with both failing Kane runs, the passing control and their 55 step screenshots. The [fibcheck index](index/README.md) links every other claim to its screenshots.
 
 ## Try the local npm package
 
