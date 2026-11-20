@@ -44,32 +44,32 @@ There are three ways to try fibcheck:
 
 1. **With the judges' Gemini key.** The submission form includes a Gemini API key for judging. It is never in this repository. Put it in `.env` as `GEMINI_API_KEY=...` and follow the quick start. Kane CLI needs your own TestMu AI account (`kane-cli login`).
 2. **With your own model.** Set `FIBCHECK_MODEL_BASE_URL`, `FIBCHECK_MODEL_API_KEY` and `FIBCHECK_MODEL` as shown in [Use your own model](#use-your-own-model), then follow the quick start.
-3. **With no keys at all.** After `npm ci && npm run build`, run `node dist/cli.js report examples/sample-check/check.json`. It rebuilds `report.html` and `badge.svg` from a real saved check, without calling Kane or any model: the Linkding check that found the outdated Admin tab step, with both failing Kane runs, the passing control and their 55 step screenshots. The [fibcheck index](index/README.md) links every other claim to its screenshots.
+3. **With no keys at all.** In a clone of this repository, run `npx fibcheck report examples/sample-check/check.json`. It rebuilds `report.html` and `badge.svg` from a real saved check, without calling Kane or any model: the Linkding check that found the outdated Admin tab step, with both failing Kane runs, the passing control and their 55 step screenshots. The [fibcheck index](index/README.md) links every other claim to its screenshots.
 
 ## Quick start
 
-Use Node.js 20.12 or newer with Git, Docker, Kane CLI, and a model for fibcheck's agent. Start Docker and put `GEMINI_API_KEY` in `.env` in the directory where you run fibcheck (use a Gemini project on the free tier), or choose another model as described in [Use your own model](#use-your-own-model).
+fibcheck is on npm as [`fibcheck`](https://www.npmjs.com/package/fibcheck). Use Node.js 20.12 or newer with Git, Docker, Kane CLI, and a model for fibcheck's agent. Start Docker and put `GEMINI_API_KEY` in `.env` in the directory where you run fibcheck (use a Gemini project on the free tier), or choose another model as described in [Use your own model](#use-your-own-model).
 
 ```sh
 npm install -g @testmuai/kane-cli
 kane-cli login --oauth
-npm ci
-npm run build
-node dist/cli.js check sissbruecker/linkding --max-claims 1
+npx fibcheck check sissbruecker/linkding --max-claims 1
 ```
 
 The check prints the path to its `check.json`. Pass that path to `report` to write `report.html` and `badge.svg` beside it.
 
 ```sh
-node dist/cli.js report runs/REPLACE_WITH_RUN_ID/check.json
+npx fibcheck report runs/REPLACE_WITH_RUN_ID/check.json
 ```
+
+To work on fibcheck itself, clone this repository and run `npm ci && npm run build`; `node dist/cli.js` then runs the same commands from your copy.
 
 The Linkding GitHub clone URL also selects the bundled target. For another public web app, create a target JSON describing its repository, Docker image, port, and any login steps. Use `targets/linkding.json` as an example and pass your file to `check`. `--only` selects a claim by ID. fibcheck ranks the testable claims by how specific they are: named menus, tabs, buttons and settings, default values, shortcuts and step-by-step instructions come first, because those are the lines that go stale when an interface changes. The top `--max-claims` claims are tested (5 by default; 5 to 10 is a good range), and the rest are listed in the report as not tested, in ranked order, with the reasons for each score in `check.json`.
 
 To check an app that is already running somewhere, with no Docker, pass its address with `--url`. Use `--login` to describe your own sign-in, writing `{{NAME}}` for each value, and put the values in `.env` as `FIBCHECK_LOGIN_NAME=...`. They are passed to Kane as secret variables and are never sent to Gemini.
 
 ```sh
-node dist/cli.js check sissbruecker/linkding --url https://bookmarks.example.org \
+npx fibcheck check sissbruecker/linkding --url https://bookmarks.example.org \
   --login "If the login form is shown, sign in as {{user}} with password {{pass}}." --max-claims 2
 ```
 
@@ -77,7 +77,7 @@ Use `--max-kane-runs 12` to cap Kane invocations per check, including retries an
 
 ## Use it on your own project
 
-fibcheck is not on npm yet, so run it from a clone: `npm ci && npm run build`, then `node dist/cli.js <command>`. Once it is published, the same commands run as `npx fibcheck <command>`.
+Run fibcheck with `npx fibcheck <command>`, or install it with `npm install -g fibcheck` and run `fibcheck <command>`. Run it from the folder that holds your `.env`.
 
 1. **Describe your app** in a target file. Point `repo` at your repository (a Git URL or a local folder) and list any docs beyond the README. Either give a Docker image to start, or leave `app` out and pass `--url` for an app that is already running:
 
@@ -96,10 +96,10 @@ fibcheck is not on npm yet, so run it from a clone: `npm ci && npm run build`, t
 
    `{{secret:app_pass}}` makes fibcheck generate a fresh password for each run, pass it to the container, and give it to Kane as a secret variable. With `--url`, write `{{pass}}` in `--login` instead and put `FIBCHECK_LOGIN_PASS=...` in `.env`. [targets/linkding.json](targets/linkding.json) is a working example.
 
-2. **Run a check:** `node dist/cli.js check my-app.json --max-claims 5`. fibcheck ranks the claims, Kane tests the top five, and `report` turns the saved `check.json` into an HTML report with every screenshot.
+2. **Run a check:** `npx fibcheck check my-app.json --max-claims 5`. fibcheck ranks the claims, Kane tests the top five, and `report` turns the saved `check.json` into an HTML report with every screenshot.
 3. **Read the candidates.** A line that Kane failed twice while a control passed is a candidate finding. Open its screenshots and decide. fibcheck never calls a line false on its own.
-4. **Confirm it, fix the docs, then attack the fix.** Once you have read the screenshots, record the finding with `node dist/cli.js confirm runs/<run>/check.json <claim-id> --verdict outdated --fix "<the corrected sentence>" --findings findings.json`. It refuses anything without two failed Kane runs and a passing control, and copies Kane's screenshots beside the findings file. Then run `node dist/cli.js attack <finding-id> --url <app address> --findings findings.json`: the attacker must fail to make the old check pass with a shortcut before you send the fix, and `card` draws a share card from the same entry.
-5. **Keep it checked on every pull request.** Freeze the checks with `node dist/cli.js freeze docs/getting-started.md --out docs/fibcheck.claims.json`, review each one, and add the [GitHub Action](#check-docs-changes-in-github-actions) with that file as `claims-file`.
+4. **Confirm it, fix the docs, then attack the fix.** Once you have read the screenshots, record the finding with `npx fibcheck confirm runs/<run>/check.json <claim-id> --verdict outdated --fix "<the corrected sentence>" --findings findings.json`. It refuses anything without two failed Kane runs and a passing control, and copies Kane's screenshots beside the findings file. Then run `npx fibcheck attack <finding-id> --url <app address> --findings findings.json`: the attacker must fail to make the old check pass with a shortcut before you send the fix, and `card` draws a share card from the same entry.
+5. **Keep it checked on every pull request.** Freeze the checks with `npx fibcheck freeze docs/getting-started.md --out docs/fibcheck.claims.json`, review each one, and add the [GitHub Action](#check-docs-changes-in-github-actions) with that file as `claims-file`.
 
 ## Commands
 
@@ -112,7 +112,7 @@ fibcheck is not on npm yet, so run it from a clone: `npm ci && npm run build`, t
 | `fibcheck attack <finding-id> --url ADDRESS` | Tries lazy fixes for a recorded finding against the running app |
 | `fibcheck card <finding-id \| --all>` | Draws a share card for a recorded finding from its verdict and Kane screenshot |
 
-Before npm publishing, run them as `node dist/cli.js <command>` after `npm run build`.
+Run them with `npx fibcheck <command>`, or as `fibcheck <command>` after `npm install -g fibcheck`.
 
 ## Use your own model
 
@@ -150,15 +150,6 @@ FIBCHECK_MODEL_MAX_USD=0.5
 ```
 
 Without prices, only the call cap limits use, and the report says that the dollar cost was not tracked. If the model's reply is not usable JSON, that part of a document gives no claims, or the claim stays unconfirmed, and the report lists it. Unusable output never makes a claim false.
-
-## Try the local npm package
-
-```sh
-npm pack
-npx --package ./fibcheck-0.1.0.tgz -- fibcheck --help
-```
-
-The package is not on npm yet. Once it is published, `npx fibcheck check sissbruecker/linkding` will run the same command. The package includes the compiled CLI and the Linkding target. Run `fibcheck check sissbruecker/linkding` from the directory that contains your `.env` when using the installed command.
 
 ## Check docs changes in GitHub Actions
 
