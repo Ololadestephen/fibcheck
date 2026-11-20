@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { attackSummary, judgeByKane, judgeByRule, parseLazyFixes, runAttack, type AttackInput, type LazyFix } from "./attack.js";
 import { CallBudget } from "./model/budget.js";
 import { ModelClient } from "./model/client.js";
+import type { KaneRun } from "./kane/runner.js";
 import type { ModelProvider } from "./model/types.js";
 
 const input: AttackInput = {
@@ -44,12 +45,22 @@ describe("judgeByRule", () => {
 
 describe("judgeByKane", () => {
   const wrong: LazyFix = { kind: "wrong", text: "Open Settings, then the Maintenance tab.", check: "c" };
+  const kane = (status: "failed" | "passed" | "error") => ({ status, oneLiner: "One line.", outDir: "d" });
+  const contradicted = { cause: "claim_contradicted" as const, exercisedClaim: true, reason: "No Maintenance tab in Settings." };
   it.each([
-    ["failed", "rejected_by_kane"],
-    ["passed", "not_rejected"],
-    ["error", "inconclusive"],
-  ] as const)("Kane %s gives %s", (status, outcome) => {
-    expect(judgeByKane(wrong, { status, oneLiner: "No Maintenance tab in Settings.", outDir: "d" }).outcome).toBe(outcome);
+    ["failed", contradicted, "rejected_by_kane"],
+    ["failed", { cause: "agent_misstep" as const, exercisedClaim: false, reason: "Kane had not signed in yet." }, "inconclusive"],
+    ["failed", { cause: "claim_contradicted" as const, exercisedClaim: false, reason: "Kane used another page." }, "inconclusive"],
+    ["passed", { cause: "unclear" as const, exercisedClaim: true, reason: "Opened it there." }, "not_rejected"],
+    ["passed", { cause: "unclear" as const, exercisedClaim: false, reason: "Reached it through the account menu instead." }, "inconclusive"],
+    ["error", contradicted, "inconclusive"],
+  ] as const)("Kane %s with a reading gives %s (%#)", (status, reading, outcome) => {
+    expect(judgeByKane(wrong, kane(status), reading).outcome).toBe(outcome);
+  });
+
+  it("never rejects or accepts on Kane's word alone", () => {
+    expect(judgeByKane(wrong, kane("failed")).outcome).toBe("inconclusive");
+    expect(judgeByKane(wrong, kane("passed")).outcome).toBe("inconclusive");
   });
 });
 
@@ -73,8 +84,11 @@ describe("runAttack", () => {
     const kaneAsked: string[] = [];
     const results = await runAttack(client, input, async (attempt) => {
       kaneAsked.push(attempt.text);
-      return { status: "failed", oneLiner: "Settings has no Maintenance tab.", outDir: "out" };
-    });
+      return { status: "failed", oneLiner: "Settings has no Maintenance tab.", outDir: "out" } as unknown as KaneRun;
+    }, async () => ({
+      exercisedClaim: true, cause: "claim_contradicted", reason: "Settings has no Maintenance tab.", ownMistakeRuledOut: "Signed in.",
+      kaneBlame: "none", blameEvidence: "", revisedCheck: "", controlCheck: "", visibleWording: "",
+    }));
     expect(results.map(({ kind, outcome }) => `${kind}:${outcome}`)).toEqual([
       "delete:rejected_by_rule", "vague:rejected_by_rule", "hedge:rejected_by_rule", "wrong:rejected_by_kane",
     ]);

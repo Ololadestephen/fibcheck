@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { runAttack, type AttemptResult, type LazyFix } from "./attack.js";
 import { loadFindings, type Finding } from "./card.js";
 import { localAddressesToApp, writeKaneVariables } from "./check.js";
+import { modelDiagnoser } from "./diagnose.js";
 import { runKane } from "./kane/runner.js";
 import type { ModelClient } from "./model/client.js";
 import { runningAppVariables } from "./target.js";
@@ -48,6 +49,7 @@ export async function attackFinding(client: ModelClient, options: AttackOptions)
   if (!finding.fix) throw new Error(`Finding ${finding.id} has no proven fix recorded.`);
   const fix = finding.fix;
   const variables = runningAppVariables(options.login, options.secrets ?? {});
+  const diagnose = modelDiagnoser(client, [...Object.values(variables).map(({ value }) => value), new URL(options.appUrl).host]);
   const variablesFile = writeKaneVariables(variables);
   try {
     let index = 0;
@@ -60,6 +62,9 @@ export async function attackFinding(client: ModelClient, options: AttackOptions)
         outDir: join(options.runsDir, `${finding.id}-${attempt.kind}-${index}`),
         variablesFile: variablesFile?.path,
       });
+    }, async (attempt, kane) => {
+      const claim = { id: `${finding.id}-${attempt.kind}`, type: "ui_flow" as const, quote: attempt.text, source: { file: finding.source.file, startLine: finding.source.line, endLine: finding.source.line } };
+      return await diagnose(claim, attempt.check ?? "", kane);
     });
     const record: AttackRecord = { id: finding.id, at: new Date().toISOString(), original: finding.quote, fix, appUrl: options.appUrl, results };
     saveAttack(options.findingsPath, finding, record);

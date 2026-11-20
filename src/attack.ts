@@ -1,6 +1,7 @@
 import { rankClaim } from "./claims/rank.js";
 import type { Claim } from "./claims/types.js";
 import type { KaneRun } from "./kane/runner.js";
+import type { Diagnosis } from "./diagnose.js";
 import type { ModelClient } from "./model/client.js";
 
 /**
@@ -43,7 +44,7 @@ Write three lazy replacements for the wrong sentence:
 - vague: keeps the topic but drops the specific place, control or value, so there is nothing precise left to check.
 - hedge: keeps the wrong detail but softens it with words such as "may", "usually" or "in some setups".
 - wrong: a confident, specific and plausible replacement that names a different place, control or value from the correct one, the kind of guess an editor makes without opening the app. It must not match the correct replacement.
-For the wrong one, also write "check": browser actions and explicit assertions that test exactly what the wrong sentence says, in the place it names. Do not tell the browser to open a web address; it starts on the app.
+For the wrong one, also write "check": browser actions and explicit assertions that test exactly what the wrong sentence says. Begin with a separate assertion that the exact place and control it names exist (for example "Assert exactly: The header shows a menu at the bottom center. Expected: true."), and say not to use any other menu, page or route to reach the result. Do not tell the browser to open a web address; it starts on the app.
 Reply as JSON.`;
 
 const ATTACK_SCHEMA = {
@@ -132,26 +133,43 @@ export function judgeByRule(attempt: LazyFix, input: AttackInput): AttemptResult
   return undefined;
 }
 
-/** Turns Kane's run of a plausible wrong replacement into a judgement. Only Kane decides. */
-export function judgeByKane(attempt: LazyFix, kane: Pick<KaneRun, "status" | "oneLiner" | "outDir">): AttemptResult {
+/**
+ * Turns Kane's run of a plausible wrong replacement into a judgement. Kane decides pass or fail; the
+ * model's reading only decides whether the run tested the attempt's own place and control. A failure for
+ * another reason (sign-in, the wrong page) or a pass through a different route is inconclusive, never a
+ * rejection and never an acceptance.
+ */
+export function judgeByKane(attempt: LazyFix, kane: Pick<KaneRun, "status" | "oneLiner" | "outDir">, reading?: Pick<Diagnosis, "cause" | "exercisedClaim" | "reason">): AttemptResult {
   const record = { outDir: kane.outDir, status: kane.status, oneLiner: kane.oneLiner };
-  if (kane.status === "failed") return { ...attempt, outcome: "rejected_by_kane", reason: `Kane failed it in the app: ${kane.oneLiner}`, kane: record };
-  if (kane.status === "passed") return { ...attempt, outcome: "not_rejected", reason: "Kane passed it, so a person must review whether it is also correct.", kane: record };
-  return { ...attempt, outcome: "inconclusive", reason: `Kane did not finish (${kane.status}).`, kane: record };
+  if (kane.status !== "failed" && kane.status !== "passed") return { ...attempt, outcome: "inconclusive", reason: `Kane did not finish (${kane.status}).`, kane: record };
+  if (!reading) return { ...attempt, outcome: "inconclusive", reason: "The run was not read, so it is not known whether Kane tested this attempt's own claim.", kane: record };
+  if (kane.status === "failed") {
+    if (reading.cause === "claim_contradicted" && reading.exercisedClaim) {
+      return { ...attempt, outcome: "rejected_by_kane", reason: `Kane failed it in the app: ${kane.oneLiner}`, kane: record };
+    }
+    return { ...attempt, outcome: "inconclusive", reason: `Kane failed, but not on this attempt's own claim: ${reading.reason}`, kane: record };
+  }
+  if (reading.exercisedClaim) return { ...attempt, outcome: "not_rejected", reason: "Kane passed it in the place it names, so a person must review whether it is also correct.", kane: record };
+  return { ...attempt, outcome: "inconclusive", reason: `Kane passed without testing the place this attempt names: ${reading.reason}`, kane: record };
 }
 
-/** Runs the attack: rules first, then one Kane run for each attempt the rules cannot settle. */
+/** Runs the attack: rules first, then one Kane run, read by the model, for each attempt the rules cannot settle. */
 export async function runAttack(
   client: ModelClient,
   input: AttackInput,
-  runKaneFor: (attempt: LazyFix) => Promise<Pick<KaneRun, "status" | "oneLiner" | "outDir">>,
+  runKaneFor: (attempt: LazyFix) => Promise<KaneRun>,
+  read?: (attempt: LazyFix, kane: KaneRun) => Promise<Diagnosis>,
 ): Promise<AttemptResult[]> {
   const results: AttemptResult[] = [];
   for (const attempt of await proposeLazyFixes(client, input)) {
     const byRule = judgeByRule(attempt, input);
     if (byRule) results.push(byRule);
     else if (!attempt.check) results.push({ ...attempt, outcome: "inconclusive", reason: "No browser check was written for this attempt." });
-    else results.push(judgeByKane(attempt, await runKaneFor(attempt)));
+    else {
+      const kane = await runKaneFor(attempt);
+      const reading = read ? await read(attempt, kane).catch(() => undefined) : undefined;
+      results.push(judgeByKane(attempt, kane, reading));
+    }
   }
   return results;
 }
