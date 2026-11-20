@@ -46,6 +46,8 @@ describe("cardText", () => {
     expect(evidenceLine({ ...base, evidence: { failures: [], held: "h", fixProof: "f" } })).toBe("Behaviour held in Kane's run. Fix proven ✓");
     expect(evidenceLine({ ...base, lazyFixes: { rejected: 4, byKane: 1 } })).toBe("Caught twice by Kane. Control passed. Fix proven ✓ 4 lazy fixes rejected (1 by Kane).");
     expect(evidenceLine({ ...base, lazyFixes: { rejected: 0, byKane: 0 } })).toBe("Caught twice by Kane. Control passed. Fix proven ✓");
+    const upstream = { status: "merged" as const, pr: "p", mergedAt: "t", mergeCommit: "c" };
+    expect(evidenceLine({ ...base, upstream })).toBe("Caught twice by Kane. Control passed. Fix proven ✓ Fix merged by the maintainers ✓");
   });
 
   it("names the visible wording for a worded-differently card", () => {
@@ -84,7 +86,7 @@ describe("the recorded findings", () => {
 
   it("make cards whose text matches each recorded verdict and its evidence", () => {
     const byId = Object.fromEntries(findings.map((finding) => [finding.id, cardText(finding)]));
-    expect(byId["mealie-faq-disable-ingredient-amounts"]).toMatchObject({ stamp: "OUTDATED", evidence: "Caught twice by Kane. Control passed. Fix proven ✓ 3 lazy fixes rejected." });
+    expect(byId["mealie-faq-disable-ingredient-amounts"]).toMatchObject({ stamp: "OUTDATED", evidence: "Caught twice by Kane. Control passed. Fix proven ✓ Fix merged by the maintainers ✓ 3 lazy fixes rejected.", thanks: expect.stringContaining("for merging the docs fix") });
     expect(byId["uptime-kuma-wiki-maintenance-menu"]).toMatchObject({ stamp: "DOESN'T MATCH THE APP", evidence: "Caught twice by Kane. Control passed. 3 lazy fixes rejected." });
     expect(byId["linkding-admin-tab"]?.evidence).toBe("Caught twice by Kane. Control passed. Fix proven ✓ 3 lazy fixes rejected.");
     expect(byId["soryn-readme-basic-attack"]).toMatchObject({ stamp: "WORDED DIFFERENTLY", evidence: "Behaviour held in Kane's run. Fix proven ✓", score: "0 fibs in 7 claims" });

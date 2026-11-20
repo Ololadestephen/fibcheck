@@ -34,6 +34,8 @@ export interface Finding {
   fix?: string;
   /** Lazy-fix attempts that were rejected (T10), as recorded in index/attacks/<id>.json. */
   lazyFixes?: { rejected: number; byKane: number };
+  /** What happened to the fix in the project itself, for example a docs PR the maintainers merged. */
+  upstream?: { status: "merged"; pr: string; mergedAt: string; mergeCommit: string };
   /** Counts for the project, not percentages: findings among claims tested. */
   score: { findings: number; claims: number };
 }
@@ -73,7 +75,11 @@ export function cardText(finding: Finding): CardText {
     source: `${finding.project} · ${file}, line ${line} · ${finding.source.commit.slice(0, 7)}`,
     evidence: evidenceLine(finding),
     score: scoreLine(finding),
-    ...(finding.own ? {} : { thanks: `Thank you to the ${finding.project} maintainers for a great project. A small docs update would help.` }),
+    ...(finding.own ? {} : {
+      thanks: finding.upstream?.status === "merged"
+        ? `Thank you to the ${finding.project} maintainers for a great project, and for merging the docs fix.`
+        : `Thank you to the ${finding.project} maintainers for a great project. A small docs update would help.`,
+    }),
   };
 }
 
@@ -99,6 +105,7 @@ export function evidenceLine(finding: Finding): string {
   if (held) parts.push("Behaviour held in Kane's run.");
   if (control) parts.push("Control passed.");
   if (fixProof) parts.push("Fix proven ✓");
+  if (finding.upstream?.status === "merged") parts.push("Fix merged by the maintainers ✓");
   const lazy = finding.lazyFixes;
   if (lazy && lazy.rejected > 0) parts.push(`${lazy.rejected} lazy ${lazy.rejected === 1 ? "fix" : "fixes"} rejected${lazy.byKane ? ` (${lazy.byKane} by Kane)` : ""}.`);
   return parts.join(" ");

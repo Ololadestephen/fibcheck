@@ -28,6 +28,12 @@
     "lazyFixes": {
       "rejected": 3,
       "byKane": 0
+    },
+    "upstream": {
+      "status": "merged",
+      "pr": "https://github.com/mealie-recipes/mealie/pull/9212",
+      "mergedAt": "2026-11-20T15:28:26Z",
+      "mergeCommit": "d17d11a65ba50a59f106cdb44a4304456bc880d9"
     }
   },
   {
