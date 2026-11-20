@@ -36,6 +36,7 @@ jobs:
           target-file: examples/linkding-demo/target.json
           docs-file: examples/linkding-demo/README.md
           max-claims: '2'
+          evidence-artifact: 'true'
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           lt-username: ${{ secrets.LT_USERNAME }}
           lt-access-key: ${{ secrets.LT_ACCESS_KEY }}

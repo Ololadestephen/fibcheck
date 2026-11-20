@@ -28,6 +28,9 @@ inputs:
   kane-folder-id:
     description: Kane folder ID, so sign-in needs no picker.
     default: ''
+  evidence-artifact:
+    description: Set to 'true' to upload Kane's step screenshots as a workflow artifact, kept for 7 days. On a public repository, any signed-in GitHub user can download it.
+    default: 'false'
   kane-version:
     description: Kane CLI version to install.
     default: 0.10.4
@@ -92,4 +95,13 @@ runs:
         FIBCHECK_DOCS_FILE: ${{ inputs.docs-file }}
         FIBCHECK_ENV_FILE: ${{ steps.credentials.outputs.path }}
         FIBCHECK_MAX_CLAIMS: ${{ inputs.max-claims }}
+        FIBCHECK_EVIDENCE_DIR: ${{ inputs.evidence-artifact == 'true' && format('{0}/fibcheck-evidence', runner.temp) || '' }}
       run: node "$FIBCHECK_ACTION_PATH/scripts/github-readme.mjs"
+    - name: Upload Kane's step screenshots
+      if: ${{ always() && inputs.evidence-artifact == 'true' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: fibcheck-evidence
+        path: ${{ runner.temp }}/fibcheck-evidence
+        retention-days: 7
+        if-no-files-found: warn

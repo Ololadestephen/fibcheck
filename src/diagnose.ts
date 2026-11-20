@@ -32,7 +32,7 @@ export type Diagnose = (claim: Claim, check: string, kane: KaneRun) => Promise<D
 
 export const DIAGNOSE_SYSTEM = `You review one Kane CLI browser test run. The run checked a claim from a web app's public documentation. Kane alone decides whether its run passed or failed, and you never change that. Your job is to read the run and say what it means for the claim.
 
-1. Decide whether the run exercised the documented claim: the same page or place, the same kind of control (tab, menu item, button, field), and each stated result. A pass that reached the result through a different place or a different kind of control did not exercise the claim.
+1. Decide whether the run exercised the documented claim: the same page or place, the same kind of control (tab, menu item, button, field), and each stated result. A pass that reached the result through a different place or a different kind of control did not exercise the claim. An item in a dropdown or navigation menu is not a tab inside a page, even when Kane's remark calls it a tab: a pass exercises a claim about a tab or control inside a named page only when a step or observation shows that page loaded and the control found in its content.
 2. For a failed or unfinished run, name the most likely cause:
 - agent_misstep: Kane used the wrong control or page, misread the screen, ran out of steps, or stopped although a valid path was visible.
 - check_problem: the check was wrong or ambiguous, named a control that the documentation sentence does not name and that does not exist, or asserted something the claim does not state.

@@ -1,5 +1,6 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { KaneRun } from "./kane/runner.js";
 import type { CheckOptions, CheckReport } from "./check.js";
 import { countResults } from "./report/report.js";
 import { loadTarget } from "./target.js";
@@ -113,6 +114,56 @@ function lineTable(report: CheckReport): string[] {
     ...report.notTested.map((id) => `| ${line(id)} | Not run (over the claim limit) | none |`),
   ];
   return rows.length ? ["", "| Line | Result | Kane runs |", "| ---: | --- | --- |", ...rows] : [];
+}
+
+/** Generated test passwords (see resolveTarget) and local paths are removed before anything reaches a public log. */
+function scrub(text: string): string {
+  return text
+    .replace(/\s*[\r\n]+\s*/g, " ")
+    .replace(/Pk[0-9a-f]{24}/g, "[secret]")
+    .replace(/(?:~|\b[A-Za-z]:)?[\\/](?:Users|home|private|tmp|var|opt|root|mnt|Volumes)[\\/]\S+/g, "[path]");
+}
+
+function claimRuns(report: CheckReport) {
+  return report.tested.map(({ claim, kane, questioning }) => ({
+    claim,
+    verdict: questioning?.verdict ?? "no verdict",
+    runs: [{ purpose: "initial", kane }, ...(questioning?.followUps ?? []).map(({ purpose, kane: run }) => ({ purpose, kane: run }))],
+  }));
+}
+
+/**
+ * The public job-log transcript: every Kane run for every checked line, with its steps and observations,
+ * so a pass or a failure can be read after the runner is gone. Generated test passwords are removed.
+ */
+export function kaneTranscript(report: CheckReport): string {
+  const lines: string[] = [];
+  for (const { claim, verdict, runs } of claimRuns(report)) {
+    lines.push(`::group::Line ${claim.source.startLine} (${verdict}): ${runs.length} Kane run(s)`);
+    lines.push(scrub(`Docs: ${claim.quote}`));
+    runs.forEach(({ purpose, kane }: { purpose: string; kane: KaneRun }, index) => {
+      lines.push("", scrub(`Run ${index + 1} (${purpose}): ${kane.status}. ${kane.oneLiner}`));
+      lines.push(scrub(`Objective: ${kane.objective.replace(/\s+/g, " ")}`));
+      for (const step of kane.steps) lines.push(scrub(`  step ${step.step} ${step.status}: ${step.remark}`));
+      for (const o of kane.observations) lines.push(scrub(`  observed ${o.condition}: expected ${o.expectedValue}, saw ${o.extractedValue}`));
+    });
+    lines.push("::endgroup::");
+  }
+  return lines.join("\n");
+}
+
+/** Copies each run's step screenshots to `destination/line-N/run-K-purpose/`. Returns how many folders were copied. */
+export function copyEvidence(report: CheckReport, destination: string): number {
+  let copied = 0;
+  for (const { claim, runs } of claimRuns(report)) {
+    runs.forEach(({ purpose, kane }: { purpose: string; kane: KaneRun }, index) => {
+      const source = join(kane.outDir, "evidence");
+      if (!existsSync(source)) return;
+      cpSync(source, join(destination, `line-${claim.source.startLine}`, `run-${index + 1}-${purpose}`), { recursive: true });
+      copied += 1;
+    });
+  }
+  return copied;
 }
 
 function publicPullRequest(eventName: string, raw: unknown): { repository: string; head: string; base: string } {

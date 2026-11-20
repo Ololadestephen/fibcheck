@@ -1,9 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCheck } from "./check.js";
-import { githubComment, stageGitHubReadme } from "./github.js";
+import { copyEvidence, githubComment, kaneTranscript, stageGitHubReadme } from "./github.js";
 import { CallBudget } from "./model/budget.js";
 import { ModelClient } from "./model/client.js";
 import type { ModelProvider } from "./model/types.js";
@@ -150,5 +150,35 @@ describe("GitHub README check", () => {
     await expect(stageGitHubReadme(options(), missing)).rejects.toThrow(/README.md.*HTTP 404/);
     const invalid: typeof fetch = () => Promise.resolve(Response.json({ type: "dir" }));
     await expect(stageGitHubReadme(options(), invalid)).rejects.toThrow(/supported file contents/);
+  });
+
+  it("prints every Kane step for the public log without generated passwords, paths or line breaks", () => {
+    const run = (status: string, outDir: string) => ({
+      status, oneLiner: "opened the Admin app", objective: "Log in with password {{app_pass}}.\nOpen Settings.", outDir,
+      steps: [{ step: 1, status: "done", remark: "type: Type Pk0123456789abcdef01234567 into Password" }, { step: 2, status: "done", remark: "click Admin in /Users/me/x\n::error::injected" }],
+      observations: [{ name: "o", condition: "Admin tab inside Settings page", expectedValue: "true", extractedValue: "false" }],
+    });
+    const out = join(directory, "run1");
+    mkdirSync(join(out, "evidence"), { recursive: true });
+    writeFileSync(join(out, "evidence", "step-1.jpg"), "x");
+    const report = {
+      runId: "r", target: "t", repo: "r", commit: HEAD, startedAt: "", finishedAt: "", documents: [], claims: [], rejected: [], notTested: [],
+      kaneCredits: 0, model: { calls: 0, inputTokens: 0, outputTokens: 0, cacheHits: 0 },
+      tested: [{
+        claim: { id: "README.md#L5", type: "ui_flow", quote: "Click the Admin tab.", check: "c", source: { file: "README.md", startLine: 5, endLine: 5 } },
+        kane: run("passed", out),
+        questioning: { verdict: "true", reason: "", followUps: [{ purpose: "reproduce", reason: "", kane: run("failed", join(directory, "missing")) }] },
+      }],
+    } as never;
+    const log = kaneTranscript(report);
+    expect(log).toContain("::group::Line 5 (true): 2 Kane run(s)");
+    expect(log).toContain("Run 2 (reproduce): failed.");
+    expect(log).toContain("observed Admin tab inside Settings page: expected true, saw false");
+    expect(log).toContain("[secret]");
+    expect(log).not.toMatch(/Pk0123|\/Users\/|^::error::/m);
+    expect(log.split("\n").filter((line) => line.startsWith("::"))).toEqual(["::group::Line 5 (true): 2 Kane run(s)", "::endgroup::"]);
+    const destination = join(directory, "evidence-out");
+    expect(copyEvidence(report, destination)).toBe(1);
+    expect(existsSync(join(destination, "line-5", "run-1-initial", "step-1.jpg"))).toBe(true);
   });
 });
