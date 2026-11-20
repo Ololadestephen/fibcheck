@@ -1,7 +1,7 @@
 import { appendFileSync, mkdtempSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import { runCheck } from "../dist/check.js";
-import { githubComment, stageGitHubReadme } from "../dist/github.js";
+import { copyEvidence, githubComment, kaneTranscript, stageGitHubReadme } from "../dist/github.js";
 import { createModelClient, loadDotEnv } from "../dist/model/config.js";
 import { writeReport } from "../dist/report/report.js";
 
@@ -38,6 +38,12 @@ delete env.GEMINI_API_KEY;
 delete env.GOOGLE_API_KEY;
 const checked = await runCheck(client, { ...staged, workDir, log: (message) => console.log(message) });
 writeReport(join(staged.runsDir, checked.runId, "check.json"));
+
+console.log(kaneTranscript(checked));
+if (env.FIBCHECK_EVIDENCE_DIR) {
+  const folders = copyEvidence(checked, env.FIBCHECK_EVIDENCE_DIR);
+  console.log(`Copied step screenshots from ${folders} Kane run(s).`);
+}
 
 const summary = githubComment(checked, env.FIBCHECK_DOCS_FILE || undefined);
 appendFileSync(env.GITHUB_OUTPUT, `report<<FIBCHECK_REPORT_END\n${summary}\nFIBCHECK_REPORT_END\n`);

@@ -68,6 +68,10 @@ describe("DIAGNOSE_SYSTEM", () => {
     expect(DIAGNOSE_SYSTEM).toContain("If the documentation sentence itself names a control, menu, page or position");
     expect(DIAGNOSE_SYSTEM).toContain("a search somewhere else is agent_misstep");
   });
+
+  it("does not count a dropdown item as a tab inside a page", () => {
+    expect(DIAGNOSE_SYSTEM).toContain("An item in a dropdown or navigation menu is not a tab inside a page");
+  });
 });
 
 describe("parseDiagnosis", () => {
