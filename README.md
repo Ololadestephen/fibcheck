@@ -98,7 +98,7 @@ fibcheck is not on npm yet, so run it from a clone: `npm ci && npm run build`, t
 
 2. **Run a check:** `node dist/cli.js check my-app.json --max-claims 5`. fibcheck ranks the claims, Kane tests the top five, and `report` turns the saved `check.json` into an HTML report with every screenshot.
 3. **Read the candidates.** A line that Kane failed twice while a control passed is a candidate finding. Open its screenshots and decide. fibcheck never calls a line false on its own.
-4. **Fix the docs, then attack the fix.** Record the finding and the corrected sentence (the one a fresh Kane run passed) in a findings file, shaped like [index/findings.json](index/findings.json), and run `node dist/cli.js attack <finding-id> --url <app address> --findings <your findings.json>`. The attacker must fail to make the old check pass with a shortcut before you send the fix.
+4. **Confirm it, fix the docs, then attack the fix.** Once you have read the screenshots, record the finding with `node dist/cli.js confirm runs/<run>/check.json <claim-id> --verdict outdated --fix "<the corrected sentence>" --findings findings.json`. It refuses anything without two failed Kane runs and a passing control, and copies Kane's screenshots beside the findings file. Then run `node dist/cli.js attack <finding-id> --url <app address> --findings findings.json`: the attacker must fail to make the old check pass with a shortcut before you send the fix, and `card` draws a share card from the same entry.
 5. **Keep it checked on every pull request.** Freeze the checks with `node dist/cli.js freeze docs/getting-started.md --out docs/fibcheck.claims.json`, review each one, and add the [GitHub Action](#check-docs-changes-in-github-actions) with that file as `claims-file`.
 
 ## Commands
@@ -108,6 +108,7 @@ fibcheck is not on npm yet, so run it from a clone: `npm ci && npm run build`, t
 | `fibcheck check <target.json \| repository>` | Reads the docs, ranks the claims and runs the top ones with Kane. Options: `--max-claims`, `--max-kane-runs`, `--only`, `--url`, `--login` |
 | `fibcheck report <check.json>` | Writes `report.html` and `badge.svg` from a saved check, without calling Kane or any model |
 | `fibcheck freeze <docs.md> --out <claims.json>` | Writes the checks for a docs file once, for a person to review and commit (see [frozen checks](#check-docs-changes-in-github-actions)) |
+| `fibcheck confirm <check.json> <claim-id> --verdict false\|outdated` | Records a candidate finding you have reviewed in a findings file, with Kane's screenshots, for `card` and `attack` |
 | `fibcheck attack <finding-id> --url ADDRESS` | Tries lazy fixes for a recorded finding against the running app |
 | `fibcheck card <finding-id \| --all>` | Draws a share card for a recorded finding from its verdict and Kane screenshot |
 

@@ -8,6 +8,7 @@ import { attackSummary } from "./attack.js";
 import { loadFindings, writeCard } from "./card.js";
 import { runCheck } from "./check.js";
 import { extractClaims } from "./claims/extract.js";
+import { confirmFinding } from "./confirm.js";
 import { freeze, frozenClaims } from "./frozen.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
 import { writeReport } from "./report/report.js";
@@ -21,6 +22,8 @@ Usage:
   fibcheck report <check.json>
   fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards]
   fibcheck attack <finding-id> --url ADDRESS [--login SENTENCE] [--findings index/findings.json]
+  fibcheck confirm <check.json> <claim-id> --verdict false|outdated [--fix SENTENCE] [--project NAME] [--own]
+                   [--id ID] [--findings index/findings.json]
   fibcheck freeze <docs.md> --out <claims.json>
   fibcheck --help
 
@@ -37,6 +40,9 @@ The report command writes report.html and badge.svg beside a saved check.json.
 The card command draws a PNG share card for a recorded finding, from its verdict and Kane screenshot only.
 The attack command tries lazy fixes for a finding (delete the line, make it vague, hedge it, or guess a
 wrong detail) against the app at --url; each must be rejected by rule or failed by Kane.
+The confirm command records a candidate finding you have reviewed (two failed Kane runs and a passing
+control) in a findings file, with copies of Kane's screenshots, so card and attack can use it. Pass --fix
+with the corrected sentence that a fresh Kane run passed; attack needs it.
 The freeze command writes the browser checks for a docs file (path relative to the repository root) once,
 for a person to review. Fill in "reviewed" for each claim you approve and commit the file; the GitHub Action's
 claims-file input then reruns exactly those checks. Editing a check afterwards needs a fresh freeze and review.
@@ -53,8 +59,32 @@ export async function main(argv: string[]): Promise<number> {
   if (command === "card") return card(rest);
   if (command === "attack") return await attack(rest);
   if (command === "freeze") return await freezeCommand(rest);
+  if (command === "confirm") return confirmCommand(rest);
   process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
   return 1;
+}
+
+function confirmCommand(args: string[]): number {
+  const { values, positionals } = parseArgs({
+    args, allowPositionals: true,
+    options: {
+      verdict: { type: "string" }, fix: { type: "string" }, project: { type: "string" },
+      own: { type: "boolean" }, id: { type: "string" }, findings: { type: "string" },
+    },
+  });
+  const [checkPath, claimId] = positionals;
+  if (!checkPath || !claimId || positionals.length !== 2 || (values.verdict !== "false" && values.verdict !== "outdated")) {
+    process.stderr.write("Usage: fibcheck confirm <check.json> <claim-id> --verdict false|outdated [--fix SENTENCE] [--project NAME] [--own] [--id ID] [--findings index/findings.json]\n");
+    return 1;
+  }
+  const findingsPath = values.findings ?? "index/findings.json";
+  const finding = confirmFinding({
+    checkPath, claimId, verdict: values.verdict, findingsPath,
+    fix: values.fix, project: values.project, own: values.own, id: values.id,
+  });
+  process.stdout.write(`Added ${finding.id} to ${findingsPath} with ${finding.evidence.failures.length} failed runs and a control.\n`);
+  if (!finding.fix) process.stdout.write("No --fix was given, so attack cannot run on it yet.\n");
+  return 0;
 }
 
 async function freezeCommand(args: string[]): Promise<number> {
