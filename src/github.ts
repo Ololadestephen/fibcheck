@@ -104,7 +104,7 @@ const VERDICT_LABELS: Record<string, string> = {
 
 /** One row per tested or ranked claim: its line and what happened, without quoting the text. */
 function lineTable(report: CheckReport): string[] {
-  const line = (id: string) => id.split("#L")[1] ?? id;
+  const line = (id: string) => report.claims.find((claim) => claim.id === id)?.source.startLine ?? id.split("#L")[1]?.split("-")[0] ?? id;
   const rows = [
     ...report.tested.map(({ claim, kane, questioning }) => {
       const runs = [kane.status, ...(questioning?.followUps ?? []).map(({ purpose, kane: run }) => `${run.status} (${purpose})`)].join(", ");
