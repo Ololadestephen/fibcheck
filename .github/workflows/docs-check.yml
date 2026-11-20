@@ -1,0 +1,57 @@
+name: fibcheck docs check
+
+# Checks the demo docs page whenever a pull request changes it. The workflow, the
+# Action and the target come from the trusted base branch; only the changed
+# Markdown file is read from the pull request, as text.
+'on':
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - examples/linkding-demo/README.md
+
+permissions: {}
+
+concurrency:
+  group: fibcheck-docs-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: ${{ github.event.repository.private == false && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      report: ${{ steps.fibcheck.outputs.report }}
+    steps:
+      - name: Check out the trusted base branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check the changed docs page
+        id: fibcheck
+        uses: ./
+        with:
+          target-file: examples/linkding-demo/target.json
+          docs-file: examples/linkding-demo/README.md
+          max-claims: '2'
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          lt-username: ${{ secrets.LT_USERNAME }}
+          lt-access-key: ${{ secrets.LT_ACCESS_KEY }}
+          kane-project-id: ${{ vars.KANE_PROJECT_ID }}
+          kane-folder-id: ${{ vars.KANE_FOLDER_ID }}
+
+  comment:
+    needs: check
+    if: ${{ needs.check.outputs.report != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post the result on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          FIBCHECK_REPORT: ${{ needs.check.outputs.report }}
+        run: gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$FIBCHECK_REPORT"

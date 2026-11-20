@@ -15,18 +15,25 @@ concurrency:
 jobs:
   check:
     if: ${{ github.event.repository.private == false && github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: [self-hosted, fibcheck]
-    timeout-minutes: 30
+    # GitHub's free runner has Docker and Chrome. On a dedicated self-hosted runner,
+    # pass env-file (an absolute path to a private .env outside the workspace) instead
+    # of the key and sign-in inputs.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     outputs:
       report: ${{ steps.fibcheck.outputs.report }}
     steps:
       - name: Check public README
         id: fibcheck
-        uses: OWNER/FIBCHECK_REPOSITORY@REPLACE_WITH_FULL_COMMIT_SHA
+        uses: Ololadestephen/fibcheck@REPLACE_WITH_FULL_COMMIT_SHA
         with:
           target-file: .github/fibcheck.target.json
-          env-file: ${{ vars.FIBCHECK_RUNNER_ENV_FILE }}
           max-claims: '3'
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          lt-username: ${{ secrets.LT_USERNAME }}
+          lt-access-key: ${{ secrets.LT_ACCESS_KEY }}
+          kane-project-id: ${{ vars.KANE_PROJECT_ID }}
+          kane-folder-id: ${{ vars.KANE_FOLDER_ID }}
 
   comment:
     needs: check

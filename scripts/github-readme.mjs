@@ -26,6 +26,7 @@ const staged = await stageGitHubReadme({
   apiUrl: env.GITHUB_API_URL,
   serverUrl: env.GITHUB_SERVER_URL,
   targetFile: env.FIBCHECK_TARGET_FILE,
+  docsFile: env.FIBCHECK_DOCS_FILE || undefined,
   directory,
   maxClaims: Number(env.FIBCHECK_MAX_CLAIMS),
 });
@@ -38,6 +39,6 @@ delete env.GOOGLE_API_KEY;
 const checked = await runCheck(client, { ...staged, workDir });
 writeReport(join(staged.runsDir, checked.runId, "check.json"));
 
-const summary = githubComment(checked);
+const summary = githubComment(checked, env.FIBCHECK_DOCS_FILE || undefined);
 appendFileSync(env.GITHUB_OUTPUT, `report<<FIBCHECK_REPORT_END\n${summary}\nFIBCHECK_REPORT_END\n`);
 appendFileSync(env.GITHUB_STEP_SUMMARY, summary + "\n");

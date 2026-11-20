@@ -1,18 +1,39 @@
-name: fibcheck README check
-description: Check the README in a public pull request with Kane CLI.
+name: fibcheck docs check
+description: Check a documentation file in a public pull request with Kane CLI.
 inputs:
   target-file:
     description: Path to the public target JSON in the trusted base commit.
     required: true
-  env-file:
-    description: Absolute path to the private .env file on the dedicated runner.
-    required: true
+  docs-file:
+    description: Repository-relative Markdown file to check, read from the pull request head.
+    default: README.md
   max-claims:
-    description: Maximum number of README claims to check.
+    description: Maximum number of claims to check.
     default: '3'
+  env-file:
+    description: Absolute path to a private .env file outside the workspace, for a dedicated self-hosted runner. Leave empty on GitHub-hosted runners and pass gemini-api-key instead.
+    default: ''
+  gemini-api-key:
+    description: Gemini API key from a repository secret. The Action writes it to a private .env outside the workspace.
+    default: ''
+  lt-username:
+    description: TestMu AI (LambdaTest) username from a repository secret. When set, the Action installs and signs in to Kane CLI.
+    default: ''
+  lt-access-key:
+    description: TestMu AI (LambdaTest) access key from a repository secret.
+    default: ''
+  kane-project-id:
+    description: Kane project ID, so sign-in needs no picker.
+    default: ''
+  kane-folder-id:
+    description: Kane folder ID, so sign-in needs no picker.
+    default: ''
+  kane-version:
+    description: Kane CLI version to install.
+    default: 0.10.4
 outputs:
   report:
-    description: Counts-only Markdown summary suitable for a pull request comment.
+    description: Markdown summary suitable for a pull request comment.
     value: ${{ steps.check.outputs.report }}
 runs:
   using: composite
@@ -25,12 +46,50 @@ runs:
         cd "$FIBCHECK_ACTION_PATH"
         npm ci --ignore-scripts --no-audit --no-fund
         npm run build
-    - name: Check the pull request README
+    - name: Install and sign in to Kane CLI
+      if: ${{ inputs.lt-username != '' }}
+      shell: bash
+      env:
+        KANE_VERSION: ${{ inputs.kane-version }}
+        LT_USERNAME: ${{ inputs.lt-username }}
+        LT_ACCESS_KEY: ${{ inputs.lt-access-key }}
+        KANE_PROJECT_ID: ${{ inputs.kane-project-id }}
+        KANE_FOLDER_ID: ${{ inputs.kane-folder-id }}
+      run: |
+        if [ -z "$LT_ACCESS_KEY" ] || [ -z "$KANE_PROJECT_ID" ] || [ -z "$KANE_FOLDER_ID" ]; then
+          echo "::error::Kane sign-in needs lt-access-key, kane-project-id and kane-folder-id." >&2
+          exit 1
+        fi
+        npm install -g --no-audit --no-fund "@testmuai/kane-cli@$KANE_VERSION"
+        kane-cli login --username "$LT_USERNAME" --access-key "$LT_ACCESS_KEY" \
+          --project-id "$KANE_PROJECT_ID" --folder-id "$KANE_FOLDER_ID" < /dev/null > /dev/null
+        kane-cli config show --agent | node -e 'const c = JSON.parse(require("fs").readFileSync(0, "utf8").trim().split("\n").pop()); if (c.auth === "not configured") process.exit(1); console.log(`Kane CLI signed in (${c.auth}).`)'
+    - name: Write the private model key
+      id: credentials
+      shell: bash
+      env:
+        ENV_FILE: ${{ inputs.env-file }}
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+      run: |
+        if [ -n "$ENV_FILE" ]; then
+          echo "path=$ENV_FILE" >> "$GITHUB_OUTPUT"
+        elif [ -n "$GEMINI_API_KEY" ]; then
+          directory="$RUNNER_TEMP/fibcheck-private"
+          mkdir -m 700 -p "$directory"
+          umask 077
+          printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" > "$directory/.env"
+          echo "path=$directory/.env" >> "$GITHUB_OUTPUT"
+        else
+          echo "::error::Pass gemini-api-key (GitHub-hosted runner) or env-file (self-hosted runner)." >&2
+          exit 1
+        fi
+    - name: Check the pull request docs
       id: check
       shell: bash
       env:
         FIBCHECK_ACTION_PATH: ${{ github.action_path }}
         FIBCHECK_TARGET_FILE: ${{ inputs.target-file }}
-        FIBCHECK_ENV_FILE: ${{ inputs.env-file }}
+        FIBCHECK_DOCS_FILE: ${{ inputs.docs-file }}
+        FIBCHECK_ENV_FILE: ${{ steps.credentials.outputs.path }}
         FIBCHECK_MAX_CLAIMS: ${{ inputs.max-claims }}
       run: node "$FIBCHECK_ACTION_PATH/scripts/github-readme.mjs"

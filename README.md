@@ -89,15 +89,17 @@ npx --package ./fibcheck-0.0.0.tgz -- fibcheck --help
 
 The package is not on npm yet. Once it is published, `npx fibcheck check sissbruecker/linkding` will run the same command. The package includes the compiled CLI and the Linkding target. Run `fibcheck check sissbruecker/linkding` from the directory that contains your `.env` when using the installed command.
 
-## Check README changes in GitHub Actions
+## Check docs changes in GitHub Actions
 
-The [example workflow](examples/readme-check.yml) checks root `README.md` changes in same-repository pull requests on public GitHub repositories. It reads the README at the PR head commit and the runtime target JSON at the trusted base commit. The browser checks exercise the Docker image configured in that base target. [GitHub Actions security guidance](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
+The [example workflow](examples/readme-check.yml) checks a docs file (the root `README.md` by default, or any Markdown file set with `docs-file`) in same-repository pull requests on public GitHub repositories. It runs on GitHub's free `ubuntu-latest` runner, which has Docker and Chrome. It reads the docs file at the PR head commit, as text, and the target JSON at the trusted base commit. The browser checks exercise the Docker image configured in that base target. [GitHub Actions security guidance](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
 
-1. Use an isolated, ephemeral self-hosted runner labelled `fibcheck`, with Node.js, npm, Docker, a supported browser, and Kane CLI already authenticated. Put the Gemini key in a private `.env` outside the workflow workspace. Set `FIBCHECK_RUNNER_ENV_FILE` to its absolute path.
+1. Add repository secrets `GEMINI_API_KEY`, `LT_USERNAME` and `LT_ACCESS_KEY` (your TestMu AI username and access key), and repository variables `KANE_PROJECT_ID` and `KANE_FOLDER_ID` (from `kane-cli config show`). The Action installs Kane CLI, signs in with them, and writes the model key to a private `.env` outside the workspace.
 2. Add `.github/fibcheck.target.json` to the base branch, using `targets/linkding.json` as a shape example. Set the image and port for the public app you want to check.
 3. Copy the example into `.github/workflows/` in the consumer repository and pin the `uses:` line to the approved fibcheck commit. Set `FIBCHECK_PR_COMMENTS` to `true` to enable the separate comment job.
 
-The check job writes a counts-only summary. The comment job can post that summary with PR write permission. The check writes the raw Kane output and screenshots to a private directory beside the runner's `.env`. Keep that directory on private storage if you need to retain the evidence after the runner shuts down. [GitHub comment permissions](https://docs.github.com/en/rest/issues/comments#create-an-issue-comment)
+This repository runs the same Action on its own [demo docs page](examples/linkding-demo/README.md) with [this workflow](.github/workflows/docs-check.yml): a pull request that changes the page starts Linkding in Docker, checks the page with Kane, and posts the result.
+
+The comment lists counts, and the line numbers a person should review: a line Kane failed twice while a control passed, or a line whose behaviour held under different visible wording. It never calls a line false on its own. The raw Kane output and screenshots stay in the runner's temporary directory and are deleted with the runner. On a dedicated self-hosted runner, pass `env-file` (an absolute path to a private `.env` outside the workspace) with Kane CLI already signed in, instead of the key and sign-in inputs. [GitHub comment permissions](https://docs.github.com/en/rest/issues/comments#create-an-issue-comment)
 
 ## What the evidence means
 

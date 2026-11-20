@@ -18,6 +18,8 @@ interface GitHubSource {
   apiUrl: string;
   serverUrl: string;
   targetFile: string;
+  /** The Markdown file to check, read from the pull request head. Defaults to the root README. */
+  docsFile?: string;
   directory: string;
   maxClaims: number;
 }
@@ -28,13 +30,14 @@ export async function stageGitHubReadme(input: GitHubSource, fetchFile: typeof f
   const { repository, head, base } = publicPullRequest(input.eventName, input.event);
   const api = githubUrl(input.apiUrl, "api.github.com");
   const server = githubUrl(input.serverUrl, "github.com");
-  const targetFile = repositoryPath(input.targetFile);
+  const targetFile = repositoryPath(input.targetFile, ".json", "The target must be a repository-relative JSON file in the trusted base commit.");
+  const docsFile = repositoryPath(input.docsFile ?? "README.md", ".md", "The docs file must be a repository-relative Markdown file.");
   if (!Number.isSafeInteger(input.maxClaims) || input.maxClaims < 0) {
     throw new Error("max-claims must be a nonnegative whole number.");
   }
 
   const [readme, profile] = await Promise.all([
-    publicFile(api, repository, "README.md", head, fetchFile),
+    publicFile(api, repository, docsFile, head, fetchFile),
     publicFile(api, repository, targetFile, base, fetchFile),
   ]);
   const directory = join(input.directory, "source");
@@ -57,7 +60,8 @@ export async function stageGitHubReadme(input: GitHubSource, fetchFile: typeof f
   };
 }
 
-export function githubComment(report: CheckReport): string {
+/** The pull request comment: counts, plus the lines a person should review. Never calls a line false on its own. */
+export function githubComment(report: CheckReport, docsFile = "README.md"): string {
   if (!report.commit || !COMMIT.test(report.commit)) throw new Error("A pinned commit is required for a pull request report.");
   const counts = countResults(report);
   const entries = [
@@ -70,16 +74,22 @@ export function githubComment(report: CheckReport): string {
     ["Not run", counts.skipped],
   ];
   if (counts.withoutVerdict > 0) entries.push(["Without verdict", counts.withoutVerdict]);
+  const review = report.tested.flatMap(({ claim, questioning }) => {
+    if (questioning?.candidateFinding) return [`- Line ${claim.source.startLine}: Kane failed it twice and a control passed. A person should read the evidence before changing it.`];
+    if (questioning?.wording) return [`- Line ${claim.source.startLine}: the behaviour held, but the app shows ${questioning.wording.visible}.`];
+    return [];
+  });
   return [
-    "### fibcheck README check",
+    "### fibcheck docs check",
     "",
-    `Checked revision \`${report.commit.slice(0, 12)}\`.`,
+    `Checked \`${docsFile}\` at revision \`${report.commit.slice(0, 12)}\`.`,
     "",
     "| Result | Count |",
     "| --- | ---: |",
     ...entries.map(([label, count]) => `| ${label} | ${count} |`),
     "",
     `Initial Kane runs recorded ${counts.passed} passed, ${counts.failed} failed, ${counts.error} errors, and ${counts.cancelled} cancelled.`,
+    ...(review.length ? ["", "**For review**", "", ...review] : []),
   ].join("\n");
 }
 
@@ -110,10 +120,10 @@ function githubUrl(value: string, host: string): URL {
   return url;
 }
 
-function repositoryPath(value: string): string {
+function repositoryPath(value: string, extension: string, problem: string): string {
   const parts = value.split("/");
-  if (!value.endsWith(".json") || parts.some((part) => !/^[\w.-]+$/.test(part) || part === "." || part === "..")) {
-    throw new Error("The target must be a repository-relative JSON file in the trusted base commit.");
+  if (!value.endsWith(extension) || parts.some((part) => !/^[\w.-]+$/.test(part) || part === "." || part === "..")) {
+    throw new Error(problem);
   }
   return parts.map(encodeURIComponent).join("/");
 }

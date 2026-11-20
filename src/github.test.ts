@@ -88,6 +88,27 @@ describe("GitHub README check", () => {
     expect(comment).toContain(HEAD.slice(0, 12));
     expect(comment).toContain("| Not run | 1 |");
     expect(comment).not.toMatch(/Click the Edit button|@someone|private-path/);
+    expect(comment).not.toContain("For review");
+  });
+
+  it("lists lines for a person to review without calling them false", () => {
+    const claim = (line: number) => ({ id: `README.md#L${line}`, type: "ui_flow" as const, quote: "q", check: "c", source: { file: "README.md", startLine: line, endLine: line } });
+    const kane = { status: "failed" } as never;
+    const report = {
+      runId: "r", target: "t", repo: "r", commit: HEAD, startedAt: "", finishedAt: "", documents: [], claims: [], rejected: [], notTested: [],
+      kaneCredits: 0, model: { calls: 0, inputTokens: 0, outputTokens: 0, cacheHits: 0 },
+      tested: [
+        { claim: claim(5), kane, questioning: { verdict: "unconfirmed", reason: "", followUps: [], candidateFinding: true } },
+        { claim: claim(7), kane, questioning: { verdict: "worded_differently", reason: "", followUps: [], wording: { documented: "q", visible: 'Button labelled "Attack"' } } },
+        { claim: claim(9), kane, questioning: { verdict: "true", reason: "", followUps: [] } },
+      ],
+    } as never;
+    const comment = githubComment(report, "examples/demo/README.md");
+    expect(comment).toContain("Checked `examples/demo/README.md`");
+    expect(comment).toContain("- Line 5: Kane failed it twice and a control passed.");
+    expect(comment).toContain('- Line 7: the behaviour held, but the app shows Button labelled "Attack".');
+    expect(comment).not.toContain("Line 9");
+    expect(comment.slice(comment.indexOf("For review"))).not.toMatch(/\bfalse\b|\blie\b|outdated/i);
   });
 
   it("rejects fork, private, untrusted event, and malformed input before making requests", async () => {
@@ -102,6 +123,21 @@ describe("GitHub README check", () => {
     const unpinned = { ...event, pull_request: { ...event.pull_request, head: { ...event.pull_request.head, sha: "main" } } };
     await expect(stageGitHubReadme({ ...options(), event: unpinned }, fetchFile)).rejects.toThrow(/pinned/);
     expect(fetchFile).not.toHaveBeenCalled();
+  });
+
+  it("reads a chosen Markdown file from the head and rejects anything else", async () => {
+    const requests: string[] = [];
+    const getFile: typeof fetch = (input) => {
+      const url = new URL(String(input));
+      requests.push(url.pathname);
+      return Promise.resolve(fileResponse(url.pathname.endsWith(".md") ? readme : profile));
+    };
+    const staged = await stageGitHubReadme({ ...options(), docsFile: "examples/demo/README.md" }, getFile);
+    expect(requests[0]).toBe(`/repos/${REPO}/contents/examples/demo/README.md`);
+    expect(readFileSync(join(staged.source!.directory, "README.md"), "utf8")).toBe(readme);
+    for (const docsFile of ["../README.md", "docs/page.html", "/abs.md"]) {
+      await expect(stageGitHubReadme({ ...options(), docsFile }, getFile)).rejects.toThrow(/repository-relative Markdown/);
+    }
   });
 
   it("fails clearly for a removed README or unsupported API contents", async () => {
