@@ -20,6 +20,10 @@ export interface Claim {
   check?: string;
   /** For untestable claims: why a browser test cannot check it. */
   reason?: string;
+  /** From a reviewed, frozen claims file: the control flow to run instead of one the model proposes. */
+  control?: string;
+  /** From a reviewed, frozen claims file: how Kane evaluates this claim's assertions. */
+  assertionMode?: "dom" | "visual";
 }
 
 /** A claim the model proposed but whose quote was not found in the document. */

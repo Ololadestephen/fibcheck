@@ -8,6 +8,7 @@ import { CallBudget } from "./model/budget.js";
 import { ModelClient } from "./model/client.js";
 import type { ModelProvider } from "./model/types.js";
 import { loadTarget } from "./target.js";
+import { contentHash } from "./frozen.js";
 
 const BASE = "b".repeat(40);
 const HEAD = "a".repeat(40);
@@ -143,6 +144,46 @@ describe("GitHub README check", () => {
     for (const docsFile of ["../README.md", "docs/page.html", "/abs.md"]) {
       await expect(stageGitHubReadme({ ...options(), docsFile }, getFile)).rejects.toThrow(/repository-relative Markdown/);
     }
+  });
+
+  it("runs only reviewed frozen checks from the trusted base and lists the rest for review", async () => {
+    const docs = "# Demo\n\nClick the *Edit* button.\n";
+    const reviewedCheck = "Assert exactly: The page shows a button labelled 'Edit'. Expected: true.";
+    const frozenEntry = (id: string, line: number, quoteText: string, reviewer: string) => {
+      const label = quoteText.match(/\*(\w+)\*/)?.[1];
+      const labelCheck = reviewedCheck.replace("'Edit'", `'${label}'`);
+      return {
+        id, type: "ui_flow", quote: quoteText, startLine: line, endLine: line, check: labelCheck,
+        contentSha256: contentHash({ quote: quoteText, check: labelCheck }), reviewed: { by: reviewer, at: reviewer && "2026-11-20" },
+      };
+    };
+    const claimsFile = JSON.stringify({ version: 1, docsFile: "examples/demo/README.md", claims: [
+      frozenEntry("README.md#L3", 3, "Click the *Edit* button.", "owner"),
+      frozenEntry("README.md#L9", 9, "Click the *Old* button.", "owner"),
+      frozenEntry("README.md#L4", 4, "Click the *Save* button.", ""),
+    ] });
+    const requests: string[] = [];
+    const getFile: typeof fetch = (input) => {
+      const url = new URL(String(input));
+      requests.push(`${url.pathname} ${url.searchParams.get("ref")}`);
+      return Promise.resolve(fileResponse(url.pathname.endsWith("claims.json") ? claimsFile : url.pathname.endsWith(".md") ? docs : profile));
+    };
+    const staged = await stageGitHubReadme({ ...options(), docsFile: "examples/demo/README.md", claimsFile: "examples/demo/claims.json" }, getFile);
+    expect(requests).toContain(`/repos/${REPO}/contents/examples/demo/claims.json ${BASE}`);
+    expect(staged.frozen).toBe(true);
+    expect(staged.reviewedClaims?.map(({ id, source }) => `${id} ${source.file}`)).toEqual(["README.md#L3 README.md", "README.md#L9 README.md"]);
+    expect(staged.needsReview).toEqual([{ id: "README.md#L4", line: 4, why: "No one has reviewed this check yet." }]);
+
+    const { needsReview, ...checkOptions } = staged;
+    const budget = new CallBudget({ maxCallsPerRun: 1, maxCallsTotal: 1 }, "t", join(directory, "totals.json"), join(directory, "ledger.jsonl"));
+    const neverCalled: ModelProvider = { name: "none", generate: () => Promise.reject(new Error("no model call expected")) };
+    const report = await runCheck(new ModelClient(neverCalled, budget), { ...checkOptions, workDir: join(directory, "work"), maxKaneRuns: 0 });
+    expect(report.notTested).toEqual(["README.md#L3"]);
+    const comment = githubComment(report, "examples/demo/README.md", needsReview);
+    expect(comment).toContain("**Needs review (not run)**");
+    expect(comment).toContain("- Line 4: No one has reviewed this check yet.");
+    expect(comment).toContain("- Line 9 no longer says what was reviewed, so its frozen check was not run.");
+    await expect(stageGitHubReadme({ ...options(), claimsFile: "examples/demo/claims.json" }, getFile)).rejects.toThrow(/different docs file/);
   });
 
   it("fails clearly for a removed README or unsupported API contents", async () => {

@@ -205,10 +205,17 @@ describe("claim ranking in a check", () => {
       const client = new ModelClient({ name: "unused", async generate() { throw new Error("not called"); } },
         new CallBudget({ maxCallsPerRun: 1, maxCallsTotal: 1 }, "r", join(dir, "totals"), join(dir, "ledger")));
       const reviewedClaims = quotes.map((quote, i) => ({
-        id: `README.md#L${i + 1}`, type: "behaviour" as const, quote, check: quote, source: { file: "README.md", startLine: i + 1, endLine: i + 1 },
+        id: `README.md#L${i + 1}`, type: "behaviour" as const, quote, source: { file: "README.md", startLine: i + 1, endLine: i + 1 },
+        check: i === 1 ? "Open the Settings page. Assert exactly: The Settings page content shows a tab labelled 'Admin'. Expected: true." : quote,
       }));
       const report = await runCheck(client, { targetPath, source: { directory: dir, commit: "fixture" }, runsDir: dir, workDir: dir, maxKaneRuns: 0, reviewedClaims });
       expect(report.notTested).toEqual(["README.md#L2", "README.md#L1"]);
+      const unlabelled = await runCheck(client, {
+        targetPath, source: { directory: dir, commit: "fixture" }, runsDir: dir, workDir: dir, maxKaneRuns: 0,
+        reviewedClaims: reviewedClaims.map((claim) => ({ ...claim, check: "Click the Admin tab." })),
+      });
+      expect(unlabelled.notTested).toEqual(["README.md#L1"]);
+      expect(unlabelled.rejected).toEqual([expect.objectContaining({ why: expect.stringContaining("labelled 'Admin'") })]);
       expect(report.ranking?.map(({ id }) => id)).toEqual(["README.md#L2", "README.md#L1"]);
       expect(report.ranking?.[0]?.reasons).toEqual(expect.arrayContaining(["1 named item"]));
     } finally {

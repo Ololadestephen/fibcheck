@@ -35,7 +35,8 @@ jobs:
         with:
           target-file: examples/linkding-demo/target.json
           docs-file: examples/linkding-demo/README.md
-          max-claims: '2'
+          claims-file: examples/linkding-demo/fibcheck.claims.json
+          max-claims: '1'
           evidence-artifact: 'true'
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           lt-username: ${{ secrets.LT_USERNAME }}

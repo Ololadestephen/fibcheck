@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { KaneRun } from "./kane/runner.js";
 import type { CheckOptions, CheckReport } from "./check.js";
 import { countResults } from "./report/report.js";
+import { frozenClaims, parseFrozenFile, type NeedsReview } from "./frozen.js";
 import { loadTarget } from "./target.js";
 
 interface PullRequestEvent {
@@ -21,13 +22,17 @@ interface GitHubSource {
   targetFile: string;
   /** The Markdown file to check, read from the pull request head. Defaults to the root README. */
   docsFile?: string;
+  /** A reviewed, frozen claims file in the trusted base commit. When set, no claims are generated in CI. */
+  claimsFile?: string;
   directory: string;
   maxClaims: number;
 }
 
 const COMMIT = /^[0-9a-f]{40}$/i;
 
-export async function stageGitHubReadme(input: GitHubSource, fetchFile: typeof fetch = fetch): Promise<CheckOptions> {
+export type StagedCheck = CheckOptions & { needsReview?: NeedsReview[] };
+
+export async function stageGitHubReadme(input: GitHubSource, fetchFile: typeof fetch = fetch): Promise<StagedCheck> {
   const { repository, head, base } = publicPullRequest(input.eventName, input.event);
   const api = githubUrl(input.apiUrl, "api.github.com");
   const server = githubUrl(input.serverUrl, "github.com");
@@ -37,10 +42,16 @@ export async function stageGitHubReadme(input: GitHubSource, fetchFile: typeof f
     throw new Error("max-claims must be a nonnegative whole number.");
   }
 
-  const [readme, profile] = await Promise.all([
+  const claimsFile = input.claimsFile
+    ? repositoryPath(input.claimsFile, ".json", "The claims file must be a repository-relative JSON file in the trusted base commit.")
+    : undefined;
+  const [readme, profile, frozenText] = await Promise.all([
     publicFile(api, repository, docsFile, head, fetchFile),
     publicFile(api, repository, targetFile, base, fetchFile),
+    claimsFile ? publicFile(api, repository, claimsFile, base, fetchFile) : Promise.resolve(undefined),
   ]);
+  const frozen = frozenText === undefined ? undefined : parseFrozenFile(frozenText);
+  if (frozen && frozen.docsFile !== (input.docsFile ?? "README.md")) throw new Error("The frozen claims file belongs to a different docs file.");
   const directory = join(input.directory, "source");
   mkdirSync(directory);
   writeFileSync(join(directory, "README.md"), readme, { flag: "wx" });
@@ -53,16 +64,21 @@ export async function stageGitHubReadme(input: GitHubSource, fetchFile: typeof f
     docs: [],
   }));
 
-  return {
+  const staged: StagedCheck = {
     targetPath,
     source: { directory, commit: head },
     runsDir: join(input.directory, "runs"),
     maxClaims: input.maxClaims,
   };
+  if (!frozen) return staged;
+  const { claims, needsReview } = frozenClaims(frozen);
+  // The staged copy of the docs file is named README.md.
+  const reviewedClaims = claims.map((claim) => ({ ...claim, source: { ...claim.source, file: "README.md" } }));
+  return { ...staged, reviewedClaims, frozen: true, needsReview };
 }
 
 /** The pull request comment: counts, plus the lines a person should review. Never calls a line false on its own. */
-export function githubComment(report: CheckReport, docsFile = "README.md"): string {
+export function githubComment(report: CheckReport, docsFile = "README.md", needsReview: NeedsReview[] = []): string {
   if (!report.commit || !COMMIT.test(report.commit)) throw new Error("A pinned commit is required for a pull request report.");
   const counts = countResults(report);
   const entries = [
@@ -92,6 +108,7 @@ export function githubComment(report: CheckReport, docsFile = "README.md"): stri
     `Initial Kane runs recorded ${counts.passed} passed, ${counts.failed} failed, ${counts.error} errors, and ${counts.cancelled} cancelled.`,
     ...lineTable(report),
     ...(review.length ? ["", "**For review**", "", ...review] : []),
+    ...needsReviewLines(report, needsReview),
   ].join("\n");
 }
 
@@ -102,6 +119,15 @@ const VERDICT_LABELS: Record<string, string> = {
   false: "Did not match the app",
   outdated: "Did not match the app",
 };
+
+/** Frozen checks that were not run because the line changed or the check was not reviewed. */
+function needsReviewLines(report: CheckReport, needsReview: NeedsReview[]): string[] {
+  const lines = [
+    ...needsReview.map(({ line, why }) => `- Line ${line}: ${why}`),
+    ...report.rejected.filter(({ why }) => why.startsWith("Needs review:")).map(({ why }) => `- ${why.replace(/^Needs review: l/, "L")}`),
+  ];
+  return lines.length ? ["", "**Needs review (not run)**", "", ...lines] : [];
+}
 
 /** One row per tested or ranked claim: its line and what happened, without quoting the text. */
 function lineTable(report: CheckReport): string[] {

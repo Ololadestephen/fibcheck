@@ -27,6 +27,7 @@ const staged = await stageGitHubReadme({
   serverUrl: env.GITHUB_SERVER_URL,
   targetFile: env.FIBCHECK_TARGET_FILE,
   docsFile: env.FIBCHECK_DOCS_FILE || undefined,
+  claimsFile: env.FIBCHECK_CLAIMS_FILE || undefined,
   directory,
   maxClaims: Number(env.FIBCHECK_MAX_CLAIMS),
 });
@@ -36,7 +37,8 @@ const client = createModelClient(basename(directory), privateDirectory);
 // The provider has read the key. Keep it out of the Docker and Kane children.
 delete env.GEMINI_API_KEY;
 delete env.GOOGLE_API_KEY;
-const checked = await runCheck(client, { ...staged, workDir, log: (message) => console.log(message) });
+const { needsReview, ...options } = staged;
+const checked = await runCheck(client, { ...options, workDir, log: (message) => console.log(message) });
 writeReport(join(staged.runsDir, checked.runId, "check.json"));
 
 console.log(kaneTranscript(checked));
@@ -45,6 +47,6 @@ if (env.FIBCHECK_EVIDENCE_DIR) {
   console.log(`Copied step screenshots from ${folders} Kane run(s).`);
 }
 
-const summary = githubComment(checked, env.FIBCHECK_DOCS_FILE || undefined);
+const summary = githubComment(checked, env.FIBCHECK_DOCS_FILE || undefined, needsReview);
 appendFileSync(env.GITHUB_OUTPUT, `report<<FIBCHECK_REPORT_END\n${summary}\nFIBCHECK_REPORT_END\n`);
 appendFileSync(env.GITHUB_STEP_SUMMARY, summary + "\n");
