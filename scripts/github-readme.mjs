@@ -36,7 +36,7 @@ const client = createModelClient(basename(directory), privateDirectory);
 // The provider has read the key. Keep it out of the Docker and Kane children.
 delete env.GEMINI_API_KEY;
 delete env.GOOGLE_API_KEY;
-const checked = await runCheck(client, { ...staged, workDir });
+const checked = await runCheck(client, { ...staged, workDir, log: (message) => console.log(message) });
 writeReport(join(staged.runsDir, checked.runId, "check.json"));
 
 const summary = githubComment(checked, env.FIBCHECK_DOCS_FILE || undefined);

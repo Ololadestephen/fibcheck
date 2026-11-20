@@ -87,6 +87,7 @@ describe("GitHub README check", () => {
     const comment = githubComment({ ...report, target: "@someone", repo: "private-path", documents: ["private-path.md"] });
     expect(comment).toContain(HEAD.slice(0, 12));
     expect(comment).toContain("| Not run | 1 |");
+    expect(comment).toContain("| 3 | Not run (over the claim limit) | none |");
     expect(comment).not.toMatch(/Click the Edit button|@someone|private-path/);
     expect(comment).not.toContain("For review");
   });
@@ -101,6 +102,7 @@ describe("GitHub README check", () => {
         { claim: claim(5), kane, questioning: { verdict: "unconfirmed", reason: "", followUps: [], candidateFinding: true } },
         { claim: claim(7), kane, questioning: { verdict: "worded_differently", reason: "", followUps: [], wording: { documented: "q", visible: 'Button labelled "Attack"' } } },
         { claim: claim(9), kane, questioning: { verdict: "true", reason: "", followUps: [] } },
+        { claim: claim(11), kane, questioning: { verdict: "true", reason: "", followUps: [{ purpose: "reword", reason: "", kane: { status: "passed" } }] } },
       ],
     } as never;
     const comment = githubComment(report, "examples/demo/README.md");
@@ -108,6 +110,9 @@ describe("GitHub README check", () => {
     expect(comment).toContain("- Line 5: Kane failed it twice and a control passed.");
     expect(comment).toContain('- Line 7: the behaviour held, but the app shows Button labelled "Attack".');
     expect(comment).not.toContain("Line 9");
+    expect(comment).toContain("| 9 | Held | failed |");
+    expect(comment).toContain("| 7 | Held, worded differently | failed |");
+    expect(comment).toContain("| 11 | Held | failed, passed (reword) |");
     expect(comment.slice(comment.indexOf("For review"))).not.toMatch(/\bfalse\b|\blie\b|outdated/i);
   });
 

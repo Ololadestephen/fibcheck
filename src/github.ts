@@ -89,8 +89,30 @@ export function githubComment(report: CheckReport, docsFile = "README.md"): stri
     ...entries.map(([label, count]) => `| ${label} | ${count} |`),
     "",
     `Initial Kane runs recorded ${counts.passed} passed, ${counts.failed} failed, ${counts.error} errors, and ${counts.cancelled} cancelled.`,
+    ...lineTable(report),
     ...(review.length ? ["", "**For review**", "", ...review] : []),
   ].join("\n");
+}
+
+const VERDICT_LABELS: Record<string, string> = {
+  true: "Held",
+  worded_differently: "Held, worded differently",
+  unconfirmed: "Unconfirmed",
+  false: "Did not match the app",
+  outdated: "Did not match the app",
+};
+
+/** One row per tested or ranked claim: its line and what happened, without quoting the text. */
+function lineTable(report: CheckReport): string[] {
+  const line = (id: string) => id.split("#L")[1] ?? id;
+  const rows = [
+    ...report.tested.map(({ claim, kane, questioning }) => {
+      const runs = [kane.status, ...(questioning?.followUps ?? []).map(({ purpose, kane: run }) => `${run.status} (${purpose})`)].join(", ");
+      return `| ${claim.source.startLine} | ${questioning ? VERDICT_LABELS[questioning.verdict] ?? questioning.verdict : "No verdict"} | ${runs} |`;
+    }),
+    ...report.notTested.map((id) => `| ${line(id)} | Not run (over the claim limit) | none |`),
+  ];
+  return rows.length ? ["", "| Line | Result | Kane runs |", "| ---: | --- | --- |", ...rows] : [];
 }
 
 function publicPullRequest(eventName: string, raw: unknown): { repository: string; head: string; base: string } {
