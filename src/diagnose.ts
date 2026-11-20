@@ -81,7 +81,33 @@ export function modelDiagnoser(client: ModelClient, secrets: readonly string[] =
       { purpose: "diagnose-run", system: DIAGNOSE_SYSTEM, prompt: diagnosisPrompt(claim, check, kane, secrets), jsonSchema: RESPONSE_SCHEMA },
       parseDiagnosis,
     );
-    return value;
+    return applyFixedRules(claim, kane, value);
+  };
+}
+
+const TAB = /\btabs?\b/i;
+const MENU_ROUTE = /\bnav(?:igation|bar)?\b|\bmenus?\b|\bdrop-?downs?\b/i;
+
+/**
+ * A fixed rule that the model's reading cannot overrule: when the documentation names a tab, a click that
+ * Kane itself describes as being in a navigation bar, menu or dropdown did not test that tab, even when
+ * Kane calls the item a tab. The run then does not count as exercising the claim.
+ */
+export function menuRoutedTab(claim: Claim, kane: Pick<KaneRun, "steps">): string | undefined {
+  if (!TAB.test(claim.quote)) return undefined;
+  const step = kane.steps.find(({ remark }) => /^click\b/i.test(remark) && TAB.test(remark) && MENU_ROUTE.test(remark));
+  return step ? `Step ${step.step} clicked an item Kane described as being in a navigation bar, menu or dropdown ("${step.remark.slice(0, 160)}"), not a tab inside the page the documentation names.` : undefined;
+}
+
+export function applyFixedRules(claim: Claim, kane: Pick<KaneRun, "steps">, diagnosis: Diagnosis): Diagnosis {
+  const routed = menuRoutedTab(claim, kane);
+  if (!routed || !diagnosis.exercisedClaim) return diagnosis;
+  return {
+    ...diagnosis,
+    exercisedClaim: false,
+    cause: diagnosis.cause === "claim_contradicted" ? "agent_misstep" : diagnosis.cause,
+    reason: `${routed} ${diagnosis.reason}`,
+    visibleWording: "",
   };
 }
 
