@@ -33,6 +33,8 @@ export async function questionClaim(
   canRunFollowUp: () => boolean = () => true,
   general?: GeneralQuestioning,
 ): Promise<QuestionedRun> {
+  // A frozen, reviewed check is run exactly as reviewed, never through a built-in special case.
+  if (general?.frozen && claim.check) return await questionGenerally(claim, claim.check, general, run, canRunFollowUp);
   const linkding = managedTarget && isLinkdingRepo(managedTarget.repo)
     && managedTarget.app?.image === "sissbruecker/linkding:1.47.0"
     && managedTarget.app?.env?.LD_SUPERUSER_NAME === "pinotest"

@@ -15,6 +15,7 @@ import type { GeneralQuestioning } from "./general-loop.js";
 import { questionClaim } from "./loop.js";
 import type { Questioning } from "./loop-types.js";
 import type { ModelClient } from "./model/client.js";
+import { missingLabelAssertion } from "./frozen.js";
 import { loadTarget, resolveTarget, runningAppVariables, type ResolvedTarget } from "./target.js";
 
 export interface CheckOptions {
@@ -47,6 +48,11 @@ export interface CheckOptions {
    * document near its cited lines, or the claim is rejected and not tested.
    */
   reviewedClaims?: Claim[];
+  /**
+   * The reviewed claims are frozen: run each check exactly as reviewed, never reword it, and use only the
+   * reviewed control. Claims whose quote is no longer in the document are listed as needing review.
+   */
+  frozen?: boolean;
   /** Let the model read failed or unreviewed Kane runs and propose rewordings, reproductions and controls (default true). */
   diagnose?: boolean;
   log?: (line: string) => void;
@@ -99,9 +105,17 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   log(`Read ${documents.length} document(s) from ${target.repo}${commit ? ` at ${commit.slice(0, 7)}` : ""}.`);
 
   const extraction = options.reviewedClaims
-    ? verifyReviewedClaims(documents, options.reviewedClaims)
+    ? verifyReviewedClaims(documents, options.reviewedClaims, options.frozen)
     : await extractClaimsCached(client, documents, join(workDir, "cache", "claims"));
-  const testable = extraction.claims.filter((c) => c.type !== "untestable" && c.check);
+  // Every claim that names a UI element must open with an exact-label assertion; a check without one is not run.
+  const unlabelled = extraction.claims.flatMap((claim) => {
+    const why = claim.type !== "untestable" && claim.check ? missingLabelAssertion(claim) : undefined;
+    return why ? [{ claim, why }] : [];
+  });
+  const testable = extraction.claims.filter((c) => c.type !== "untestable" && c.check && !unlabelled.some(({ claim }) => claim === c));
+  for (const { claim, why } of unlabelled) {
+    extraction.rejected.push({ quote: claim.quote, file: claim.source.file, why: `Needs review: line ${claim.source.startLine}. ${why}` });
+  }
   log(`Found ${extraction.claims.length} claims (${testable.length} testable), ${extraction.rejected.length} rejected quotes, ${extraction.cacheHits} document(s) from cache.`);
   if (extraction.unusable?.length) log(`The model's reply could not be used for ${extraction.unusable.length} document part(s); their claims are missing.`);
 
@@ -139,13 +153,14 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
 export const DEFAULT_RUNS_PER_CLAIM = 4;
 
 /** Keeps supplied claims whose quotes appear in their documents, with corrected line numbers. */
-export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[]): { claims: Claim[]; rejected: RejectedClaim[]; unusable?: { file: string; lines: string; why: string }[]; cacheHits: number } {
+export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[], frozen = false): { claims: Claim[]; rejected: RejectedClaim[]; unusable?: { file: string; lines: string; why: string }[]; cacheHits: number } {
   const verified: Claim[] = [];
   const rejected: RejectedClaim[] = [];
   for (const claim of claims) {
     const document = documents.find(({ file }) => file === claim.source.file);
     const source = document && locateQuote(document.content, claim.quote, claim.source);
     if (source) verified.push({ ...claim, source });
+    else if (frozen && document) rejected.push({ quote: claim.quote, file: claim.source.file, why: `Needs review: line ${claim.source.startLine} no longer says what was reviewed, so its frozen check was not run.` });
     else rejected.push({ quote: claim.quote, file: claim.source.file, why: document ? "The quote was not found in the document." : "The document was not read." });
   }
   return { claims: verified, rejected, cacheHits: 0 };
@@ -201,7 +216,7 @@ async function testClaims(target: ResolvedTarget, claims: Claim[], context: Test
     }
     return await runClaims(target, claims, {
       runDir, log, managedTarget, containerName: app?.containerName,
-      variablesFile: variablesFile?.path, maxKaneRuns: options.maxKaneRuns,
+      variablesFile: variablesFile?.path, maxKaneRuns: options.maxKaneRuns, frozen: options.frozen,
       diagnose: options.diagnose === false ? undefined : modelDiagnoser(client, [...Object.values(variables).map(({ value }) => value), new URL(target.baseUrl).host]),
     });
   } finally {
@@ -221,6 +236,7 @@ interface ClaimSession {
   variablesFile?: string;
   maxKaneRuns?: number;
   diagnose?: GeneralQuestioning["diagnose"];
+  frozen?: boolean;
 }
 
 async function runClaims(target: ResolvedTarget, claims: Claim[], session: ClaimSession): Promise<ClaimRun[]> {
@@ -248,6 +264,7 @@ async function runClaims(target: ResolvedTarget, claims: Claim[], session: Claim
     }, prepareTags, canRun, session.diagnose && {
       diagnose: session.diagnose,
       objectiveFor: (check) => objectiveFor({ ...claim, check }, target),
+      frozen: session.frozen,
     });
     log(`    Claim verdict: ${result.questioning.verdict}. ${result.questioning.reason}`);
     tested.push({ claim, ...result });

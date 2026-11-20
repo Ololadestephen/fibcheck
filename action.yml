@@ -7,6 +7,9 @@ inputs:
   docs-file:
     description: Repository-relative Markdown file to check, read from the pull request head.
     default: README.md
+  claims-file:
+    description: Optional. A reviewed, frozen claims file (from `fibcheck freeze`) in the trusted base commit. When set, Kane runs exactly those checks and nothing is generated in CI; a changed docs line is reported as needing review.
+    default: ''
   max-claims:
     description: Maximum number of claims to check.
     default: '3'
@@ -93,6 +96,7 @@ runs:
         FIBCHECK_ACTION_PATH: ${{ github.action_path }}
         FIBCHECK_TARGET_FILE: ${{ inputs.target-file }}
         FIBCHECK_DOCS_FILE: ${{ inputs.docs-file }}
+        FIBCHECK_CLAIMS_FILE: ${{ inputs.claims-file }}
         FIBCHECK_ENV_FILE: ${{ steps.credentials.outputs.path }}
         FIBCHECK_MAX_CLAIMS: ${{ inputs.max-claims }}
         FIBCHECK_EVIDENCE_DIR: ${{ inputs.evidence-artifact == 'true' && format('{0}/fibcheck-evidence', runner.temp) || '' }}

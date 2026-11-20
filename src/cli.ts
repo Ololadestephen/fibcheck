@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
@@ -7,6 +7,8 @@ import { attackFinding } from "./attack-run.js";
 import { attackSummary } from "./attack.js";
 import { loadFindings, writeCard } from "./card.js";
 import { runCheck } from "./check.js";
+import { extractClaims } from "./claims/extract.js";
+import { freeze, frozenClaims } from "./frozen.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
 import { writeReport } from "./report/report.js";
 import { loadTarget, loginSecretsFromEnv, targetPathFor } from "./target.js";
@@ -19,6 +21,7 @@ Usage:
   fibcheck report <check.json>
   fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards]
   fibcheck attack <finding-id> --url ADDRESS [--login SENTENCE] [--findings index/findings.json]
+  fibcheck freeze <docs.md> --out <claims.json>
   fibcheck --help
 
 Use sissbruecker/linkding or its GitHub URL for the bundled Linkding target.
@@ -34,6 +37,9 @@ The report command writes report.html and badge.svg beside a saved check.json.
 The card command draws a PNG share card for a recorded finding, from its verdict and Kane screenshot only.
 The attack command tries lazy fixes for a finding (delete the line, make it vague, hedge it, or guess a
 wrong detail) against the app at --url; each must be rejected by rule or failed by Kane.
+The freeze command writes the browser checks for a docs file (path relative to the repository root) once,
+for a person to review. Fill in "reviewed" for each claim you approve and commit the file; the GitHub Action's
+claims-file input then reruns exactly those checks. Editing a check afterwards needs a fresh freeze and review.
 `;
 
 export async function main(argv: string[]): Promise<number> {
@@ -46,8 +52,27 @@ export async function main(argv: string[]): Promise<number> {
   if (command === "report") return report(rest);
   if (command === "card") return card(rest);
   if (command === "attack") return await attack(rest);
+  if (command === "freeze") return await freezeCommand(rest);
   process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
   return 1;
+}
+
+async function freezeCommand(args: string[]): Promise<number> {
+  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { out: { type: "string" } } });
+  const [docsFile] = positionals;
+  if (!docsFile || !values.out || positionals.length !== 1) {
+    process.stderr.write("Usage: fibcheck freeze <docs.md> --out <claims.json>\n");
+    return 1;
+  }
+  loadDotEnv();
+  const runId = new Date().toISOString().replace(/[:.]/g, "-");
+  const extraction = await extractClaims(createModelClient(runId), [{ file: docsFile, content: readFileSync(docsFile, "utf8") }]);
+  const file = freeze(docsFile, extraction.claims);
+  writeFileSync(values.out, `${JSON.stringify(file, null, 2)}\n`, { flag: "wx" });
+  const { needsReview } = frozenClaims({ ...file, claims: file.claims.map((claim) => ({ ...claim, reviewed: { by: "check", at: "check" } })) });
+  process.stdout.write(`Wrote ${file.claims.length} check(s) to ${values.out} for review. None will run until "reviewed" is filled in.\n`);
+  for (const { line, why } of needsReview) process.stdout.write(`  Line ${line}: ${why}\n`);
+  return 0;
 }
 
 async function attack(args: string[]): Promise<number> {

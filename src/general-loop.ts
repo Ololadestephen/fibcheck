@@ -8,6 +8,11 @@ import { KANE_RUN_LIMIT_REASON, type ClaimVerdict, type QuestionedRun, type Ques
 export interface GeneralQuestioning {
   diagnose: Diagnose;
   objectiveFor: (check: string) => string;
+  /**
+   * The check comes from a reviewed, frozen claims file: Kane runs exactly that text, nothing is reworded,
+   * and the only control is the reviewed one in the file.
+   */
+  frozen?: boolean;
 }
 
 /** Rewordings allowed after an agent or check problem, before the claim is left unconfirmed. */
@@ -60,8 +65,8 @@ export async function questionGenerally(
   run: RunRound,
   canRunFollowUp: () => boolean,
 ): Promise<QuestionedRun> {
-  const initial = await run("initial", general.objectiveFor(check));
-  const state: LoopState = { claim, general, run, canRunFollowUp, initial, followUps: [], overrides: [], diagnoses: [], rewordsLeft: MAX_REWORDS };
+  const initial = await run("initial", general.objectiveFor(check), claim.assertionMode);
+  const state: LoopState = { claim, general, run, canRunFollowUp, initial, followUps: [], overrides: [], diagnoses: [], rewordsLeft: general.frozen ? 0 : MAX_REWORDS };
   let attempt: Attempt = { round: "initial", check, kane: initial };
   for (;;) {
     if (attempt.kane.status === "error" || attempt.kane.status === "cancelled") {
@@ -106,7 +111,7 @@ async function confirm(state: LoopState, failed: Attempt, diagnosis: Diagnosis):
   if (!state.canRunFollowUp()) return outcome(state, "unconfirmed", KANE_RUN_LIMIT_REASON);
   // Repeat the exact check that failed, so the reproduction tests the same assertion.
   const check = failed.check;
-  const kane = await state.run("retry", state.general.objectiveFor(check));
+  const kane = await state.run("retry", state.general.objectiveFor(check), state.claim.assertionMode);
   return await confirmAfterReproduction(state, failed, diagnosis, { round: "retry", check, kane });
 }
 
@@ -119,11 +124,13 @@ async function confirmAfterReproduction(state: LoopState, failed: Attempt, diagn
   if (!second || second.cause !== "claim_contradicted" || !second.exercisedClaim || !second.ownMistakeRuledOut) {
     return outcome(state, "unconfirmed", "The reproduction failed for a different reason, so the result is not consistent.");
   }
-  if (!diagnosis.controlCheck || !state.canRunFollowUp()) {
-    return outcome(state, "unconfirmed", diagnosis.controlCheck ? KANE_RUN_LIMIT_REASON : "The model proposed no control, so a setup problem was not ruled out.");
+  const controlCheck = state.general.frozen ? state.claim.control : diagnosis.controlCheck;
+  if (!controlCheck || !state.canRunFollowUp()) {
+    const missing = state.general.frozen ? "The frozen claim has no reviewed control, so a setup problem was not ruled out." : "The model proposed no control, so a setup problem was not ruled out.";
+    return outcome(state, "unconfirmed", controlCheck ? KANE_RUN_LIMIT_REASON : missing);
   }
-  const control = await state.run("control", state.general.objectiveFor(diagnosis.controlCheck));
-  state.followUps.push({ purpose: "control", reason: `Rule out a setup problem: ${diagnosis.controlCheck}`, kane: control });
+  const control = await state.run("control", state.general.objectiveFor(controlCheck), state.claim.assertionMode);
+  state.followUps.push({ purpose: "control", reason: `Rule out a setup problem: ${controlCheck}`, kane: control });
   if (control.status !== "passed" || !distinctKaneRuns(control, failed.kane) || !distinctKaneRuns(control, reproduction.kane)) {
     return outcome(state, "unconfirmed", "The control did not pass in its own run, so a setup problem was not ruled out.");
   }
