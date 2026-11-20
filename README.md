@@ -154,7 +154,7 @@ Without prices, only the call cap limits use, and the report says that the dolla
 
 ```sh
 npm pack
-npx --package ./fibcheck-0.0.0.tgz -- fibcheck --help
+npx --package ./fibcheck-0.1.0.tgz -- fibcheck --help
 ```
 
 The package is not on npm yet. Once it is published, `npx fibcheck check sissbruecker/linkding` will run the same command. The package includes the compiled CLI and the Linkding target. Run `fibcheck check sissbruecker/linkding` from the directory that contains your `.env` when using the installed command.

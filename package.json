@@ -1,14 +1,33 @@
 {
   "name": "fibcheck",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Finds the false claims in a web app's README with Kane CLI, and proves the fix.",
+  "version": "0.1.0",
+  "description": "A lie detector for READMEs and docs: checks each claim in a real browser with Kane CLI, and proves the fix.",
+  "keywords": [
+    "documentation",
+    "readme",
+    "docs",
+    "testing",
+    "browser-testing",
+    "kane-cli",
+    "github-action"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ololadestephen/fibcheck.git"
+  },
+  "homepage": "https://github.com/Ololadestephen/fibcheck#readme",
+  "bugs": {
+    "url": "https://github.com/Ololadestephen/fibcheck/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=20.12"
   },
-  "files": ["dist/", "targets/linkding.json"],
+  "files": [
+    "dist/",
+    "targets/linkding.json"
+  ],
   "bin": {
     "fibcheck": "dist/cli.js"
   },
