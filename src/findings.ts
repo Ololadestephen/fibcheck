@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { ClaimVerdict } from "./loop-types.js";
 import { errorMessage } from "./util.js";
 
@@ -56,4 +57,23 @@ export function readFindingsFile(path: string): Finding[] {
 
 export function writeFindingsFile(path: string, findings: Finding[]): void {
   writeFileSync(path, `${JSON.stringify(findings, null, 2)}\n`);
+}
+
+/** Reads and checks the findings file; every referenced screenshot must exist. */
+export function loadFindings(path: string): Finding[] {
+  const findings = readFindingsFile(path);
+  for (const finding of findings) {
+    for (const file of evidenceFiles(finding)) {
+      if (!existsSync(join(dirname(path), file))) throw new Error(`Finding ${finding.id} refers to a missing file: ${file}`);
+    }
+    if ((finding.verdict === "false" || finding.verdict === "outdated") && (finding.evidence.failures.length < 2 || !finding.evidence.control)) {
+      throw new Error(`Finding ${finding.id} is ${finding.verdict} without two recorded failures and a control.`);
+    }
+  }
+  return findings;
+}
+
+export function evidenceFiles(finding: Finding): string[] {
+  const { failures, control, fixProof, held } = finding.evidence;
+  return [finding.screenshot, ...failures, control, fixProof, held].filter((file): file is string => Boolean(file));
 }

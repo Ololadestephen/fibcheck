@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { ProviderOverloadedError, RateLimitedError, type ModelProvider, type ModelRequest, type ModelResponse } from "./types.js";
 
+type ChatCompletion = { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+
 /** Prices in US dollars per million tokens. */
 export interface TokenPrices {
   inputPerMillion: number;
@@ -67,7 +69,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       throw new SpendCapError(`The ${this.options.label} spending cap of $${cap.toFixed(2)} would be exceeded ($${spent.toFixed(4)} spent).`);
     }
     beforeAttempt();
-    let data: { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    let data: ChatCompletion;
     try {
       data = await this.send(request);
     } catch (error) {
@@ -89,7 +91,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       signal: AbortSignal.timeout(this.options.timeoutMs ?? 90_000),
     });
     if (!response.ok) throw providerError(this.options.label, response.status);
-    return (await response.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    return (await response.json()) as ChatCompletion;
   }
 
   /** Dollars spent so far across runs. A damaged file refuses further calls rather than resetting the count. */

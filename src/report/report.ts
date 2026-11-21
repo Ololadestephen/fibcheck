@@ -3,7 +3,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import type { CheckReport, ClaimRun } from "../check.js";
 import type { Claim } from "../claims/types.js";
 import type { KaneRun } from "../kane/runner.js";
-import type { ClaimVerdict } from "../loop-types.js";
+import type { ClaimVerdict, RoundName } from "../loop-types.js";
 import { errorMessage } from "../util.js";
 
 export function writeReport(inputPath: string): { htmlPath: string; badgePath: string } {
@@ -197,8 +197,8 @@ function renderClaim(claim: Claim, entry: ClaimRun | undefined, skipped: boolean
 
 function renderClaimRuns({ kane, questioning }: ClaimRun, directory: string): string {
   if (!questioning) return renderRun(kane, directory);
-  const rounds = [{ purpose: "initial", reason: questioning.initialReason, kane }, ...questioning.followUps];
-  const roundNames: Record<string, string> = { initial: "Initial check", reword: "Reworded check", retry: "Reproduction", control: "Control" };
+  const rounds: { purpose: RoundName; reason: string; kane: KaneRun }[] = [{ purpose: "initial", reason: questioning.initialReason, kane }, ...questioning.followUps];
+  const roundNames: Record<RoundName, string> = { initial: "Initial check", reword: "Reworded check", retry: "Reproduction", control: "Control" };
   const roundsHtml = rounds.map((round) => `<section class="round">
     <h3>${roundNames[round.purpose]} · ${RESULT_LABELS[round.kane.status]}</h3>
     <p class="meta">${escapeHtml(round.reason)}</p>

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { cardText, evidenceLine, loadFindings, renderCardHtml } from "./card.js";
-import type { Finding } from "./findings.js";
+import { cardText, evidenceLine, renderCardHtml } from "./card.js";
+import { loadFindings, type Finding } from "./findings.js";
 
 const INDEX_DIR = fileURLToPath(new URL("../index/", import.meta.url));
 

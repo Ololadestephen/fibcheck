@@ -2,8 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { cardText, loadFindings } from "./card.js";
+import { cardText } from "./card.js";
 import { confirmFinding } from "./confirm.js";
+import { loadFindings } from "./findings.js";
 
 const COMMIT = "c".repeat(40);
 let dir: string;

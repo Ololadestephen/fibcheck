@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
-import { readFindingsFile, type Finding } from "./findings.js";
+import { loadFindings, type Finding } from "./findings.js";
 import type { ClaimVerdict } from "./loop-types.js";
 
 export interface CardText {
@@ -103,25 +103,6 @@ function scoreLine(finding: Finding): string {
   const claimWord = claims === 1 ? "claim" : "claims";
   if (finding.own) return `${findings} ${findings === 1 ? "fib" : "fibs"} in ${claims} ${claimWord}`;
   return `${findings} out-of-step ${findings === 1 ? "line" : "lines"} in ${claims} ${claimWord} checked`;
-}
-
-/** Reads and checks the findings file; every referenced screenshot must exist. */
-export function loadFindings(path: string): Finding[] {
-  const findings = readFindingsFile(path);
-  for (const finding of findings) {
-    for (const file of evidenceFiles(finding)) {
-      if (!existsSync(join(dirname(path), file))) throw new Error(`Finding ${finding.id} refers to a missing file: ${file}`);
-    }
-    if ((finding.verdict === "false" || finding.verdict === "outdated") && (finding.evidence.failures.length < 2 || !finding.evidence.control)) {
-      throw new Error(`Finding ${finding.id} is ${finding.verdict} without two recorded failures and a control.`);
-    }
-  }
-  return findings;
-}
-
-export function evidenceFiles(finding: Finding): string[] {
-  const { failures, control, fixProof, held } = finding.evidence;
-  return [finding.screenshot, ...failures, control, fixProof, held].filter((file): file is string => Boolean(file));
 }
 
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);

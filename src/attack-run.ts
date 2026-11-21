@@ -1,9 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { lazyFixTally, runAttack, type AttemptResult, type LazyFix } from "./attack.js";
-import { loadFindings } from "./card.js";
 import { modelDiagnoser } from "./diagnose.js";
-import { readFindingsFile, writeFindingsFile, type Finding } from "./findings.js";
+import { loadFindings, readFindingsFile, writeFindingsFile, type Finding } from "./findings.js";
 import { escapeKaneBraces, localAddressesToApp, writeKaneVariables } from "./kane/objective.js";
 import { runKane } from "./kane/runner.js";
 import type { ModelClient } from "./model/client.js";
