@@ -98,7 +98,7 @@ Before offering a fix, fibcheck's attacker plays a hurried editor and tries shor
 | Hedge the wrong detail (for example "You can usually access … at the top left") | Rejected by rule, 4 of 4 |
 | Swap in a plausible wrong detail (for example "the sidebar menu on the bottom left") | 4 of 4 inconclusive. Kane failed every one, but none of those runs tested the wrong sentence in the place it names, so none is counted |
 
-So each card says "3 lazy fixes rejected", all by rule. The wrong-detail runs taught us something too: in a first attempt Kane passed two wrong fixes by reaching the result through a different menu, and failed two for unrelated reasons. fibcheck now counts Kane's result only when the run tested the attempt's own place, and a person reviewed every one. Each attempt is in [attacks/](attacks/).
+So each card says "3 lazy fixes tried and rejected", all by rule. The wrong-detail runs taught us something too: in a first attempt Kane passed two wrong fixes by reaching the result through a different menu, and failed two for unrelated reasons. fibcheck now counts Kane's result only when the run tested the attempt's own place, and a person reviewed every one. Each attempt is in [attacks/](attacks/).
 
 ### Every docs-page claim
 

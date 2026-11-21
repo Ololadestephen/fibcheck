@@ -13,11 +13,12 @@ const base: Finding = {
 describe("cardText", () => {
   it("uses the playful tone and a count-based score for our own projects", () => {
     expect(cardText(base)).toMatchObject({
-      stamp: "FIB",
-      headline: "Your README fibbed. Here's the receipt.",
+      stamp: "FIB DETECTED",
+      headline: "Your README fibbed. We have receipts.",
       source: "Example · docs/admin.md, line 14 · abcdef1",
       evidence: "Caught twice by Kane. Control passed. Fix proven ✓",
       score: "3 fibs in 40 claims",
+      receipts: ["Kane failed it in 2 separate runs", "Control run passed, so the test wasn't broken", "The corrected wording passed Kane"],
     });
     expect(cardText(base).thanks).toBeUndefined();
   });
@@ -27,16 +28,16 @@ describe("cardText", () => {
       const text = cardText({ ...base, own: false, verdict });
       const all = Object.values(text).join(" ").toLowerCase();
       expect(all).not.toMatch(/\bfib|\blie\b|\blied\b/);
-      expect(text.thanks).toContain("Thank you to the Example maintainers");
-      expect(text.score).toBe("3 outdated or mismatched lines in 40 claims checked");
+      expect(text.thanks).toBe("Thanks, Example maintainers. Great project, one small docs update.");
+      expect(text.score).toBe("3 out-of-step lines in 40 claims checked");
     }
     expect(cardText({ ...base, own: false, verdict: "outdated" }).stamp).toBe("OUTDATED");
-    expect(cardText({ ...base, own: false, verdict: "false" }).stamp).toBe("DOESN'T MATCH THE APP");
+    expect(cardText({ ...base, own: false, verdict: "false" }).stamp).toBe("MIX-UP");
   });
 
   it("maps every verdict to its stamp", () => {
     const stamps = (["true", "worded_differently", "unconfirmed", "outdated"] as const).map((verdict) => cardText({ ...base, verdict }).stamp);
-    expect(stamps).toEqual(["TRUE", "WORDED DIFFERENTLY", "CAN'T TELL", "OUTDATED"]);
+    expect(stamps).toEqual(["VERIFIED", "CLOSE ENOUGH?", "CAN'T TELL", "OUTDATED"]);
     expect(cardText({ ...base, verdict: "unconfirmed" }).headline).toBe("Can't tell. We refuse to guess.");
   });
 
@@ -52,8 +53,29 @@ describe("cardText", () => {
 
   it("names the visible wording for a worded-differently card", () => {
     const text = cardText({ ...base, verdict: "worded_differently", visibleWording: '"Attack"', evidence: { failures: [], held: "h" }, score: { findings: 0, claims: 7 } });
-    expect(text.headline).toBe('Your README said it differently. The app says "Attack".');
+    expect(text.headline).toBe('Your README calls it one thing. The app calls it "Attack".');
     expect(text.score).toBe("0 fibs in 7 claims");
+  });
+});
+
+describe("card jokes", () => {
+  it("never calls a third-party project a fibber or a liar, whatever the verdict", () => {
+    for (const verdict of ["true", "false", "outdated", "worded_differently", "unconfirmed"] as const) {
+      const text = cardText({ ...base, own: false, verdict, punchline: undefined });
+      expect(Object.values(text).flat().join(" ").toLowerCase()).not.toMatch(/\bfib|\blie\b|\blied\b|\bliar/);
+    }
+  });
+
+  it("lists receipts only for evidence that exists, and thanks maintainers who merged", () => {
+    const upstream = { status: "merged" as const, pr: "p", mergedAt: "t", mergeCommit: "c" };
+    const text = cardText({ ...base, own: false, verdict: "outdated", evidence: { failures: ["a"] }, upstream, lazyFixes: { rejected: 1, byKane: 0 } });
+    expect(text.receipts).toEqual(["Kane failed it once", "1 lazy fix tried and rejected", "The maintainers merged the fix"]);
+    expect(text.thanks).toContain("for merging the fix");
+  });
+
+  it("uses a recorded punchline as written", () => {
+    expect(cardText({ ...base, punchline: "Kane looked twice." }).punchline).toBe("Kane looked twice.");
+    expect(cardText(base).punchline).toBeUndefined();
   });
 });
 
@@ -62,6 +84,8 @@ describe("renderCardHtml", () => {
     const html = renderCardHtml(base, "data:image/jpeg;base64,AAAA");
     expect(html).toContain("object-fit:contain");
     expect(html).toContain('<div class="shot"><img alt="Kane CLI screenshot, scaled only" src="data:image/jpeg;base64,AAAA"></div>');
+    expect(html).toContain("needle: went wild");
+    expect(renderCardHtml({ ...base, verdict: "true" }, "x")).toContain("needle: calm");
     expect(html).toContain("“Click the Admin tab.”");
   });
 });
@@ -86,9 +110,9 @@ describe("the recorded findings", () => {
 
   it("make cards whose text matches each recorded verdict and its evidence", () => {
     const byId = Object.fromEntries(findings.map((finding) => [finding.id, cardText(finding)]));
-    expect(byId["mealie-faq-disable-ingredient-amounts"]).toMatchObject({ stamp: "OUTDATED", evidence: "Caught twice by Kane. Control passed. Fix proven ✓ Fix merged by the maintainers ✓ 3 lazy fixes rejected.", thanks: expect.stringContaining("for merging the docs fix") });
-    expect(byId["uptime-kuma-wiki-maintenance-menu"]).toMatchObject({ stamp: "DOESN'T MATCH THE APP", evidence: "Caught twice by Kane. Control passed. 3 lazy fixes rejected." });
+    expect(byId["mealie-faq-disable-ingredient-amounts"]).toMatchObject({ stamp: "OUTDATED", evidence: "Caught twice by Kane. Control passed. Fix proven ✓ Fix merged by the maintainers ✓ 3 lazy fixes rejected.", thanks: expect.stringContaining("for merging the fix") });
+    expect(byId["uptime-kuma-wiki-maintenance-menu"]).toMatchObject({ stamp: "MIX-UP", evidence: "Caught twice by Kane. Control passed. 3 lazy fixes rejected." });
     expect(byId["linkding-admin-tab"]?.evidence).toBe("Caught twice by Kane. Control passed. Fix proven ✓ 3 lazy fixes rejected.");
-    expect(byId["soryn-readme-basic-attack"]).toMatchObject({ stamp: "WORDED DIFFERENTLY", evidence: "Behaviour held in Kane's run. Fix proven ✓", score: "0 fibs in 7 claims" });
+    expect(byId["soryn-readme-basic-attack"]).toMatchObject({ stamp: "CLOSE ENOUGH?", evidence: "Behaviour held in Kane's run. Fix proven ✓", score: "0 fibs in 7 claims" });
   });
 });

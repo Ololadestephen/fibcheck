@@ -5,6 +5,7 @@
     "own": false,
     "verdict": "outdated",
     "quote": "Click the Recipe Settings gear and deselect `Disable Ingredient Amounts`",
+    "punchline": "The FAQ asks you to switch off a setting that was removed in July 2025. Kane opened that panel in four runs. The switch is not hiding.",
     "source": {
       "repo": "mealie-recipes/mealie",
       "commit": "e2c0c3b1bfd7a785dde8e9704f1c8475333613ae",
@@ -42,6 +43,7 @@
     "own": false,
     "verdict": "false",
     "quote": "You can access the maintenance management via the menu at the top left.",
+    "punchline": "“Top left,” said the wiki. Kane clicked the top left twice. The menu was at the top right all along.",
     "source": {
       "repo": "louislam/uptime-kuma.wiki",
       "commit": "cf7fe32",
@@ -72,6 +74,7 @@
     "own": false,
     "verdict": "outdated",
     "quote": "To open the Admin app, go the *Settings* view and click on the *Admin* tab.",
+    "punchline": "Kane searched the Settings page for an Admin tab, twice. It had moved into the Settings dropdown.",
     "source": {
       "repo": "sissbruecker/linkding",
       "commit": "27b7303baf41bb28babc610ac8eaa486e1ddfab5",
@@ -103,6 +106,7 @@
     "own": false,
     "verdict": "outdated",
     "quote": "linkding UI currently only allows to create or assign tags",
+    "punchline": "“Only create or assign tags,” said the docs. Kane renamed one anyway.",
     "source": {
       "repo": "sissbruecker/linkding",
       "commit": "27b7303baf41bb28babc610ac8eaa486e1ddfab5",
@@ -134,6 +138,7 @@
     "own": true,
     "verdict": "worded_differently",
     "quote": "Each fighter has Basic Attack, Defence and a distinct Special.",
+    "punchline": "“Basic Attack,” said the README. The button just says “Attack”. Same punch, shorter name.",
     "source": {
       "repo": "Soryn",
       "commit": "8876c08",

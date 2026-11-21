@@ -9,7 +9,7 @@ Built for the Kane CLI Hackathon, with Claude Code.
 - **[The fibcheck index](index/README.md):** 8 popular self-hosted web apps checked. 0 of 17 README claims were false. In their docs pages and wikis, 4 wrong or stale instructions were confirmed across 3 projects (Linkding 2, Mealie 1, Uptime Kuma 1), each with two failing Kane runs, a passing control and screenshots. For three of them, Kane also passed a fresh run that followed the corrected wording.
 - **A fix merged upstream:** Mealie's maintainers merged our docs fix ([mealie-recipes/mealie#9212](https://github.com/mealie-recipes/mealie/pull/9212)). A docs PR to Linkding is open, and a note is on the Uptime Kuma issue about the same menu.
 - **Live on pull requests:** in [this demo pull request](https://github.com/Ololadestephen/fibcheck/pull/1), the GitHub Action started Linkding in Docker on GitHub's free runner, Kane failed an outdated "Admin tab" step twice while the control passed, and the comment flagged the line for review ([run log and screenshots](https://github.com/Ololadestephen/fibcheck/actions/runs/44762871602)).
-- **Share cards** for each finding are in [index/cards](index/cards), drawn from Kane's own screenshots.
+- **Share cards** for each finding are in [index/cards](index/cards): a "docs polygraph" printout with a joke, the quoted line, Kane's own screenshot and the receipts. The jokes only restate recorded facts, and cards about other people's projects never call anyone a liar.
 
 ## See it
 
