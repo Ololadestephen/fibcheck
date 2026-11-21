@@ -51,6 +51,11 @@ describe("parseKaneOutput edge cases", () => {
     expect(r.reason).toMatch(/inconclusive/);
   });
 
+  it("skips memory entries that are not objects", () => {
+    const end = { type: "run_end", status: "passed", context: { memory: { bad: null, good: { condition: "c", extracted_value: "e", expected_value: "x" } } } };
+    expect(parseKaneOutput(`${JSON.stringify(end)}\n`, 0).observations.map(({ name }) => name)).toEqual(["good"]);
+  });
+
   it("counts and skips lines that are not JSON", () => {
     const r = parseKaneOutput('hello\n{"step":2,"status":"done","remark":"ok"}\n', 1);
     expect(r.ignoredLines).toBe(1);

@@ -130,14 +130,14 @@ function inconclusiveReason(exitCode: number, end: Json | undefined): string {
 function observationsFrom(end: Json | undefined): KaneObservation[] {
   const memory = (end?.context as Json | undefined)?.memory as Record<string, Json> | undefined;
   if (!memory || typeof memory !== "object") return [];
-  return Object.entries(memory).map(([name, m]) => ({
+  return Object.entries(memory).flatMap(([name, m]) => (m && typeof m === "object" ? [{
     name,
     condition: str(m.condition),
     extractedValue: str(m.extracted_value),
     expectedValue: str(m.expected_value),
     analyzerType: str(m.analyzer_type),
     usedDomCode: Boolean(m.code_js || m.wrapped_js || (Array.isArray(m.locators) ? m.locators.length : m.locators)),
-  }));
+  }] : []));
 }
 
 function blameFrom(end: Json | undefined): KaneBlame | null {
