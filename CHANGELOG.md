@@ -1,9 +1,11 @@
 # Changelog
 
-## 0.1.2 (not yet published)
+## 0.1.2 (2026-11-21)
 
 - `card --animate` writes an animated GIF of the share card beside the PNG (needs ffmpeg), and the command's help and usage list the flag.
-- Share cards are redesigned around a fib meter that shows how many of the app's checked lines held up, with a verdict stamp, a caption, the quoted line and Kane's screenshot.
+- Share cards are redesigned around a meter that shows how many of the app's checked lines held up, with a verdict stamp, a caption, the quoted line and Kane's screenshot.
+- Cards for other people's projects use a neutral docs meter that ends at "off" and a MIX-UP stamp for a false line. The fib meter, "fib" and FALSE are kept for findings marked `own: true`.
+- `card --no-link` leaves the repository address off a card; `npx fibcheck` always stays.
 
 ## 0.1.1 (2026-11-21)
 
