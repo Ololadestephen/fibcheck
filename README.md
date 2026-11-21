@@ -9,7 +9,7 @@ Built for the Kane CLI Hackathon, with Claude Code.
 - **[The fibcheck index](index/README.md):** 8 popular self-hosted web apps checked. 0 of 17 README claims were false. In their docs pages and wikis, 4 wrong or stale instructions were confirmed across 3 projects (Linkding 2, Mealie 1, Uptime Kuma 1), each with two failing Kane runs, a passing control and screenshots. For three of them, Kane also passed a fresh run that followed the corrected wording.
 - **A fix merged upstream:** Mealie's maintainers merged our docs fix ([mealie-recipes/mealie#9212](https://github.com/mealie-recipes/mealie/pull/9212)). A docs PR to Linkding is open, and a note is on the Uptime Kuma issue about the same menu.
 - **Live on pull requests:** in [this demo pull request](https://github.com/Ololadestephen/fibcheck/pull/1), the GitHub Action started Linkding in Docker on GitHub's free runner, Kane failed an outdated "Admin tab" step twice while the control passed, and the comment flagged the line for review ([run log and screenshots](https://github.com/Ololadestephen/fibcheck/actions/runs/44762871602)).
-- **Share cards** for each finding are in [index/cards](index/cards): a fib meter with how many of the app's checked lines held up, a verdict stamp and caption, the quoted line, Kane's own screenshot (only scaled) and the evidence. `fibcheck card <id> --animate` also writes an animated GIF of the card.
+- **Share cards** for each finding are in [index/cards](index/cards): a meter with how many of the app's checked lines held up (a "fib meter" only for our own projects; other projects get a neutral docs meter), a verdict stamp and caption, the quoted line, Kane's own screenshot (only scaled) and the evidence. `fibcheck card <id> --animate` also writes an animated GIF of the card.
 
 ## See it
 
@@ -25,7 +25,7 @@ The HTML report for a saved check (`fibcheck report examples/sample-check/check.
 
 <img src="docs/images/report.png" alt="fibcheck HTML report for the Linkding check: one outdated claim, with its Kane runs" width="600">
 
-<img src="index/cards/mealie-faq-disable-ingredient-amounts.gif" alt="Animated share card for the Mealie FAQ finding: the fib meter needle swings to 3 of 5 Mealie lines held up, stamped OUTDATED, with the quoted FAQ line, Kane's screenshot, failed in 2 separate runs, control passed, fix merged by the maintainers" width="600">
+<img src="index/cards/mealie-faq-disable-ingredient-amounts.gif" alt="Animated share card for the Mealie FAQ finding: the docs meter needle swings to 3 of 5 Mealie lines held up, stamped OUTDATED, with the quoted FAQ line, Kane's screenshot, failed in 2 separate runs, control passed, fix merged by the maintainers" width="600">
 
 ## How it works
 
@@ -110,7 +110,7 @@ Run fibcheck with `npx fibcheck <command>`, or install it with `npm install -g f
 | `fibcheck freeze <docs.md> --out <claims.json>` | Writes the checks for a docs file once, for a person to review and commit (see [frozen checks](#check-docs-changes-in-github-actions)) |
 | `fibcheck confirm <check.json> <claim-id> --verdict false\|outdated` | Records a candidate finding you have reviewed in a findings file, with Kane's screenshots, for `card` and `attack` |
 | `fibcheck attack <finding-id> --url ADDRESS` | Tries lazy fixes for a recorded finding against the running app |
-| `fibcheck card <finding-id \| --all> [--animate]` | Draws a share card for a recorded finding from its verdict and Kane screenshot; `--animate` also writes a GIF (needs ffmpeg) |
+| `fibcheck card <finding-id \| --all> [--animate] [--no-link]` | Draws a share card for a recorded finding from its verdict and Kane screenshot; `--animate` also writes a GIF (needs ffmpeg), `--no-link` leaves the repository address off |
 
 Run them with `npx fibcheck <command>`, or as `fibcheck <command>` after `npm install -g fibcheck`.
 
