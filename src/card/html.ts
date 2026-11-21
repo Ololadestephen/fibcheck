@@ -22,9 +22,9 @@ main{display:grid;grid-template-columns:510px minmax(0,1fr);grid-template-rows:m
 .label,.source,.notes,.evidence{font:700 22px/1.22 Menlo,Consolas,monospace}
 .label{letter-spacing:.08em;text-transform:uppercase}
 .meter{color:var(--tone);display:block;width:420px;height:206px;margin:5px auto 0;overflow:visible}
-.score{font:bold 96px/.93 Georgia,serif;letter-spacing:-.065em;font-variant-numeric:tabular-nums}
+.score{font:bold 90px/1.05 Georgia,serif;letter-spacing:-.065em;font-variant-numeric:tabular-nums}
 .score.empty{font-size:56px;letter-spacing:-.04em;line-height:1.6}
-.truth{font:bold 30px/1.13 Georgia,serif}
+.truth{font:bold 30px/1.13 Georgia,serif;margin-top:8px}
 .notes{font-size:20px;min-height:27px;margin-top:8px}
 .verdict{text-align:center;margin-top:10px}
 .stamp{display:inline-block;border:5px double currentColor;border-radius:3px;background:#fff7e9;color:var(--tone);padding:2px 15px;font:900 29px/1.25 Menlo,Consolas,monospace;animation:land 2.1s linear var(--time) both paused}
