@@ -40,3 +40,7 @@ export interface SourceDocument {
   file: string;
   content: string;
 }
+
+export function isTestable(claim: Claim): claim is Claim & { check: string } {
+  return claim.type !== "untestable" && Boolean(claim.check);
+}

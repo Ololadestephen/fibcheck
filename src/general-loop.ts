@@ -72,7 +72,7 @@ export async function questionGenerally(
     if (attempt.kane.status === "error" || attempt.kane.status === "cancelled") {
       return outcome(state, "unconfirmed", `Kane did not finish the run (${attempt.kane.status}).`);
     }
-    const diagnosis = await review(state, attempt);
+    const diagnosis = await diagnoseAttempt(state, attempt);
     if (!diagnosis) return outcome(state, "unconfirmed", "The model could not read Kane's result, so it was not interpreted.");
     const next = await decide(state, attempt, diagnosis);
     if ("questioning" in next) return next;
@@ -90,7 +90,7 @@ async function decide(state: LoopState, attempt: Attempt, diagnosis: Diagnosis):
     return await reword(state, diagnosis)
       ?? outcome(state, "unconfirmed", `Kane passed, but the run did not exercise the documented claim. ${diagnosis.reason}`);
   }
-  if (diagnosis.cause === "claim_contradicted" && diagnosis.exercisedClaim) return await confirm(state, attempt, diagnosis);
+  if (diagnosis.cause === "claim_contradicted" && diagnosis.exercisedClaim) return await reproduceAndControl(state, attempt, diagnosis);
   if (diagnosis.cause === "agent_misstep" || diagnosis.cause === "check_problem") {
     const next = await reword(state, diagnosis);
     if (next) return next;
@@ -106,21 +106,21 @@ async function reword(state: LoopState, diagnosis: Diagnosis): Promise<Attempt |
   return { round: "reword", check: diagnosis.revisedCheck, kane };
 }
 
-async function confirm(state: LoopState, failed: Attempt, diagnosis: Diagnosis): Promise<QuestionedRun> {
+async function reproduceAndControl(state: LoopState, failed: Attempt, diagnosis: Diagnosis): Promise<QuestionedRun> {
   if (!diagnosis.ownMistakeRuledOut) return outcome(state, "unconfirmed", "The model gave no reason to rule out a test error.");
   if (!state.canRunFollowUp()) return outcome(state, "unconfirmed", KANE_RUN_LIMIT_REASON);
   // Repeat the exact check that failed, so the reproduction tests the same assertion.
   const check = failed.check;
   const kane = await state.run("retry", state.general.objectiveFor(check), state.claim.assertionMode);
-  return await confirmAfterReproduction(state, failed, diagnosis, { round: "retry", check, kane });
+  return await checkReproductionAndControl(state, failed, diagnosis, { round: "retry", check, kane });
 }
 
-async function confirmAfterReproduction(state: LoopState, failed: Attempt, diagnosis: Diagnosis, reproduction: Attempt): Promise<QuestionedRun> {
+async function checkReproductionAndControl(state: LoopState, failed: Attempt, diagnosis: Diagnosis, reproduction: Attempt): Promise<QuestionedRun> {
   state.followUps.push({ purpose: "retry", reason: "Reproduce the same documented assertion in an independent Kane run.", kane: reproduction.kane });
   if (reproduction.kane.status !== "failed" || !distinctKaneRuns(reproduction.kane, failed.kane)) {
     return outcome(state, "unconfirmed", "Kane did not fail the documented assertion again in a separate run.");
   }
-  const second = await review(state, reproduction);
+  const second = await diagnoseAttempt(state, reproduction);
   if (!second || second.cause !== "claim_contradicted" || !second.exercisedClaim || !second.ownMistakeRuledOut) {
     return outcome(state, "unconfirmed", "The reproduction failed for a different reason, so the result is not consistent.");
   }
@@ -138,7 +138,7 @@ async function confirmAfterReproduction(state: LoopState, failed: Attempt, diagn
   return outcome(state, "unconfirmed", `Candidate finding, awaiting a person's review. Two separate Kane runs failed the documented result. ${diagnosis.reason} Test error ruled out: ${diagnosis.ownMistakeRuledOut} The control passed. ${NOT_OUTDATED}`);
 }
 
-async function review(state: LoopState, attempt: Attempt): Promise<Diagnosis | undefined> {
+async function diagnoseAttempt(state: LoopState, attempt: Attempt): Promise<Diagnosis | undefined> {
   let diagnosis: Diagnosis;
   try {
     diagnosis = await state.general.diagnose(state.claim, attempt.check, attempt.kane);

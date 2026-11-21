@@ -199,11 +199,11 @@ function passedTab(id: string): KaneRun {
 
 async function perform(runs: KaneRun[], selected = claim, limit = Infinity) {
   const rounds: { purpose: string; objective: string; mode?: string }[] = [];
-  const result = await questionClaim(selected, target, "Original check", async (purpose, objective, mode) => {
+  const result = await questionClaim(selected, async (purpose, objective, mode) => {
     rounds.push({ purpose, objective, mode });
     const response = runs[rounds.length - 1];
     if (!response) throw new Error("Unexpected Kane round");
     return response;
-  }, undefined, () => rounds.length < limit);
+  }, { managedTarget: target, originalObjective: "Original check", canRunFollowUp: () => rounds.length < limit });
   return { result, rounds };
 }

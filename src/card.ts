@@ -54,12 +54,11 @@ export function cardText(finding: Finding): CardText {
 }
 
 function headline(finding: Finding): string {
-  const isFinding = finding.verdict === "false" || finding.verdict === "outdated";
   const visible = finding.visibleWording ?? "something else";
   if (finding.verdict === "unconfirmed") return "Can't tell. We refuse to guess.";
   if (finding.own) {
     if (finding.verdict === "false") return "Your README fibbed. We have receipts.";
-    if (isFinding) return "Your README is living in the past.";
+    if (finding.verdict === "outdated") return "Your README is living in the past.";
     if (finding.verdict === "worded_differently") return `Your README calls it one thing. The app calls it ${visible}.`;
     return "Your README told the truth. Suspicious, but verified.";
   }

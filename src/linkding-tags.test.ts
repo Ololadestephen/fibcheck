@@ -144,7 +144,7 @@ describe("Linkding tag claims", () => {
 
   it("does not use a seeded flow on a user-managed app", async () => {
     const run = vi.fn<RunRound>().mockResolvedValue(rename(true));
-    const result = await questionClaim(admin, undefined, "Original check", run);
+    const result = await questionClaim(admin, run, { managedTarget: undefined, originalObjective: "Original check" });
     expect(run).toHaveBeenCalledExactlyOnceWith("initial", "Original check");
     expect(result.questioning.verdict).toBe("unconfirmed");
   });
@@ -215,6 +215,6 @@ async function review(claim: Claim, results: KaneRun[], limit = Infinity) {
     return result;
   });
   const seed = vi.fn(async () => {});
-  const result = await questionClaim(claim, target, "Original check", run, seed, () => run.mock.calls.length < limit);
+  const result = await questionClaim(claim, run, { managedTarget: target, originalObjective: "Original check", prepareTags: seed, canRunFollowUp: () => run.mock.calls.length < limit });
   return { result, calls: run.mock.calls, seed };
 }
