@@ -80,12 +80,18 @@ function readJson<T>(path: string, what: string): T {
   }
 }
 
-/** The failed runs of the documented check (the first run and its reproductions) and the passing control. */
+/**
+ * The two failed runs behind the candidate and the passing control. The repeat ("retry") reproduces the exact check
+ * of the run just before it, which is the run read as a contradiction: the first run, or a reworded run when the
+ * first one failed for another reason. Both must have failed.
+ */
 function backingRuns({ kane, questioning }: ClaimRun): { failures: KaneRun[]; control?: KaneRun } {
   const followUps = questioning?.followUps ?? [];
-  const failures = [kane, ...followUps.filter(({ purpose }) => purpose === "retry").map((followUp) => followUp.kane)]
-    .filter((run) => run.status === "failed");
+  const retryAt = followUps.findIndex(({ purpose }) => purpose === "retry");
   const control = followUps.find(({ purpose, kane: run }) => purpose === "control" && run.status === "passed")?.kane;
+  if (retryAt === -1) return { failures: [], control };
+  const contradicted = retryAt === 0 ? kane : followUps[retryAt - 1]!.kane;
+  const failures = [contradicted, followUps[retryAt]!.kane].filter((run) => run.status === "failed");
   return { failures, control };
 }
 

@@ -69,6 +69,25 @@ describe("confirmFinding", () => {
     expect(cardText(saved!).stamp).toBe("OUTDATED");
   });
 
+  it("uses the reworded run that showed the contradiction, not a first run that failed for another reason", () => {
+    // The first run failed because Kane missed a step; the reworded check failed on the claim, and the
+    // repeat run reproduced that reworded check. The evidence is the reworded run and its repeat.
+    const reword = { purpose: "reword", reason: "w", kane: kaneRun("admin_L14--reword", "failed", [{ ordinal: 5, status: "failed", image: "no tab, reworded" }]) };
+    const checkPath = saveCheck([reword, retry(), control()]);
+    const findingsPath = join(dir, "out", "findings.json");
+    confirmFinding({ checkPath, claimId: "docs/admin.md#L14", verdict: "outdated", findingsPath, project: "My App" });
+    const read = (name: string) => readFileSync(join(dir, "out", "evidence", name), "utf8");
+    expect(read("my-app-admin-l14-run1.jpg")).toBe("no tab, reworded");
+    expect(read("my-app-admin-l14-run2.jpg")).toBe("no tab, run 2");
+  });
+
+  it("refuses when the run that the repeat reproduced did not fail", () => {
+    const reword = { purpose: "reword", reason: "w", kane: kaneRun("admin_L14--reword", "passed", [{ ordinal: 5, status: "passed", image: "passed" }]) };
+    const checkPath = saveCheck([reword, retry(), control()]);
+    expect(() => confirmFinding({ checkPath, claimId: "docs/admin.md#L14", verdict: "outdated", findingsPath: join(dir, "f.json") }))
+      .toThrow(/two separate failed Kane runs and a passing control/);
+  });
+
   it("appends to an existing findings file and refuses to overwrite an entry", () => {
     const checkPath = saveCheck([retry(), control()]);
     const findingsPath = join(dir, "findings.json");
