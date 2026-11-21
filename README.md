@@ -48,7 +48,7 @@ There are three ways to try fibcheck:
 
 ## Quick start
 
-fibcheck is on npm as [`fibcheck`](https://www.npmjs.com/package/fibcheck). Use Node.js 20.12 or newer with Git, Docker, Kane CLI, and a model for fibcheck's agent. Start Docker and put `GEMINI_API_KEY` in `.env` in the directory where you run fibcheck (use a Gemini project on the free tier), or choose another model as described in [Use your own model](#use-your-own-model).
+fibcheck is on npm as [`fibcheck`](https://www.npmjs.com/package/fibcheck). Use Node.js 22 or newer with Git, Docker, Kane CLI, and a model for fibcheck's agent. Start Docker and put `GEMINI_API_KEY` in `.env` in the directory where you run fibcheck (use a Gemini project on the free tier), or choose another model as described in [Use your own model](#use-your-own-model).
 
 ```sh
 npm install -g @testmuai/kane-cli
