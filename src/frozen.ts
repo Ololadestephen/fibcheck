@@ -34,8 +34,18 @@ export interface FrozenFile {
   claims: FrozenClaim[];
 }
 
-export function contentHash(claim: Pick<FrozenClaim, "quote" | "check" | "control">): string {
-  return createHash("sha256").update(JSON.stringify([claim.quote, claim.check, claim.control ?? ""])).digest("hex");
+/**
+ * sha256 of everything a reviewer approved: the quote, the check, the control and the assertion mode. A claim without an
+ * assertion mode hashes exactly as before the mode was covered, so older files without one still load.
+ */
+export function contentHash(claim: Pick<FrozenClaim, "quote" | "check" | "control" | "assertionMode">): string {
+  const fields = [claim.quote, claim.check, claim.control ?? "", ...(claim.assertionMode ? [claim.assertionMode] : [])];
+  return createHash("sha256").update(JSON.stringify(fields)).digest("hex");
+}
+
+/** True when a claim with an assertion mode carries a hash from before the mode was covered. */
+function hashedWithoutMode(claim: FrozenClaim): boolean {
+  return Boolean(claim.assertionMode) && contentHash({ ...claim, assertionMode: undefined }) === claim.contentSha256;
 }
 
 /** A claim that cannot be run as it stands, and why. Shown as "needs review". */
@@ -79,7 +89,9 @@ export function frozenClaims(file: FrozenFile): { claims: Claim[]; needsReview: 
   for (const frozen of file.claims) {
     const flag = (why: string) => needsReview.push({ id: frozen.id, line: frozen.startLine, why });
     if (!frozen.reviewed?.by?.trim() || !frozen.reviewed?.at?.trim()) flag("No one has reviewed this check yet.");
-    else if (contentHash(frozen) !== frozen.contentSha256) flag("The check changed after review. Freeze and review it again.");
+    else if (hashedWithoutMode(frozen)) {
+      flag("This check was frozen before the assertion mode was part of its hash. Re-freeze it with fibcheck freeze and review it again.");
+    } else if (contentHash(frozen) !== frozen.contentSha256) flag("The check changed after review. Freeze and review it again.");
     else {
       const claim: Claim = {
         id: frozen.id, type: frozen.type, quote: frozen.quote, check: frozen.check,
@@ -140,10 +152,11 @@ export function freeze(docsFile: string, claims: Claim[]): FrozenFile {
     version: 1,
     docsFile,
     claims: claims.filter((claim) => claim.type !== "untestable" && claim.check).map((claim) => {
-      const entry = { quote: claim.quote, check: claim.check!, control: claim.control };
+      const entry = { quote: claim.quote, check: claim.check!, control: claim.control, assertionMode: claim.assertionMode };
       return {
         id: claim.id, type: claim.type, quote: claim.quote, startLine: claim.source.startLine, endLine: claim.source.endLine,
         check: claim.check!, ...(claim.control ? { control: claim.control } : {}),
+        ...(claim.assertionMode ? { assertionMode: claim.assertionMode } : {}),
         contentSha256: contentHash(entry), reviewed: { by: "", at: "" },
       };
     }),

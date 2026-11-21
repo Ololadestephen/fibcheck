@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { contentHash, freeze, frozenClaims, missingLabelAssertion, namedLabels, parseFrozenFile, type FrozenClaim, type FrozenFile } from "./frozen.js";
 
@@ -62,5 +63,34 @@ describe("exact-label assertions", () => {
       .toContain("acts on 'Admin' before asserting");
     expect(missingLabelAssertion({ quote, check: "Assert exactly: The page heading is 'Settings'. Expected: true." })).toContain("labelled 'Admin'");
     expect(missingLabelAssertion({ quote: "Tags can be renamed.", check: "Rename a tag." })).toBeUndefined();
+  });
+});
+
+describe("assertion mode in frozen claims", () => {
+  const oldHash = (claim: Pick<FrozenClaim, "quote" | "check" | "control">) =>
+    createHash("sha256").update(JSON.stringify([claim.quote, claim.check, claim.control ?? ""])).digest("hex");
+
+  it("freeze keeps a claim's assertion mode", () => {
+    const frozen = freeze("examples/demo/README.md", [
+      { id: "README.md#L5", type: "ui_flow", quote, check, assertionMode: "visual", source: { file: "x", startLine: 5, endLine: 5 } },
+    ]);
+    expect(frozen.claims[0]).toMatchObject({ assertionMode: "visual" });
+  });
+
+  it("covers the assertion mode in the hash, so switching it after review is caught", () => {
+    const reviewed = entry({ assertionMode: "visual" });
+    expect(frozenClaims(file([reviewed])).claims[0]).toMatchObject({ assertionMode: "visual" });
+    const switched = { ...reviewed, assertionMode: "dom" as const };
+    expect(frozenClaims(file([switched])).needsReview[0]?.why).toBe("The check changed after review. Freeze and review it again.");
+  });
+
+  it("asks to re-freeze a file whose hash was written before the assertion mode was covered", () => {
+    const old = { ...entry({ assertionMode: "visual" }), contentSha256: oldHash({ quote, check, control: entry().control }) };
+    expect(frozenClaims(file([old])).needsReview[0]?.why).toMatch(/frozen before the assertion mode was part of its hash\. Re-freeze it/);
+  });
+
+  it("still loads an older file that has no assertion mode", () => {
+    const old = { ...entry(), contentSha256: oldHash(entry()) };
+    expect(frozenClaims(file([old])).needsReview).toEqual([]);
   });
 });

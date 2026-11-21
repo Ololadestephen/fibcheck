@@ -11,7 +11,7 @@
       "check": "Click 'Settings' in the top navigation bar, then click 'General' in the menu that opens. Wait until the page heading 'Settings' is shown. Press Escape, then click the page heading 'Settings', so that no menu or dropdown is open. Assert exactly: Below the top navigation bar, the Settings page content shows a tab labelled 'Admin'. Expected: true. Click the tab labelled 'Admin' inside the Settings page content. Do not open the 'Settings' menu in the top navigation bar again, and do not use any other menu, page or route. Assert exactly: The page heading is 'Site administration'. Expected: true.",
       "control": "Click 'Settings' in the top navigation bar, then click 'General' in the menu that opens. Wait until the page heading 'Settings' is shown. Press Escape, then click the page heading 'Settings', so that no menu or dropdown is open. Assert exactly: The Settings page content shows a field labelled 'Theme'. Expected: true.",
       "assertionMode": "visual",
-      "contentSha256": "7abe552db87d02a9e39a92c14749992875599842f9a3e3fb2eb4ea793dcac58c",
+      "contentSha256": "567a256e91aff6032a4f1193edadf7e145c89a7342f2889ed5e0828f738e9b22",
       "reviewed": {
         "by": "Ololadestephen",
         "at": "2026-11-20"
