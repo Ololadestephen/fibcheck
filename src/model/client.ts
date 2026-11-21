@@ -1,4 +1,5 @@
 import { CallBudget } from "./budget.js";
+import { errorMessage } from "../util.js";
 import { UnusableModelOutputError, type ModelProvider, type ModelRequest, type ModelResponse } from "./types.js";
 
 /**
@@ -44,7 +45,7 @@ export class ModelClient {
     try {
       return { value: validate(parsed), response };
     } catch (error) {
-      throw new UnusableModelOutputError(`The model's reply for "${request.purpose}" had the wrong shape: ${error instanceof Error ? error.message : String(error)}`);
+      throw new UnusableModelOutputError(`The model's reply for "${request.purpose}" had the wrong shape: ${errorMessage(error)}`);
     }
   }
 

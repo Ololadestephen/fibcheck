@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import type { ClaimVerdict } from "./loop-types.js";
+import { errorMessage } from "./util.js";
 
 /**
  * One recorded finding, as kept in `index/findings.json`. Every line on a card
@@ -47,7 +48,7 @@ export function readFindingsFile(path: string): Finding[] {
   try {
     value = JSON.parse(readFileSync(path, "utf8"));
   } catch (error) {
-    throw new Error(`Could not read the findings file ${path}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Could not read the findings file ${path}: ${errorMessage(error)}`);
   }
   if (!Array.isArray(value)) throw new Error(`Could not read the findings file ${path}: expected a list of findings.`);
   return value as Finding[];

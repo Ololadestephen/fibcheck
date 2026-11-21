@@ -4,6 +4,7 @@ import type { CheckReport, ClaimRun } from "../check.js";
 import type { Claim } from "../claims/types.js";
 import type { KaneRun } from "../kane/runner.js";
 import type { ClaimVerdict } from "../loop-types.js";
+import { errorMessage } from "../util.js";
 
 export function writeReport(inputPath: string): { htmlPath: string; badgePath: string } {
   const directory = dirname(resolve(inputPath));
@@ -25,7 +26,7 @@ export function writeReport(inputPath: string): { htmlPath: string; badgePath: s
     html = renderReport(report, counts, artwork, directory, basename(inputPath));
     badge = artwork.svg;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     throw new Error(`Could not read check report at ${inputPath}: ${message}`);
   }
   writeFileSync(badgePath, badge);

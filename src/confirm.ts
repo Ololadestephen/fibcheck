@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
 import type { CheckReport, ClaimRun } from "./check.js";
 import { readFindingsFile, writeFindingsFile, type Finding } from "./findings.js";
+import { errorMessage } from "./util.js";
 import type { KaneRun } from "./kane/runner.js";
 
 export interface ConfirmOptions {
@@ -75,7 +76,7 @@ function readJson<T>(path: string, what: string): T {
   try {
     return JSON.parse(readFileSync(path, "utf8")) as T;
   } catch (error) {
-    throw new Error(`Could not read the ${what} file ${path}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Could not read the ${what} file ${path}: ${errorMessage(error)}`);
   }
 }
 
