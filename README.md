@@ -185,6 +185,10 @@ Only public material goes to the model: the documentation text, the claim, and a
 
 Use `report` on saved checks to render evidence without calling any model or Kane again.
 
+## Known limits
+
+- Some code is still long and branchy (the check runner, the Kane output parser and the built-in Linkding flows), `src/` is one flat folder of 29 files with mixed file-name styles, one helper name is reused with different shapes, and the NEAR AI backup's address is written into the source instead of being configurable. Desloppify's subjective design reviews have not been run yet.
+
 ## Development checks
 
 ```sh
