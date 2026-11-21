@@ -238,6 +238,9 @@ export function findChrome(env: NodeJS.ProcessEnv = process.env): string {
   return found;
 }
 
+/** Cards are laid out at 1200 by 675 and drawn at twice that, 2400 by 1350 pixels, so they stay sharp on phone and retina screens. */
+export const CARD_SCALE = 2;
+
 /** Writes `<outDir>/<id>.png` for one finding and returns its path. */
 export function writeCard(findingsPath: string, id: string, outDir: string, chrome = findChrome()): string {
   const finding = loadFindings(findingsPath).find((entry) => entry.id === id);
@@ -251,7 +254,7 @@ export function writeCard(findingsPath: string, id: string, outDir: string, chro
     writeFileSync(page, html);
     mkdirSync(outDir, { recursive: true });
     const out = resolve(outDir, `${id}.png`);
-    execFileSync(chrome, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
+    execFileSync(chrome, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--force-device-scale-factor=${CARD_SCALE}`,
       "--window-size=1200,675", `--screenshot=${out}`, `file://${page}`], { stdio: "ignore", timeout: 60_000 });
     if (!existsSync(out)) throw new Error("Chrome did not write the card.");
     return out;
