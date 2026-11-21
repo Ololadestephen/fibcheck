@@ -7,6 +7,7 @@ import { extractClaimsCached } from "./claims/cache.js";
 import { collectDocuments } from "./claims/documents.js";
 import { locateQuote } from "./claims/quotes.js";
 import { rankClaims } from "./claims/rank.js";
+import type { ClaimSourcing, UnusablePart } from "./claims/extract.js";
 import type { Claim, RejectedClaim, SourceDocument } from "./claims/types.js";
 import { runKane, type KaneRun } from "./kane/runner.js";
 import { seedLinkdingTags } from "./linkding-tags.js";
@@ -17,6 +18,8 @@ import type { Questioning } from "./loop-types.js";
 import type { ModelClient } from "./model/client.js";
 import { missingLabelAssertion } from "./frozen.js";
 import { appBaseUrl, loadTarget, resolveTarget, runningAppVariables, type ResolvedTarget } from "./target.js";
+
+export const NEEDS_REVIEW_PREFIX = "Needs review:";
 
 export interface CheckOptions {
   targetPath: string;
@@ -84,7 +87,7 @@ export interface CheckReport {
   /** `models` lists every model that answered in this check; older checks lack it. */
   model: { calls: number; inputTokens: number; outputTokens: number; cacheHits: number; models?: string[]; spendingLimit?: string };
   /** Document parts whose model reply could not be used. Their claims are missing from this check. */
-  unusableModelOutput?: { file: string; lines: string; why: string }[];
+  unusableModelOutput?: UnusablePart[];
 }
 
 /** Reads a target's docs, extracts claims and runs the selected browser checks. */
@@ -114,7 +117,7 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
   });
   const testable = extraction.claims.filter((c) => c.type !== "untestable" && c.check && !unlabelled.some(({ claim }) => claim === c));
   for (const { claim, why } of unlabelled) {
-    extraction.rejected.push({ quote: claim.quote, file: claim.source.file, why: `Needs review: line ${claim.source.startLine}. ${why}` });
+    extraction.rejected.push({ quote: claim.quote, file: claim.source.file, why: `${NEEDS_REVIEW_PREFIX} line ${claim.source.startLine}. ${why}` });
   }
   log(`Found ${extraction.claims.length} claims (${testable.length} testable), ${extraction.rejected.length} rejected quotes, ${extraction.cacheHits} document(s) from cache.`);
   if (extraction.unusable?.length) log(`The model's reply could not be used for ${extraction.unusable.length} document part(s); their claims are missing.`);
@@ -153,14 +156,14 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
 export const DEFAULT_RUNS_PER_CLAIM = 4;
 
 /** Keeps supplied claims whose quotes appear in their documents, with corrected line numbers. */
-export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[], frozen = false): { claims: Claim[]; rejected: RejectedClaim[]; unusable?: { file: string; lines: string; why: string }[]; cacheHits: number } {
+export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[], frozen = false): ClaimSourcing {
   const verified: Claim[] = [];
   const rejected: RejectedClaim[] = [];
   for (const claim of claims) {
     const document = documents.find(({ file }) => file === claim.source.file);
     const source = document && locateQuote(document.content, claim.quote, claim.source);
     if (source) verified.push({ ...claim, source });
-    else if (frozen && document) rejected.push({ quote: claim.quote, file: claim.source.file, why: `Needs review: line ${claim.source.startLine} no longer says what was reviewed, so its frozen check was not run.` });
+    else if (frozen && document) rejected.push({ quote: claim.quote, file: claim.source.file, why: `${NEEDS_REVIEW_PREFIX} line ${claim.source.startLine} no longer says what was reviewed, so its frozen check was not run.` });
     else rejected.push({ quote: claim.quote, file: claim.source.file, why: document ? "The quote was not found in the document." : "The document was not read." });
   }
   return { claims: verified, rejected, cacheHits: 0 };
@@ -187,7 +190,6 @@ function totalKaneCredits(tested: ClaimRun[]): number {
   ), 0);
 }
 
-/** Starts the app, runs each claim and any follow-up checks, then cleans up. */
 interface TestContext {
   runDir: string;
   runId: string;
@@ -196,6 +198,7 @@ interface TestContext {
   client: ModelClient;
 }
 
+/** Starts the app, runs each claim and any follow-up checks, then cleans up. */
 async function testClaims(target: ResolvedTarget, claims: Claim[], context: TestContext): Promise<ClaimRun[]> {
   const { runDir, runId, options, log, client } = context;
   if (claims.length === 0 || options.maxKaneRuns === 0) return [];

@@ -28,7 +28,7 @@ export interface AttemptResult extends LazyFix {
   outcome: AttemptOutcome;
   reason: string;
   /** Kane's result folder and one-line summary, when Kane ran. */
-  kane?: { outDir: string; status: string; oneLiner: string };
+  kane?: { outDir: string; status: KaneRun["status"]; oneLiner: string };
 }
 
 export interface AttackInput {

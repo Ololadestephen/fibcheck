@@ -68,12 +68,16 @@ interface RawClaim {
   reason?: string;
 }
 
+export type UnusablePart = { file: string; lines: string; why: string };
+
 export interface ExtractionResult {
   claims: Claim[];
   rejected: RejectedClaim[];
   /** Parts of documents whose model reply could not be used. Their claims are missing, never guessed. */
-  unusable?: { file: string; lines: string; why: string }[];
+  unusable?: UnusablePart[];
 }
+
+export type ClaimSourcing = ExtractionResult & { cacheHits: number };
 
 /** Lists the claims in each document, keeping only claims whose quote is really in the document. */
 export async function extractClaims(client: ModelClient, documents: SourceDocument[]): Promise<ExtractionResult> {

@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { extractStepEvidence, findEvidencePack, type StepEvidence } from "./evidence.js";
 import { parseKaneOutput, type KaneResult } from "./parse.js";
 
+export type AssertionMode = "dom" | "visual";
+
 export interface KaneRunOptions {
   /** The natural-language flow for Kane. Use {{name}} for variables. */
   objective: string;
@@ -12,7 +14,7 @@ export interface KaneRunOptions {
   outDir: string;
   maxSteps?: number;
   timeoutSec?: number;
-  assertionMode?: "dom" | "visual";
+  assertionMode?: AssertionMode;
   /** Kane variables file (may hold secret test logins; never logged). */
   variablesFile?: string;
   /** The command to run; tests pass a fake. */

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ModelClient } from "../model/client.js";
-import { EXTRACT_SYSTEM, extractClaims, type ExtractionResult } from "./extract.js";
+import { EXTRACT_SYSTEM, extractClaims, type ClaimSourcing, type ExtractionResult } from "./extract.js";
 import type { SourceDocument } from "./types.js";
 
 /**
@@ -10,8 +10,8 @@ import type { SourceDocument } from "./types.js";
  * prompt. On the Gemini free tier (20 requests a day per model) this keeps
  * repeated checks of the same README from spending requests.
  */
-export async function extractClaimsCached(client: ModelClient, documents: SourceDocument[], cacheDir: string): Promise<ExtractionResult & { cacheHits: number }> {
-  const result: ExtractionResult & { cacheHits: number } = { claims: [], rejected: [], unusable: [], cacheHits: 0 };
+export async function extractClaimsCached(client: ModelClient, documents: SourceDocument[], cacheDir: string): Promise<ClaimSourcing> {
+  const result: ClaimSourcing = { claims: [], rejected: [], unusable: [], cacheHits: 0 };
   mkdirSync(cacheDir, { recursive: true });
   for (const document of documents) {
     const path = join(cacheDir, `${cacheKey(document)}.json`);

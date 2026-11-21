@@ -1,3 +1,4 @@
+import type { FailureCause } from "./diagnose.js";
 import type { KaneRun, KaneRunOptions } from "./kane/runner.js";
 
 /**
@@ -21,7 +22,7 @@ export interface Questioning {
   followUps: FollowUp[];
   overrides: { round: RoundName; family: string; category: string; hypothesis: string; evidence: string }[];
   /** The model's reading of each round, for claims questioned by the general loop. */
-  diagnoses?: { round: RoundName; cause: string; exercisedClaim: boolean; reason: string }[];
+  diagnoses?: { round: RoundName; cause: FailureCause; exercisedClaim: boolean; reason: string }[];
   /** For "worded_differently": the documentation's words and the text the interface actually shows. */
   wording?: { documented: string; visible: string };
   /** The automatic rule found a contradiction; the verdict stays unconfirmed until a person reviews the evidence. */

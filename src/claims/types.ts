@@ -1,3 +1,5 @@
+import type { AssertionMode } from "../kane/runner.js";
+
 /** The kinds of claim fibcheck sorts a README into. */
 export const CLAIM_TYPES = ["setup", "ui_flow", "behaviour", "mobile", "untestable"] as const;
 export type ClaimType = (typeof CLAIM_TYPES)[number];
@@ -23,7 +25,7 @@ export interface Claim {
   /** From a reviewed, frozen claims file: the control flow to run instead of one the model proposes. */
   control?: string;
   /** From a reviewed, frozen claims file: how Kane evaluates this claim's assertions. */
-  assertionMode?: "dom" | "visual";
+  assertionMode?: AssertionMode;
 }
 
 /** A claim the model proposed but whose quote was not found in the document. */

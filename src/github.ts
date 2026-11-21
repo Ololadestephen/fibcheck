@@ -1,8 +1,9 @@
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { KaneRun } from "./kane/runner.js";
-import type { CheckOptions, CheckReport } from "./check.js";
+import { NEEDS_REVIEW_PREFIX, type CheckOptions, type CheckReport } from "./check.js";
 import { countResults } from "./report/report.js";
+import type { ClaimVerdict } from "./loop-types.js";
 import { frozenClaims, parseFrozenFile, type NeedsReview } from "./frozen.js";
 import { loadTarget } from "./target.js";
 
@@ -112,19 +113,21 @@ export function githubComment(report: CheckReport, docsFile = "README.md", needs
   ].join("\n");
 }
 
-const VERDICT_LABELS: Record<string, string> = {
+const VERDICT_LABELS = {
   true: "Held",
   worded_differently: "Held, worded differently",
   unconfirmed: "Unconfirmed",
   false: "Did not match the app",
   outdated: "Did not match the app",
-};
+} satisfies Record<ClaimVerdict, string>;
+
+const upperFirst = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
 /** Frozen checks that were not run because the line changed or the check was not reviewed. */
 function needsReviewLines(report: CheckReport, needsReview: NeedsReview[]): string[] {
   const lines = [
     ...needsReview.map(({ line, why }) => `- Line ${line}: ${why}`),
-    ...report.rejected.filter(({ why }) => why.startsWith("Needs review:")).map(({ why }) => `- ${why.replace(/^Needs review: l/, "L")}`),
+    ...report.rejected.filter(({ why }) => why.startsWith(NEEDS_REVIEW_PREFIX)).map(({ why }) => `- ${upperFirst(why.slice(NEEDS_REVIEW_PREFIX.length).trimStart())}`),
   ];
   return lines.length ? ["", "**Needs review (not run)**", "", ...lines] : [];
 }
@@ -135,7 +138,7 @@ function lineTable(report: CheckReport): string[] {
   const rows = [
     ...report.tested.map(({ claim, kane, questioning }) => {
       const runs = [kane.status, ...(questioning?.followUps ?? []).map(({ purpose, kane: run }) => `${run.status} (${purpose})`)].join(", ");
-      return `| ${claim.source.startLine} | ${questioning ? VERDICT_LABELS[questioning.verdict] ?? questioning.verdict : "No verdict"} | ${runs} |`;
+      return `| ${claim.source.startLine} | ${questioning ? VERDICT_LABELS[questioning.verdict] : "No verdict"} | ${runs} |`;
     }),
     ...report.notTested.map((id) => `| ${line(id)} | Not run (over the claim limit) | none |`),
   ];
