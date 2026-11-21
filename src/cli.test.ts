@@ -1,5 +1,17 @@
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { runCheck, type CheckReport } from "./check.js";
 import { main } from "./cli.js";
+import { createModelClient } from "./model/config.js";
+
+vi.mock("./check.js", () => ({ runCheck: vi.fn() }));
+vi.mock("./model/config.js", () => ({ createModelClient: vi.fn(() => ({})), loadDotEnv: vi.fn() }));
+
+const LINKDING_TARGET = fileURLToPath(new URL("../targets/linkding.json", import.meta.url));
+const emptyReport: CheckReport = {
+  runId: "r", target: "t", repo: ".", commit: null, startedAt: "", finishedAt: "", documents: [], claims: [], rejected: [],
+  tested: [], notTested: [], kaneCredits: 0, model: { calls: 0, inputTokens: 0, outputTokens: 0, cacheHits: 0 },
+};
 
 describe("cli", () => {
   it("prints usage and exits 0 for --help", async () => {
@@ -62,5 +74,38 @@ describe("cli", () => {
     await main(["--help"]);
     expect(String(write.mock.calls[0]?.[0])).toContain("--url checks an app that is already running there, with no Docker");
     write.mockRestore();
+  });
+
+  describe("check wiring", () => {
+    const runCheckMock = vi.mocked(runCheck);
+
+    it("gives runCheck the login values from the environment and the run id the model client got", async () => {
+      vi.stubEnv("FIBCHECK_LOGIN_USER", "alice");
+      vi.stubEnv("FIBCHECK_LOGIN_OTHER", "unused");
+      runCheckMock.mockClear().mockResolvedValue(emptyReport);
+      vi.mocked(createModelClient).mockClear();
+      const out = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+      try {
+        expect(await main(["check", LINKDING_TARGET, "--url", "http://localhost:9", "--login", "Sign in as {{USER}}"])).toBe(0);
+        const options = runCheckMock.mock.calls[0]![1];
+        expect(options).toMatchObject({ appUrl: "http://localhost:9", login: "Sign in as {{USER}}", appRunningSecrets: { USER: "alice" } });
+        expect(options.runId).toBe(vi.mocked(createModelClient).mock.calls[0]![0]);
+        expect(out.mock.calls.map(([text]) => String(text)).join("")).toContain("Tested 0 claim(s).");
+      } finally {
+        out.mockRestore();
+        vi.unstubAllEnvs();
+      }
+    });
+
+    it("passes no login values when the app is started by fibcheck", async () => {
+      runCheckMock.mockClear().mockResolvedValue(emptyReport);
+      const out = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+      try {
+        expect(await main(["check", LINKDING_TARGET])).toBe(0);
+        expect(runCheckMock.mock.calls[0]![1].appRunningSecrets).toBeUndefined();
+      } finally {
+        out.mockRestore();
+      }
+    });
   });
 });
