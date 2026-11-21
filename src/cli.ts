@@ -137,7 +137,7 @@ async function attackCommand(args: string[]): Promise<number> {
 function cardCommand(args: string[]): number {
   const { values, positionals } = parseArgs({
     args, allowPositionals: true,
-    options: { all: { type: "boolean" }, findings: { type: "string" }, out: { type: "string" } },
+    options: { all: { type: "boolean" }, findings: { type: "string" }, out: { type: "string" }, animate: { type: "boolean" } },
   });
   const findingsPath = values.findings ?? "index/findings.json";
   const ids = values.all ? loadFindings(findingsPath).map(({ id }) => id) : positionals;
@@ -145,7 +145,7 @@ function cardCommand(args: string[]): number {
     process.stderr.write("Usage: fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards]\n");
     return 1;
   }
-  for (const id of ids) process.stdout.write(`Saved ${writeCard(findingsPath, id, values.out ?? "index/cards")}\n`);
+  for (const id of ids) process.stdout.write(`Saved ${writeCard(findingsPath, id, values.out ?? "index/cards", undefined, values.animate)}\n`);
   return 0;
 }
 
