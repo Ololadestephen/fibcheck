@@ -127,11 +127,18 @@ describe("the recorded findings", () => {
   });
 
   it("score each project from its recorded verdicts, never from legacy totals", () => {
-    expect(score("mealie-faq-disable-ingredient-amounts")).toMatchObject({ score: "0 of 1 claim told the truth", stamp: "OUTDATED", merged: "Fix merged by the maintainers ✓" });
-    expect(score("uptime-kuma-wiki-maintenance-menu").score).toBe("0 of 1 claim told the truth");
-    expect(score("linkding-admin-tab").score).toBe("0 of 2 claims told the truth");
-    expect(score("linkding-tags-only-create-or-assign").score).toBe("0 of 2 claims told the truth");
-    expect(score("soryn-readme-basic-attack")).toMatchObject({ score: "1 of 1 claim told the truth", note: "1 worded differently", evidence: "Behaviour held in Kane's run" });
+    expect(score("mealie-faq-disable-ingredient-amounts")).toMatchObject({
+      score: "3 of 5 lines held up", note: "1 couldn't be checked", stamp: "OUTDATED", merged: "Fix merged by the maintainers ✓",
+      source: "Mealie · …/getting-started/faq.md:30 · e2c0c3b",
+    });
+    expect(score("uptime-kuma-wiki-maintenance-menu").score).toBe("3 of 5 lines held up");
+    expect(score("linkding-admin-tab").score).toBe("3 of 6 lines held up");
+    expect(score("linkding-tags-only-create-or-assign").score).toBe("3 of 6 lines held up");
+    expect(score("soryn-readme-basic-attack")).toMatchObject({ score: "7 of 7 lines held up", note: "", worded: 1, evidence: "Behaviour held in Kane's run" });
+  });
+
+  it("falls back to the finding when no app total is available", () => {
+    expect(cardText({ ...base, score: { findings: 1, claims: 50 } })).toMatchObject({ score: "0 of 1 claim told the truth", scope: "Recorded findings" });
   });
 });
 

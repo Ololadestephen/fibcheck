@@ -26,8 +26,8 @@ export function findChrome(env: NodeJS.ProcessEnv = process.env): string {
 /** Cards are laid out at 1200 by 675 and drawn at twice that, 2400 by 1350 pixels, so they stay sharp on phone and retina screens. */
 export const CARD_SCALE = 2;
 
-const FRAMES = 27;
-const FPS = 9;
+const FRAMES = 30;
+const FPS = 10;
 const END = (FRAMES - 1) / FPS;
 const frameName = (index: number) => `frame-${String(index).padStart(2, "0")}.png`;
 
@@ -49,9 +49,12 @@ function renderGif(work: string, frame: (index: number) => void, png: string): v
   const run = (args: string[]) => execFileSync("ffmpeg", ["-nostdin", "-v", "error", "-y", ...args], { cwd: work, timeout: 60_000 });
   for (let index = 0; index < FRAMES - 1; index++) frame(index);
   const input = ["-framerate", String(FPS), "-i", "frame-%02d.png"];
-  run([...input, "-vf", "palettegen", "-frames:v", "1", "-update", "1", "palette.png"]);
-  run([...input, "-i", "palette.png", "-lavfi", "paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle", "-loop", "0", "card.gif"]);
-  if (statSync(join(work, "card.gif")).size >= 5_000_000) throw new Error(`GIF exceeds 5 MB. PNG saved to ${png}.`);
+  for (const maxColors of [256, 128, 64]) {
+    run([...input, "-vf", `palettegen=max_colors=${maxColors}`, "-frames:v", "1", "-update", "1", "palette.png"]);
+    run([...input, "-i", "palette.png", "-lavfi", "paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle", "-loop", "0", "card.gif"]);
+    if (statSync(join(work, "card.gif")).size < 1_000_000) break;
+  }
+  if (statSync(join(work, "card.gif")).size >= 1_000_000) throw new Error(`GIF exceeds 1 MB. PNG saved to ${png}.`);
   // GIF uses a 256-colour palette. Decode its last frame so the paired PNG matches pixel for pixel.
   run(["-i", "card.gif", "-vf", `select=eq(n\\,${FRAMES - 1}),format=rgb24`, "-frames:v", "1", "-update", "1", "final.png"]);
   copyFileSync(join(work, "card.gif"), png.replace(/\.png$/, ".gif"));
