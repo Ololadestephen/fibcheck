@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: Check public README
         id: fibcheck
-        uses: Ololadestephen/fibcheck@REPLACE_WITH_FULL_COMMIT_SHA
+        uses: Ololadestephen/fibcheck@84e612adaebd49c7ea7c0d162658930ba1bd778f # main on 2026-11-21
         with:
           target-file: .github/fibcheck.target.json
           max-claims: '3'

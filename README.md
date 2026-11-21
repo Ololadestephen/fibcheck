@@ -59,7 +59,7 @@ npx fibcheck check sissbruecker/linkding --max-claims 1
 The check prints the path to its `check.json`. Pass that path to `report` to write `report.html` and `badge.svg` beside it.
 
 ```sh
-npx fibcheck report runs/REPLACE_WITH_RUN_ID/check.json
+npx fibcheck report runs/<run-id>/check.json
 ```
 
 To work on fibcheck itself, clone this repository and run `npm ci && npm run build`; `node dist/cli.js` then runs the same commands from your copy.
