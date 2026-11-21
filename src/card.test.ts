@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as card from "./card.js";
 import { cardCommand } from "./card/command.js";
 import { cardText, evidenceLine } from "./card/copy.js";
 import { renderCardHtml } from "./card/html.js";
+import { main } from "./cli.js";
 import { loadFindings, type Finding } from "./findings.js";
 
 const INDEX_DIR = fileURLToPath(new URL("../index/", import.meta.url));
@@ -131,6 +133,19 @@ describe("the recorded findings", () => {
     expect(score("linkding-tags-only-create-or-assign").score).toBe("0 of 2 claims told the truth");
     expect(score("soryn-readme-basic-attack")).toMatchObject({ score: "1 of 1 claim told the truth", note: "1 worded differently", evidence: "Behaviour held in Kane's run" });
   });
+});
+
+it("passes --animate from the fibcheck card command to the renderer", async () => {
+  const writeCard = vi.spyOn(card, "writeCard").mockReturnValue("share.png");
+  const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  try {
+    expect(await main(["card", "soryn-readme-basic-attack", "--animate", "--findings", FINDINGS, "--out", "cards"])).toBe(0);
+    expect(writeCard).toHaveBeenCalledExactlyOnceWith(FINDINGS, "soryn-readme-basic-attack", "cards", undefined, true);
+    expect(stdout).toHaveBeenCalledExactlyOnceWith("Saved share.png\n");
+  } finally {
+    writeCard.mockRestore();
+    stdout.mockRestore();
+  }
 });
 
 describe.skipIf(process.platform === "win32")("cardCommand --animate without ffmpeg", () => {
