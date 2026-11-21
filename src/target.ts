@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { errorMessage } from "./util.js";
 
 /**
  * A target describes one web app to check: where its docs are, how to run it
@@ -45,19 +46,32 @@ export function loginEnvName(name: string): string {
   return `FIBCHECK_LOGIN_${name.toUpperCase()}`;
 }
 
+function loginPlaceholders(login: string | undefined): string[] {
+  return Array.from((login ?? "").matchAll(/\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g), (match) => match[1]!);
+}
+
 /** Reads the login values a login sentence refers to ({{NAME}}) from the environment. Missing values are left out. */
 export function loginSecretsFromEnv(login: Target["login"], env: NodeJS.ProcessEnv = process.env): Record<string, string> {
-  const names = Array.from((login ?? "").matchAll(/\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g), (match) => match[1]!);
+  const names = loginPlaceholders(login);
   return Object.fromEntries(names.flatMap((name) => {
     const value = env[loginEnvName(name)];
     return value ? [[name, value]] : [];
   }));
 }
 
+/** Checks an address given with --url and returns it without a trailing slash. */
+export function appBaseUrl(appUrl: string): string {
+  if (!URL.canParse(appUrl)) throw new Error("--url must be a full address such as https://bookmarks.example.org.");
+  const url = new URL(appUrl);
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("--url must start with http:// or https://.");
+  if (url.username || url.password) throw new Error("--url must not contain a user name or password. Put login values in .env instead.");
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+}
+
 export function runningAppVariables(
   login: Target["login"], secrets: Readonly<Record<string, string>>,
 ): ResolvedTarget["kaneVariables"] {
-  const names = new Set(Array.from((login ?? "").matchAll(/\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g), (match) => match[1]!));
+  const names = new Set(loginPlaceholders(login));
   return Object.fromEntries(Array.from(names, (name) => {
     const value = Object.hasOwn(secrets, name) ? secrets[name] : undefined;
     if (typeof value !== "string" || value.length === 0) {
@@ -88,7 +102,7 @@ export function loadTarget(path: string): Target {
   try {
     target = JSON.parse(readFileSync(path, "utf8")) as Target;
   } catch (error) {
-    throw new Error(`Could not read target ${path}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Could not read target ${path}: ${errorMessage(error)}`);
   }
   for (const key of ["name", "repo"] as const) {
     if (!target[key]) throw new Error(`Target ${path} is missing "${key}".`);

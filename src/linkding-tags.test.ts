@@ -6,8 +6,11 @@ import { linkdingTagClaim } from "./linkding-tags.js";
 import { questionClaim } from "./loop.js";
 import type { RunRound } from "./loop-types.js";
 import { loadTarget, resolveTarget } from "./target.js";
+import { fileURLToPath } from "node:url";
 
-const target = loadTarget("targets/linkding.json");
+const LINKDING_TARGET = fileURLToPath(new URL("../targets/linkding.json", import.meta.url));
+
+const target = loadTarget(LINKDING_TARGET);
 const startUrl = new URL("/login/", resolveTarget(target).baseUrl).href;
 const source = { file: "docs/src/content/docs/admin.md", startLine: 55, endLine: 55 };
 const ordinary: Claim = { id: "admin.md#L55", source, type: "behaviour", quote: "While linkding UI currently only allows to create or assign tags," };
@@ -144,7 +147,7 @@ describe("Linkding tag claims", () => {
 
   it("does not use a seeded flow on a user-managed app", async () => {
     const run = vi.fn<RunRound>().mockResolvedValue(rename(true));
-    const result = await questionClaim(admin, undefined, "Original check", run);
+    const result = await questionClaim(admin, run, { managedTarget: undefined, originalObjective: "Original check" });
     expect(run).toHaveBeenCalledExactlyOnceWith("initial", "Original check");
     expect(result.questioning.verdict).toBe("unconfirmed");
   });
@@ -215,6 +218,6 @@ async function review(claim: Claim, results: KaneRun[], limit = Infinity) {
     return result;
   });
   const seed = vi.fn(async () => {});
-  const result = await questionClaim(claim, target, "Original check", run, seed, () => run.mock.calls.length < limit);
+  const result = await questionClaim(claim, run, { managedTarget: target, originalObjective: "Original check", prepareTags: seed, canRunFollowUp: () => run.mock.calls.length < limit });
   return { result, calls: run.mock.calls, seed };
 }

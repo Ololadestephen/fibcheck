@@ -5,14 +5,16 @@ import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { attackFinding } from "./attack-run.js";
 import { attackSummary } from "./attack.js";
-import { loadFindings, writeCard } from "./card.js";
+import { writeCard } from "./card.js";
 import { runCheck } from "./check.js";
 import { extractClaims } from "./claims/extract.js";
 import { confirmFinding } from "./confirm.js";
+import { loadFindings } from "./findings.js";
 import { freeze, frozenClaims } from "./frozen.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
 import { writeReport } from "./report/report.js";
 import { loadTarget, loginSecretsFromEnv, targetPathFor } from "./target.js";
+import { errorMessage, newRunId } from "./util.js";
 
 export const USAGE = `fibcheck: finds the false claims in a web app's README with Kane CLI.
 
@@ -54,10 +56,10 @@ export async function main(argv: string[]): Promise<number> {
     process.stdout.write(USAGE);
     return 0;
   }
-  if (command === "check") return await check(rest);
-  if (command === "report") return report(rest);
-  if (command === "card") return card(rest);
-  if (command === "attack") return await attack(rest);
+  if (command === "check") return await checkCommand(rest);
+  if (command === "report") return reportCommand(rest);
+  if (command === "card") return cardCommand(rest);
+  if (command === "attack") return await attackCommand(rest);
   if (command === "freeze") return await freezeCommand(rest);
   if (command === "confirm") return confirmCommand(rest);
   process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
@@ -95,7 +97,7 @@ async function freezeCommand(args: string[]): Promise<number> {
     return 1;
   }
   loadDotEnv();
-  const runId = new Date().toISOString().replace(/[:.]/g, "-");
+  const runId = newRunId();
   const extraction = await extractClaims(createModelClient(runId), [{ file: docsFile, content: readFileSync(docsFile, "utf8") }]);
   const file = freeze(docsFile, extraction.claims);
   writeFileSync(values.out, `${JSON.stringify(file, null, 2)}\n`, { flag: "wx" });
@@ -105,7 +107,7 @@ async function freezeCommand(args: string[]): Promise<number> {
   return 0;
 }
 
-async function attack(args: string[]): Promise<number> {
+async function attackCommand(args: string[]): Promise<number> {
   const { values, positionals } = parseArgs({
     args, allowPositionals: true,
     options: { url: { type: "string" }, login: { type: "string" }, findings: { type: "string" } },
@@ -115,8 +117,13 @@ async function attack(args: string[]): Promise<number> {
     process.stderr.write("Usage: fibcheck attack <finding-id> --url ADDRESS [--login SENTENCE] [--findings index/findings.json]\n");
     return 1;
   }
+  const loginError = loginArgError(values.login);
+  if (loginError) {
+    process.stderr.write(loginError);
+    return 1;
+  }
   loadDotEnv();
-  const runId = new Date().toISOString().replace(/[:.]/g, "-");
+  const runId = newRunId();
   const record = await attackFinding(createModelClient(runId), {
     findingsPath: values.findings ?? "index/findings.json", id, appUrl: values.url, login: values.login,
     secrets: loginSecretsFromEnv(values.login), runsDir: join("runs", `attack-${runId}`),
@@ -127,7 +134,7 @@ async function attack(args: string[]): Promise<number> {
   return 0;
 }
 
-function card(args: string[]): number {
+function cardCommand(args: string[]): number {
   const { values, positionals } = parseArgs({
     args, allowPositionals: true,
     options: { all: { type: "boolean" }, findings: { type: "string" }, out: { type: "string" } },
@@ -142,7 +149,7 @@ function card(args: string[]): number {
   return 0;
 }
 
-function report(args: string[]): number {
+function reportCommand(args: string[]): number {
   const [inputPath] = args;
   if (args.length !== 1 || !inputPath || inputPath.startsWith("-")) {
     process.stderr.write("Usage: fibcheck report <check.json>\n");
@@ -184,11 +191,17 @@ export function parseCheckArgs(args: string[]): CheckArgs | string {
   const maxKaneRuns = wholeNumber(values["max-kane-runs"], Number.isSafeInteger);
   if (maxKaneRuns === null) return "--max-kane-runs must be a whole number.\n";
   if (values.login !== undefined && values.url === undefined) return "--login needs --url.\n";
-  if (values.login !== undefined && !/\{\{[A-Za-z_][A-Za-z0-9_]*\}\}/.test(values.login)) {
-    return "--login must name its values as {{NAME}} and keep them in .env as FIBCHECK_LOGIN_NAME, never type a password into the command.\n";
-  }
+  const loginError = loginArgError(values.login);
+  if (loginError) return loginError;
   if (values.url !== undefined && values["app-running"]) return "Use either --url or --app-running, not both.\n";
   return { target, maxClaims, maxKaneRuns, only: values.only, appRunning: values["app-running"], url: values.url, login: values.login };
+}
+
+function loginArgError(login: string | undefined): string | undefined {
+  if (login !== undefined && !/\{\{[A-Za-z_][A-Za-z0-9_]*\}\}/.test(login)) {
+    return "--login must name its values as {{NAME}} and keep them in .env as FIBCHECK_LOGIN_NAME, never type a password into the command.\n";
+  }
+  return undefined;
 }
 
 /** undefined when absent, null when not a non-negative whole number. */
@@ -198,7 +211,7 @@ function wholeNumber(raw: string | undefined, isWhole: (value: number) => boolea
   return isWhole(value) && value >= 0 ? value : null;
 }
 
-async function check(args: string[]): Promise<number> {
+async function checkCommand(args: string[]): Promise<number> {
   const parsed = parseCheckArgs(args);
   if (typeof parsed === "string") {
     process.stderr.write(parsed);
@@ -208,9 +221,10 @@ async function check(args: string[]): Promise<number> {
   loadDotEnv();
   const alreadyRunning = parsed.url !== undefined || parsed.appRunning === true;
   const login = parsed.login ?? loadTarget(targetPath).login;
-  const runId = new Date().toISOString().replace(/[:.]/g, "-");
+  const runId = newRunId();
   const report = await runCheck(createModelClient(runId), {
     targetPath,
+    runId,
     maxClaims: parsed.maxClaims,
     maxKaneRuns: parsed.maxKaneRuns,
     only: parsed.only,
@@ -237,7 +251,7 @@ if (executable && existsSync(executable) && import.meta.url === pathToFileURL(re
   main(process.argv.slice(2)).then(
     (code) => (process.exitCode = code),
     (error: unknown) => {
-      process.stderr.write(`fibcheck: ${error instanceof Error ? error.message : String(error)}\n`);
+      process.stderr.write(`fibcheck: ${errorMessage(error)}\n`);
       process.exitCode = 1;
     },
   );

@@ -28,7 +28,7 @@ export interface AttemptResult extends LazyFix {
   outcome: AttemptOutcome;
   reason: string;
   /** Kane's result folder and one-line summary, when Kane ran. */
-  kane?: { outDir: string; status: string; oneLiner: string };
+  kane?: { outDir: string; status: KaneRun["status"]; oneLiner: string };
 }
 
 export interface AttackInput {
@@ -114,7 +114,7 @@ export function judgeByRule(attempt: LazyFix, input: AttackInput): AttemptResult
   if (!attempt.text.trim()) {
     return { ...attempt, outcome: "rejected_by_rule", reason: "Deleting the line hides the problem: readers lose the instruction and nothing is left to check." };
   }
-  if (normalise(attempt.text) === normalise(input.fix)) {
+  if (comparableText(attempt.text) === comparableText(input.fix)) {
     return { ...attempt, outcome: "not_rejected", reason: "This is the proven fix itself, not a lazy one." };
   }
   if (HEDGES.test(attempt.text) && !HEDGES.test(input.fix)) {
@@ -174,14 +174,19 @@ export async function runAttack(
   return results;
 }
 
-/** The share-card and report line: only counts rejections that happened. */
-export function attackSummary(results: AttemptResult[]): string {
+export function lazyFixTally(results: AttemptResult[]): { rejected: number; byKane: number } {
   const rejected = results.filter(({ outcome }) => outcome === "rejected_by_rule" || outcome === "rejected_by_kane").length;
   const byKane = results.filter(({ outcome }) => outcome === "rejected_by_kane").length;
+  return { rejected, byKane };
+}
+
+/** The share-card and report line: only counts rejections that happened. */
+export function attackSummary(results: AttemptResult[]): string {
+  const { rejected, byKane } = lazyFixTally(results);
   if (rejected === 0) return "";
   return `${rejected} lazy ${rejected === 1 ? "fix" : "fixes"} rejected${byKane ? ` (${byKane} by Kane)` : ""}.`;
 }
 
-function normalise(text: string): string {
+function comparableText(text: string): string {
   return text.toLowerCase().replace(/[*_`"'.]/g, "").replace(/\s+/g, " ").trim();
 }

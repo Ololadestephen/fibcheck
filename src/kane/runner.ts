@@ -3,6 +3,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { extractStepEvidence, findEvidencePack, type StepEvidence } from "./evidence.js";
 import { parseKaneOutput, type KaneResult } from "./parse.js";
+import { errorMessage } from "../util.js";
+
+export type AssertionMode = "dom" | "visual";
 
 export interface KaneRunOptions {
   /** The natural-language flow for Kane. Use {{name}} for variables. */
@@ -12,7 +15,7 @@ export interface KaneRunOptions {
   outDir: string;
   maxSteps?: number;
   timeoutSec?: number;
-  assertionMode?: "dom" | "visual";
+  assertionMode?: AssertionMode;
   /** Kane variables file (may hold secret test logins; never logged). */
   variablesFile?: string;
   /** The command to run; tests pass a fake. */
@@ -70,7 +73,7 @@ function collectEvidence(result: KaneResult, outDir: string): { evidence: StepEv
   try {
     return { evidence: extractStepEvidence(pack, join(outDir, "evidence")), evidenceError: null };
   } catch (error) {
-    return { evidence: [], evidenceError: `Could not unpack Kane's evidence: ${error instanceof Error ? error.message : String(error)}` };
+    return { evidence: [], evidenceError: `Could not unpack Kane's evidence: ${errorMessage(error)}` };
   }
 }
 

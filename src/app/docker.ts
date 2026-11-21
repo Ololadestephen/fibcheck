@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { ResolvedTarget } from "../target.js";
+import { errorMessage } from "../util.js";
 
 const exec = promisify(execFile);
 
@@ -61,5 +62,5 @@ export async function waitForHttp(url: string, timeoutMs: number, intervalMs = 2
 
 function firstLine(error: unknown): string {
   const stderr = (error as { stderr?: string }).stderr;
-  return (stderr || (error instanceof Error ? error.message : String(error))).split("\n").find((l) => l.trim()) ?? "unknown error";
+  return (stderr || (errorMessage(error))).split("\n").find((l) => l.trim()) ?? "unknown error";
 }

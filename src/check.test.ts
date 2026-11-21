@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { startApp } from "./app/docker.js";
-import { localAddressesToApp, objectiveFor, runCheck, verifyReviewedClaims, withAppUrl } from "./check.js";
+import { objectiveFor, runCheck, verifyReviewedClaims, withAppUrl } from "./check.js";
+import { localAddressesToApp } from "./kane/objective.js";
 import { cacheKey, extractClaimsCached } from "./claims/cache.js";
 import type { Claim } from "./claims/types.js";
 import { parseKaneOutput } from "./kane/parse.js";
@@ -12,9 +13,12 @@ import { CallBudget } from "./model/budget.js";
 import { ModelClient } from "./model/client.js";
 import type { ModelProvider } from "./model/types.js";
 import { loadTarget, loginSecretsFromEnv, resolveTarget, runningAppVariables, targetPathFor } from "./target.js";
+import { fileURLToPath } from "node:url";
 
 vi.mock("./app/docker.js", { spy: true });
 vi.mock("./kane/runner.js", { spy: true });
+
+const LINKDING_TARGET = fileURLToPath(new URL("../targets/linkding.json", import.meta.url));
 
 const claim: Claim = {
   id: "docs/admin.md#L14",
@@ -63,13 +67,13 @@ describe("targets", () => {
   });
 
   it("loads the shipped linkding target", () => {
-    const target = loadTarget("targets/linkding.json");
+    const target = loadTarget(LINKDING_TARGET);
     expect(target.login).toContain("{{app_pass}}");
     expect(target.app?.env?.LD_SUPERUSER_PASSWORD).toBe("{{secret:app_pass}}");
   });
 
   it("locates the bundled profile by repository or GitHub clone URL", () => {
-    const file = "targets/linkding.json";
+    const file = LINKDING_TARGET;
     const expected = loadTarget(file);
     expect(targetPathFor(file)).toBe(file);
     expect(loadTarget(targetPathFor("sissbruecker/linkding"))).toEqual(expected);

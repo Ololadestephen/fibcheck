@@ -85,7 +85,6 @@ export class CallBudget {
     appendFileSync(this.ledgerPath, `${JSON.stringify(line)}\n`);
   }
 
-  /** Calls and tokens used so far in this run. */
   /** Calls and tokens for this run, and every model that answered. */
   runSummary(): { calls: number; models: string[] } & TokenUsage {
     return { calls: this.runCalls, ...this.runUsage, models: [...this.runModels].sort((a, b) => a.localeCompare(b)) };
@@ -93,20 +92,31 @@ export class CallBudget {
 
   private readTotals(): TotalsFile {
     if (!existsSync(this.totalsPath)) return { calls: 0, inputTokens: 0, outputTokens: 0 };
+    let totals: Partial<TotalsFile> | null;
     try {
-      return JSON.parse(readFileSync(this.totalsPath, "utf8")) as TotalsFile;
+      totals = JSON.parse(readFileSync(this.totalsPath, "utf8")) as Partial<TotalsFile> | null;
     } catch {
-      // Refuse rather than reset: resetting would silently lift the total limit.
-      throw new BudgetExceededError(
-        `The usage totals file ${this.totalsPath} is damaged. Fix or delete it on purpose before making more model calls.`,
-      );
+      throw this.damaged();
     }
+    if (!isCount(totals?.calls) || !isCount(totals?.inputTokens) || !isCount(totals?.outputTokens)) throw this.damaged();
+    return { calls: totals.calls, inputTokens: totals.inputTokens, outputTokens: totals.outputTokens };
+  }
+
+  /** Refuse rather than reset: resetting would silently lift the total limit. */
+  private damaged(): BudgetExceededError {
+    return new BudgetExceededError(
+      `The usage totals file ${this.totalsPath} is damaged. Fix or delete it on purpose before making more model calls.`,
+    );
   }
 
   private writeTotals(totals: TotalsFile): void {
     ensureDir(this.totalsPath);
     writeFileSync(this.totalsPath, `${JSON.stringify(totals, null, 2)}\n`);
   }
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
 function ensureDir(filePath: string): void {

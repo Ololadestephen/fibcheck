@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { CLAIM_TYPES, type Claim, type ClaimType } from "./claims/types.js";
+import type { AssertionMode } from "./kane/runner.js";
 
 /**
  * Frozen checks: a claims file generated once, reviewed by a person and committed. A check run from it is
@@ -19,7 +20,7 @@ export interface FrozenClaim {
   /** A reviewed nearby flow that should pass if the setup is valid. Without one, no failure can become a finding. */
   control?: string;
   /** How Kane evaluates assertions. "visual" judges what is shown on screen, not hidden page markup. */
-  assertionMode?: "dom" | "visual";
+  assertionMode?: AssertionMode;
   /** sha256 of the quote, check and control, written by `fibcheck freeze`. */
   contentSha256: string;
   /** Who reviewed the check, and when. A claim without a reviewer is not run. */
@@ -133,7 +134,7 @@ function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Writes a frozen file from extracted claims, for a person to review. Reviewer fields are left empty. */
+/** Builds a frozen file from extracted claims, for a person to review. Reviewer fields are left empty. */
 export function freeze(docsFile: string, claims: Claim[]): FrozenFile {
   return {
     version: 1,

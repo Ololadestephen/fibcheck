@@ -40,6 +40,13 @@ describe("CallBudget", () => {
     expect(() => budget.reserve()).toThrow(/damaged/);
   });
 
+  it.each(["{}", '{"calls":"x","inputTokens":0,"outputTokens":0}', "null"])("refuses calls when the totals file has the wrong shape: %s", (content) => {
+    const { dir, budget } = tempBudget(5, 5);
+    writeFileSync(join(dir, "totals.json"), content);
+    expect(() => budget.reserve()).toThrow(BudgetExceededError);
+    expect(() => budget.reserve()).toThrow(/damaged/);
+  });
+
   it("keeps the total limit across runs", () => {
     const first = tempBudget(10, 3, "run-1");
     first.budget.reserve();

@@ -222,10 +222,10 @@ describe("questionGenerally", () => {
 
   it("is used by questionClaim for claims without a reviewed check", async () => {
     const rounds: string[] = [];
-    const result = await questionClaim(claim, undefined, "Original", async (purpose) => {
+    const result = await questionClaim(claim, async (purpose) => {
       rounds.push(purpose);
       return kane("passed", "a");
-    }, undefined, () => true, { diagnose: async () => diagnosis({}), objectiveFor: (check) => check });
+    }, { managedTarget: undefined, originalObjective: "Original", general: { diagnose: async () => diagnosis({}), objectiveFor: (check) => check } });
     expect(rounds).toEqual(["initial"]);
     expect(result.questioning.verdict).toBe("true");
   });

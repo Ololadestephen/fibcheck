@@ -24,22 +24,28 @@ const CONTROL = `From the signed-in bookmarks page, open the Settings dropdown i
 const CONTROL_PROOF = "The same test login opened Site administration through the top navigation’s Settings dropdown in the passing control run.";
 const TAB_HISTORY = "Linkding’s historical source had an Admin tab in the Settings template at 3ae9cf0. The template was removed at 226eb69.";
 
-export async function questionClaim(
-  claim: Claim,
-  managedTarget: Pick<Target, "repo" | "login" | "app"> | undefined,
-  originalObjective: string,
-  run: RunRound,
-  prepareTags?: () => Promise<void>,
-  canRunFollowUp: () => boolean = () => true,
-  general?: GeneralQuestioning,
-): Promise<QuestionedRun> {
+export interface QuestionOptions {
+  managedTarget: Pick<Target, "repo" | "login" | "app"> | undefined;
+  originalObjective: string;
+  prepareTags?: () => Promise<void>;
+  canRunFollowUp?: () => boolean;
+  general?: GeneralQuestioning;
+}
+
+/** The bundled Linkding target exactly as shipped, which the built-in Linkding checks were written for. */
+function isBundledLinkding(target: Pick<Target, "repo" | "login" | "app">): boolean {
+  return isLinkdingRepo(target.repo)
+    && target.app?.image === "sissbruecker/linkding:1.47.0"
+    && target.app?.env?.LD_SUPERUSER_NAME === "pinotest"
+    && target.app?.env?.LD_SUPERUSER_PASSWORD === "{{secret:app_pass}}"
+    && Boolean(target.login?.includes("pinotest and password {{app_pass}}"));
+}
+
+export async function questionClaim(claim: Claim, run: RunRound, options: QuestionOptions): Promise<QuestionedRun> {
+  const { managedTarget, originalObjective, prepareTags, canRunFollowUp = () => true, general } = options;
   // A frozen, reviewed check is run exactly as reviewed, never through a built-in special case.
   if (general?.frozen && claim.check) return await questionGenerally(claim, claim.check, general, run, canRunFollowUp);
-  const linkding = managedTarget && isLinkdingRepo(managedTarget.repo)
-    && managedTarget.app?.image === "sissbruecker/linkding:1.47.0"
-    && managedTarget.app?.env?.LD_SUPERUSER_NAME === "pinotest"
-    && managedTarget.app?.env?.LD_SUPERUSER_PASSWORD === "{{secret:app_pass}}"
-    && managedTarget.login?.includes("pinotest and password {{app_pass}}");
+  const linkding = managedTarget && isBundledLinkding(managedTarget);
   if (linkding && managedTarget.login && prepareTags) {
     const tags = linkdingTagClaim(claim);
     if (tags) {

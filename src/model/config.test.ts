@@ -1,15 +1,35 @@
-import { existsSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { extractClaims } from "../claims/extract.js";
 import { CallBudget } from "./budget.js";
 import { ModelClient } from "./client.js";
+import { GoogleGenAI } from "@google/genai";
 import { createModelClient, createModelFromEnv } from "./config.js";
 import { OpenAICompatibleProvider } from "./openai-compatible.js";
 import { UnusableModelOutputError, type ModelProvider } from "./types.js";
 
 const dir = () => mkdtempSync(join(tmpdir(), "fibcheck-model-"));
+
+vi.mock("@google/genai", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@google/genai")>()),
+  GoogleGenAI: vi.fn(function () { return { models: {} }; }),
+}));
+
+describe("createModelClient", () => {
+  it("gives Gemini the key from the injected environment", () => {
+    const directory = mkdtempSync(join(tmpdir(), "fibcheck-key-"));
+    try {
+      createModelClient("r", directory, { GEMINI_API_KEY: "gemini-key" });
+      expect(vi.mocked(GoogleGenAI)).toHaveBeenLastCalledWith(expect.objectContaining({ apiKey: "gemini-key" }));
+      createModelClient("r", directory, { GEMINI_API_KEY: "gemini-key", GOOGLE_API_KEY: "google-key" });
+      expect(vi.mocked(GoogleGenAI)).toHaveBeenLastCalledWith(expect.objectContaining({ apiKey: "google-key" }));
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("createModelFromEnv", () => {
   it("leaves Gemini as the default when no model address is set", () => {

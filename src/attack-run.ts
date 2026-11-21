@@ -1,12 +1,12 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { runAttack, type AttemptResult, type LazyFix } from "./attack.js";
-import { loadFindings, type Finding } from "./card.js";
-import { localAddressesToApp, writeKaneVariables } from "./check.js";
+import { lazyFixTally, runAttack, type AttemptResult, type LazyFix } from "./attack.js";
 import { modelDiagnoser } from "./diagnose.js";
+import { loadFindings, readFindingsFile, writeFindingsFile, type Finding } from "./findings.js";
+import { escapeKaneBraces, localAddressesToApp, writeKaneVariables } from "./kane/objective.js";
 import { runKane } from "./kane/runner.js";
 import type { ModelClient } from "./model/client.js";
-import { runningAppVariables } from "./target.js";
+import { appBaseUrl, runningAppVariables } from "./target.js";
 
 export interface AttackOptions {
   findingsPath: string;
@@ -30,11 +30,9 @@ export interface AttackRecord {
   results: AttemptResult[];
 }
 
-const safe = (text: string) => text.replace(/[{}]{2,}/g, (braces) => braces.split("").join(" "));
-
 /** The Kane objective for one lazy fix: sign in, show the proposed docs line, then its check. */
 export function attackObjective(login: string | undefined, attempt: LazyFix): string {
-  return [login, `Proposed documentation says: "${safe(attempt.text)}".`, safe(localAddressesToApp(attempt.check ?? ""))].filter(Boolean).join(" ");
+  return [login, `Proposed documentation says: "${escapeKaneBraces(attempt.text)}".`, escapeKaneBraces(localAddressesToApp(attempt.check ?? ""))].filter(Boolean).join(" ");
 }
 
 /**
@@ -42,6 +40,7 @@ export function attackObjective(login: string | undefined, attempt: LazyFix): st
  * index/attacks/<id>.json, and records the rejected count on the finding.
  */
 export async function attackFinding(client: ModelClient, options: AttackOptions): Promise<AttackRecord> {
+  appBaseUrl(options.appUrl);
   const log = options.log ?? (() => {});
   const finding = loadFindings(options.findingsPath).find(({ id }) => id === options.id);
   if (!finding) throw new Error(`No finding called ${options.id} in ${options.findingsPath}.`);
@@ -79,9 +78,8 @@ function saveAttack(findingsPath: string, finding: Finding, record: AttackRecord
   mkdirSync(dir, { recursive: true });
   const portable = { ...record, results: record.results.map(({ kane, ...rest }) => (kane ? { ...rest, kane: { status: kane.status, oneLiner: kane.oneLiner } } : rest)) };
   writeFileSync(join(dir, `${finding.id}.json`), `${JSON.stringify(portable, null, 2)}\n`);
-  const all = JSON.parse(readFileSync(findingsPath, "utf8")) as Finding[];
-  const rejected = record.results.filter(({ outcome }) => outcome === "rejected_by_rule" || outcome === "rejected_by_kane").length;
-  const byKane = record.results.filter(({ outcome }) => outcome === "rejected_by_kane").length;
-  const updated = all.map((entry) => (entry.id === finding.id ? { ...entry, lazyFixes: { rejected, byKane } } : entry));
-  writeFileSync(findingsPath, `${JSON.stringify(updated, null, 2)}\n`);
+  const all = readFindingsFile(findingsPath);
+  const lazyFixes = lazyFixTally(record.results);
+  const updated = all.map((entry) => (entry.id === finding.id ? { ...entry, lazyFixes } : entry));
+  writeFindingsFile(findingsPath, updated);
 }

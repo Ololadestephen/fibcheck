@@ -1,7 +1,8 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
-import type { Finding } from "./card.js";
 import type { CheckReport, ClaimRun } from "./check.js";
+import { readFindingsFile, writeFindingsFile, type Finding } from "./findings.js";
+import { errorMessage } from "./util.js";
 import type { KaneRun } from "./kane/runner.js";
 
 export interface ConfirmOptions {
@@ -29,7 +30,7 @@ export function confirmFinding(options: ConfirmOptions): Finding {
   if (options.verdict !== "false" && options.verdict !== "outdated") throw new Error("A confirmed finding is false or outdated.");
   const report = readJson<CheckReport>(options.checkPath, "check");
   const { tested, failures, control } = backedCandidate(report, options);
-  const findings = existsSync(options.findingsPath) ? readJson<Finding[]>(options.findingsPath, "findings") : [];
+  const findings = existsSync(options.findingsPath) ? readFindingsFile(options.findingsPath) : [];
   const { claim } = tested;
   const project = options.project ?? report.target;
   const id = options.id ?? `${slug(project)}-${slug(basename(claim.source.file, extname(claim.source.file)))}-l${claim.source.startLine}`;
@@ -52,7 +53,7 @@ export function confirmFinding(options: ConfirmOptions): Finding {
     score: { findings: 1, claims: report.tested.length },
     ...(options.fix ? { fix: options.fix } : {}),
   };
-  writeFileSync(options.findingsPath, `${JSON.stringify([...findings, finding], null, 2)}\n`);
+  writeFindingsFile(options.findingsPath, [...findings, finding]);
   return finding;
 }
 
@@ -75,7 +76,7 @@ function readJson<T>(path: string, what: string): T {
   try {
     return JSON.parse(readFileSync(path, "utf8")) as T;
   } catch (error) {
-    throw new Error(`Could not read the ${what} file ${path}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Could not read the ${what} file ${path}: ${errorMessage(error)}`);
   }
 }
 

@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parseKaneOutput } from "./parse.js";
 
-const fixture = (name: string) => readFileSync(`fixtures/kane/${name}`, "utf8");
+const fixture = (name: string) => readFileSync(fileURLToPath(new URL(`../../fixtures/kane/${name}`, import.meta.url)), "utf8");
 
 describe("parseKaneOutput on real Kane CLI 0.10.4 output", () => {
   it("reads a failed final verification with Kane's blame label", () => {
@@ -49,6 +50,11 @@ describe("parseKaneOutput edge cases", () => {
     const r = parseKaneOutput('{"type":"run_end","status":"passed"}\n', 1);
     expect(r.status).toBe("error");
     expect(r.reason).toMatch(/inconclusive/);
+  });
+
+  it("skips memory entries that are not objects", () => {
+    const end = { type: "run_end", status: "passed", context: { memory: { bad: null, good: { condition: "c", extracted_value: "e", expected_value: "x" } } } };
+    expect(parseKaneOutput(`${JSON.stringify(end)}\n`, 0).observations.map(({ name }) => name)).toEqual(["good"]);
   });
 
   it("counts and skips lines that are not JSON", () => {
