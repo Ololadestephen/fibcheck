@@ -111,6 +111,7 @@ export function createModelClient(runId: string, cwd = process.cwd(), env: NodeJ
     );
   }
   const gemini = new GeminiProvider({
+    apiKey: env.GOOGLE_API_KEY || env.GEMINI_API_KEY,
     model: env.FIBCHECK_GEMINI_MODEL || undefined,
     fallbackModel: env.FIBCHECK_GEMINI_FALLBACK_MODEL || undefined,
   });

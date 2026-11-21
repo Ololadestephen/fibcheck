@@ -36,8 +36,10 @@ export interface GenerateContentApi {
 export interface GeminiOptions {
   model?: string;
   fallbackModel?: string;
-  /** Injected for tests. Defaults to the real SDK, which reads GEMINI_API_KEY itself. */
+  /** Injected for tests. Defaults to the real SDK, built with `apiKey`. */
   api?: GenerateContentApi;
+  /** The checked key from the injected environment, so the SDK does not read process.env itself. */
+  apiKey?: string;
   /** First retry delay. Each subsequent delay doubles. Tests can pass zero. */
   initialRetryDelayMs?: number;
   sleep?: (ms: number) => Promise<void>;
@@ -46,7 +48,7 @@ export interface GeminiOptions {
 /**
  * Retries an overloaded or timed-out Gemini request with exponential backoff.
  * After two capacity failures on the main model, the third attempt uses the
- * lighter model. When that works, subsequent requests on this client use it
+ * fallback model (FIBCHECK_GEMINI_FALLBACK_MODEL), which is the same model unless that is set. When that works, subsequent requests on this client use it
  * for the rest of the run. Each HTTP request reserves its own budget slot.
  */
 export class GeminiProvider implements ModelProvider {
@@ -67,7 +69,7 @@ export class GeminiProvider implements ModelProvider {
     // 60 seconds would hide rate limits and spend free-tier quota our call limits never see.
     this.api =
       options.api ??
-      new GoogleGenAI({ httpOptions: { timeout: REQUEST_TIMEOUT_MS, retryOptions: { attempts: 1 } } }).models;
+      new GoogleGenAI({ apiKey: options.apiKey, httpOptions: { timeout: REQUEST_TIMEOUT_MS, retryOptions: { attempts: 1 } } }).models;
   }
 
   async generate(request: ModelRequest, beforeAttempt: () => void = () => {}): Promise<ModelResponse> {
@@ -116,7 +118,7 @@ function isRateLimit(error: unknown): boolean {
   return error instanceof ApiError && error.status === 429;
 }
 
-function isCapacityError(error: unknown): boolean {
+function isCapacityError(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 503 || error.status === 504);
 }
 
@@ -127,7 +129,7 @@ function toProviderError(error: unknown): Error {
       "Gemini returned HTTP 429. Wait for the active rate limit or project quota to reset.",
     );
   }
-  if (error instanceof ApiError && (error.status === 503 || error.status === 504)) {
+  if (isCapacityError(error)) {
     return new ProviderOverloadedError(`Gemini is overloaded or timing out (HTTP ${error.status}). Try again in a few minutes.`);
   }
   if (error instanceof ApiError) {
