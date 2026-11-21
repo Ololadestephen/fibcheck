@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { cardText, evidenceLine, loadFindings, renderCardHtml } from "./card.js";
 import type { Finding } from "./findings.js";
+
+const INDEX_DIR = fileURLToPath(new URL("../index/", import.meta.url));
 
 const base: Finding = {
   id: "x", project: "Example", own: true, verdict: "false", quote: "Click the Admin tab.",
@@ -92,7 +95,7 @@ describe("renderCardHtml", () => {
 });
 
 describe("the recorded findings", () => {
-  const findings = loadFindings("index/findings.json");
+  const findings = loadFindings(`${INDEX_DIR}findings.json`);
 
   it("all exist, and every false or outdated one has two failures and a control", () => {
     expect(findings.map(({ id }) => id)).toEqual([
@@ -102,7 +105,7 @@ describe("the recorded findings", () => {
 
   it("record lazy-fix counts that match the saved attack attempts", () => {
     for (const finding of findings.filter(({ lazyFixes }) => lazyFixes)) {
-      const record = JSON.parse(readFileSync(`index/attacks/${finding.id}.json`, "utf8")) as { results: { outcome: string }[] };
+      const record = JSON.parse(readFileSync(`${INDEX_DIR}attacks/${finding.id}.json`, "utf8")) as { results: { outcome: string }[] };
       const rejected = record.results.filter(({ outcome }) => outcome === "rejected_by_rule" || outcome === "rejected_by_kane").length;
       const byKane = record.results.filter(({ outcome }) => outcome === "rejected_by_kane").length;
       expect(finding.lazyFixes).toEqual({ rejected, byKane });

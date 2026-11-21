@@ -4,8 +4,11 @@ import { parseKaneOutput, type KaneObservation } from "./kane/parse.js";
 import type { KaneRun } from "./kane/runner.js";
 import { questionClaim } from "./loop.js";
 import { loadTarget } from "./target.js";
+import { fileURLToPath } from "node:url";
 
-const target = loadTarget("targets/linkding.json");
+const LINKDING_TARGET = fileURLToPath(new URL("../targets/linkding.json", import.meta.url));
+
+const target = loadTarget(LINKDING_TARGET);
 const claim: Claim = {
   id: "docs/src/content/docs/admin.md#L14",
   type: "ui_flow",

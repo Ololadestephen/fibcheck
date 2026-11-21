@@ -6,8 +6,11 @@ import { linkdingTagClaim } from "./linkding-tags.js";
 import { questionClaim } from "./loop.js";
 import type { RunRound } from "./loop-types.js";
 import { loadTarget, resolveTarget } from "./target.js";
+import { fileURLToPath } from "node:url";
 
-const target = loadTarget("targets/linkding.json");
+const LINKDING_TARGET = fileURLToPath(new URL("../targets/linkding.json", import.meta.url));
+
+const target = loadTarget(LINKDING_TARGET);
 const startUrl = new URL("/login/", resolveTarget(target).baseUrl).href;
 const source = { file: "docs/src/content/docs/admin.md", startLine: 55, endLine: 55 };
 const ordinary: Claim = { id: "admin.md#L55", source, type: "behaviour", quote: "While linkding UI currently only allows to create or assign tags," };

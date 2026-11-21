@@ -9,12 +9,15 @@ import { ModelClient } from "./model/client.js";
 import type { ModelProvider } from "./model/types.js";
 import { loadTarget } from "./target.js";
 import { contentHash } from "./frozen.js";
+import { fileURLToPath } from "node:url";
+
+const LINKDING_TARGET = fileURLToPath(new URL("../targets/linkding.json", import.meta.url));
 
 const BASE = "b".repeat(40);
 const HEAD = "a".repeat(40);
 const REPO = "owner/public-app";
 const PROFILE = ".github/fibcheck.target.json";
-const serverUrl = new URL("/", loadTarget("targets/linkding.json").repo);
+const serverUrl = new URL("/", loadTarget(LINKDING_TARGET).repo);
 const apiUrl = new URL(serverUrl);
 apiUrl.hostname = "api." + serverUrl.hostname;
 const readme = "# Public app\n\nClick the Edit button.\n[Linked notes](../target.json)\n";
