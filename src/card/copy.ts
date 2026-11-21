@@ -2,8 +2,12 @@ import { createHash } from "node:crypto";
 import type { Finding } from "../findings.js";
 import type { ClaimVerdict } from "../loop-types.js";
 
+/**
+ * Stamps for another project's card. Our own projects (a finding with `own: true`) say FALSE outright; another
+ * project's false line is a MIX-UP, never a fib or a lie.
+ */
 const stamps: Record<ClaimVerdict, string> = {
-  false: "FALSE",
+  false: "MIX-UP",
   outdated: "OUTDATED",
   true: "ALL HELD",
   worded_differently: "WORDED DIFFERENTLY",
@@ -88,7 +92,10 @@ export function cardText(finding: Finding, entries: readonly Finding[] = [findin
   const path = segments.length > 2 ? `…/${segments.slice(-2).join("/")}` : file;
   return {
     ...counts,
-    stamp: finding.verdict === "true" && (held < resolved || unconfirmed > 0) ? "HELD" : stamps[finding.verdict],
+    stamp: finding.verdict === "true" && (held < resolved || unconfirmed > 0) ? "HELD" : finding.own && finding.verdict === "false" ? "FALSE" : stamps[finding.verdict],
+    // "Fib" belongs only on our own projects' cards: another project gets a neutral docs meter that ends at "off".
+    meterTitle: finding.own ? "Fib meter" : "Docs meter",
+    gaugeEnd: finding.own ? "fib" : "off",
     caption: pickSecond ? pool[1] : pool[0],
     quote: quote.length > 90 ? `${quote.slice(0, 89).join("").trimEnd()}…` : quote.join(""),
     source: `${finding.project} · ${path}:${line} · ${commit.slice(0, 7)}`,

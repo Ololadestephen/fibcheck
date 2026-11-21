@@ -62,14 +62,14 @@ function renderGif(work: string, frame: (index: number) => void, png: string): v
 }
 
 /** Writes `<outDir>/<id>.png` for one finding, and `<id>.gif` beside it when `animate` is set, and returns the PNG path. */
-export function writeCard(findingsPath: string, id: string, outDir: string, chrome = findChrome(), animate = false): string {
+export function writeCard(findingsPath: string, id: string, outDir: string, chrome = findChrome(), animate = false, link = true): string {
   const findings = loadFindings(findingsPath);
   const finding = findings.find((entry) => entry.id === id);
   if (!finding) throw new Error(`No finding called ${id} in ${findingsPath}.`);
-  return writeFindingCard(finding, findings, findingsPath, outDir, chrome, animate);
+  return writeFindingCard(finding, findings, findingsPath, outDir, chrome, animate, link);
 }
 
-function writeFindingCard(finding: Finding, findings: readonly Finding[], findingsPath: string, outDir: string, chrome: string, animate: boolean): string {
+function writeFindingCard(finding: Finding, findings: readonly Finding[], findingsPath: string, outDir: string, chrome: string, animate: boolean, link: boolean): string {
   const image = resolve(dirname(findingsPath), finding.screenshot);
   const mime = extname(image).toLowerCase() === ".png" ? "image/png" : "image/jpeg";
   const url = `data:${mime};base64,${readFileSync(image).toString("base64")}`;
@@ -77,9 +77,9 @@ function writeFindingCard(finding: Finding, findings: readonly Finding[], findin
   try {
     mkdirSync(outDir, { recursive: true });
     const png = resolve(outDir, `${finding.id}.png`);
-    const frame = (index: number) => capture(chrome, work, renderCardHtml(finding, url, findings, index / FPS), join(work, frameName(index)));
+    const frame = (index: number) => capture(chrome, work, renderCardHtml(finding, url, findings, index / FPS, link), join(work, frameName(index)));
     const last = join(work, frameName(FRAMES - 1));
-    capture(chrome, work, renderCardHtml(finding, url, findings, END), last);
+    capture(chrome, work, renderCardHtml(finding, url, findings, END, link), last);
     copyFileSync(last, png);
     if (animate) renderGif(work, frame, png);
     return png;

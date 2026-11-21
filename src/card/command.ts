@@ -9,15 +9,15 @@ import { errorMessage } from "../util.js";
 export function cardCommand(args: string[]): number {
   try {
     const { values, positionals } = parseArgs({ args, allowPositionals: true,
-      options: { all: { type: "boolean" }, findings: { type: "string" }, out: { type: "string" }, animate: { type: "boolean" } } });
+      options: { all: { type: "boolean" }, findings: { type: "string" }, out: { type: "string" }, animate: { type: "boolean" }, "no-link": { type: "boolean" } } });
     const findings = values.findings ?? "index/findings.json";
     const ids = values.all ? loadFindings(findings).map(({ id }) => id) : positionals;
     if (!ids.length) {
-      process.stderr.write("Usage: fibcheck card <finding-id | --all> [--findings FILE] [--out DIR] [--animate]\n");
+      process.stderr.write("Usage: fibcheck card <finding-id | --all> [--findings FILE] [--out DIR] [--animate] [--no-link]\n");
       return 1;
     }
     for (const id of ids) {
-      const png = writeCard(findings, id, values.out ?? "index/cards", undefined, values.animate);
+      const png = writeCard(findings, id, values.out ?? "index/cards", undefined, values.animate ?? false, !values["no-link"]);
       process.stdout.write(`Saved ${png}\n`);
       if (values.animate) process.stdout.write(`Saved ${png.replace(/\.png$/, ".gif")}\n`);
     }

@@ -21,7 +21,7 @@ Usage:
   fibcheck check <target.json | repository> [--max-claims N] [--max-kane-runs N] [--only CLAIM_ID ...]
                  [--url ADDRESS [--login SENTENCE] | --app-running]
   fibcheck report <check.json>
-  fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards] [--animate]
+  fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards] [--animate] [--no-link]
   fibcheck attack <finding-id> --url ADDRESS [--login SENTENCE] [--findings index/findings.json]
   fibcheck confirm <check.json> <claim-id> --verdict false|outdated [--fix SENTENCE] [--project NAME] [--own]
                    [--id ID] [--findings index/findings.json]
@@ -39,7 +39,8 @@ Claims are ranked by how specific they are (named menus, buttons, settings, defa
 The top --max-claims (default 5; 5 to 10 is a good range) are tested, and the rest are listed as not tested.
 The report command writes report.html and badge.svg beside a saved check.json.
 The card command draws a PNG share card for a recorded finding, from its verdict and Kane screenshot only.
---animate also writes an animated GIF of the card beside the PNG.
+--animate also writes an animated GIF of the card beside the PNG; --no-link leaves the repository address off
+the card (npx fibcheck stays).
 The attack command tries lazy fixes for a finding (delete the line, make it vague, hedge it, or guess a
 wrong detail) against the app at --url; each must be rejected by rule or failed by Kane.
 The confirm command records a candidate finding you have reviewed (two failed Kane runs and a passing

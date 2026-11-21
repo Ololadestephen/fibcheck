@@ -4,7 +4,8 @@ import { cardText } from "./copy.js";
 const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;", "`": "&#96;" };
 const escapeHtml = (text: string) => text.replace(/[&<>"'`]/g, (character) => entities[character] ?? character);
 
-export function renderCardHtml(finding: Finding, imageDataUrl: string, entries: readonly Finding[] = [finding], seconds = 3): string {
+/** `link` adds the repository address to the footer; `npx fibcheck` is always shown. */
+export function renderCardHtml(finding: Finding, imageDataUrl: string, entries: readonly Finding[] = [finding], seconds = 3, link = true): string {
   const text = cardText(finding, entries);
   const time = Number.isFinite(seconds) ? Math.max(0, Math.min(seconds, 3)) : 3;
   const angle = text.denominator ? -90 + 180 * text.held / text.denominator : 0;
@@ -37,20 +38,20 @@ main{display:grid;grid-template-columns:510px minmax(0,1fr);grid-template-rows:m
 .shot img{display:block;width:100%;height:100%;object-fit:contain}
 .evidence{font:700 22px/1.21 Georgia,serif;margin-top:8px;flex:none}
 .merged{color:#164c3d}
-.fib{font:700 21px Menlo,Consolas,monospace;fill:#a13722}
+.end{font:700 21px Menlo,Consolas,monospace;fill:var(--tone)}
 .needle{transform-origin:240px 220px;animation:needle 1.85s linear var(--time) both paused}
 @keyframes needle{0%{transform:rotate(-85deg)}5.4%{transform:rotate(82deg)}10.8%{transform:rotate(-72deg)}16.2%{transform:rotate(71deg)}21.6%{transform:rotate(-86deg)}27%{transform:rotate(37deg)}32.4%{transform:rotate(-51deg)}37.8%{transform:rotate(84deg)}43.2%{transform:rotate(-80deg)}48.6%{transform:rotate(61deg)}54%{transform:rotate(-39deg)}59.4%{transform:rotate(80deg)}64.9%{transform:rotate(-62deg);animation-timing-function:cubic-bezier(.2,.8,.3,1)}100%{transform:rotate(var(--angle))}}
 @keyframes land{0%,90%{opacity:0;transform:translateY(-4px) rotate(-3deg) scale(1.08)}91%{opacity:1;transform:translateY(-4px) rotate(-3deg) scale(1.08)}94%{transform:translateY(4px) rotate(-3deg) scale(.98)}97%{transform:translateY(-3px) rotate(-4deg)}100%{opacity:1;transform:rotate(-3deg)}}
 .wordmark,.byline{position:absolute;left:40px;right:40px;color:var(--ink)}.wordmark{top:5px;font:bold 25px/1 Georgia,serif;letter-spacing:-.04em}.wordmark span{color:#a13722}.byline{bottom:8px;display:flex;justify-content:space-between;font:600 17px/1 Menlo,Consolas,monospace}
 </style></head>
 <body><header class="wordmark"><span>fib</span>check</header><main><section class="left" aria-label="${escapeHtml(text.scope)} score">
-<div class="label">Fib meter / ${escapeHtml(text.scope)}</div>
+<div class="label">${escapeHtml(text.meterTitle)} / ${escapeHtml(text.scope)}</div>
 <svg class="meter" viewBox="0 0 480 235" aria-hidden="true">
 <path d="M39 220a201 201 0 0 1 402 0" fill="none" stroke="#dec6a5" stroke-width="12"/>
 <path d="M39 220a201 201 0 0 1 402 0" fill="none" stroke="currentColor" stroke-width="2"/>
 <path d="M68 220a172 172 0 0 1 344 0" fill="none" stroke="#bea583" stroke-width="1" stroke-dasharray="3 6"/>
 <g stroke="#493c2a" stroke-width="2">${ticks}</g>
-<text class="fib" x="52" y="201">fib</text>
+<text class="end" x="52" y="201">${escapeHtml(text.gaugeEnd)}</text>
 ${text.resolved ? '<path class="needle" d="M235 220L240 59l5 161Z" fill="currentColor"/>' : ""}<circle cx="240" cy="220" r="8" fill="currentColor"/>
 </svg>
 ${text.denominator ? `<div aria-label="${escapeHtml(text.score)}"><div class="score">${count} of ${text.denominator}</div><div class="truth">${escapeHtml(text.suffix)}</div></div>` : `<div class="score empty">${escapeHtml(text.score)}</div>`}
@@ -59,6 +60,6 @@ ${text.denominator ? `<div aria-label="${escapeHtml(text.score)}"><div class="sc
 </section><aside class="right"><section><div class="label">The docs said</div><blockquote class="quote">“${escapeHtml(text.quote)}”</blockquote><p class="source">${escapeHtml(text.source)}</p></section>
 <figure class="proof"><figcaption class="label">What Kane saw</figcaption><div class="shot"><img alt="Kane screenshot, scaled only" src="${escapeHtml(imageDataUrl)}"></div>
 ${text.evidence ? `<div class="evidence">${escapeHtml(text.evidence)}</div>` : ""}${text.merged ? `<div class="evidence merged">${escapeHtml(text.merged)}</div>` : ""}</figure>
-</aside></main><footer class="byline"><b>npx fibcheck</b><span>github.com/Ololadestephen/fibcheck</span></footer></body></html>
+</aside></main><footer class="byline"><b>npx fibcheck</b>${link ? "<span>github.com/Ololadestephen/fibcheck</span>" : ""}</footer></body></html>
 `;
 }

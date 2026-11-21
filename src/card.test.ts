@@ -147,7 +147,7 @@ it("passes --animate from the fibcheck card command to the renderer", async () =
   const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   try {
     expect(await main(["card", "soryn-readme-basic-attack", "--animate", "--findings", FINDINGS, "--out", "cards"])).toBe(0);
-    expect(writeCard).toHaveBeenCalledExactlyOnceWith(FINDINGS, "soryn-readme-basic-attack", "cards", undefined, true);
+    expect(writeCard).toHaveBeenCalledExactlyOnceWith(FINDINGS, "soryn-readme-basic-attack", "cards", undefined, true, true);
     expect(stdout.mock.calls.map(([line]) => line)).toEqual(["Saved share.png\n", "Saved share.gif\n"]);
   } finally {
     writeCard.mockRestore();
@@ -183,5 +183,63 @@ describe.skipIf(process.platform === "win32")("cardCommand --animate without ffm
     expect(existsSync(join(out, "soryn-readme-basic-attack.png"))).toBe(true);
     expect(existsSync(join(out, "soryn-readme-basic-attack.gif"))).toBe(false);
     expect(stdout).not.toHaveBeenCalled();
+  });
+});
+
+describe("own projects and other projects", () => {
+  const own: Finding = { ...base, own: true };
+  const other: Finding = { ...base, own: false };
+
+  it("labels our own project's card as a fib meter, with fib at the gauge's end and a FALSE stamp", () => {
+    expect(cardText(own)).toMatchObject({ meterTitle: "Fib meter", gaugeEnd: "fib", stamp: "FALSE" });
+    const html = renderCardHtml(own, "data:image/png;base64,AA");
+    expect(html).toContain("Fib meter / ");
+    expect(html).toContain('<text class="end" x="52" y="201">fib</text>');
+  });
+
+  it("labels another project's card as a docs meter, with off at the gauge's end and a MIX-UP stamp", () => {
+    expect(cardText(other)).toMatchObject({ meterTitle: "Docs meter", gaugeEnd: "off", stamp: "MIX-UP" });
+    const html = renderCardHtml(other, "data:image/png;base64,AA");
+    expect(html).toContain("Docs meter / ");
+    expect(html).toContain('<text class="end" x="52" y="201">off</text>');
+    expect(html).not.toContain("Fib meter");
+  });
+
+  it("never says fib, lie or liar on another project's card, whatever the verdict", () => {
+    for (const verdict of ["true", "false", "outdated", "worded_differently", "unconfirmed"] as const) {
+      const html = renderCardHtml({ ...other, verdict, id: `o-${verdict}` }, "data:image/png;base64,AA");
+      // The wordmark "fibcheck" and the "npx fibcheck" footer are the product's name, not a verdict.
+      const words = html.replace(/<style>[^]*<\/style>/u, "").replace(/<header class="wordmark">[^]*?<\/header>/u, "")
+        .replace(/<[^>]+>/gu, " ").replace(/fibcheck/gu, "");
+      expect(words.toLowerCase()).not.toMatch(/\bfib|\blie\b|\bliar|\blied\b/u);
+    }
+  });
+
+  it("decides own or other from the finding's own field, not the project's name", () => {
+    expect(cardText({ ...base, project: "Soryn", own: false }).gaugeEnd).toBe("off");
+    expect(cardText({ ...base, project: "Mealie", own: true }).gaugeEnd).toBe("fib");
+  });
+});
+
+describe("the repo link", () => {
+  it("shows npx fibcheck and the repo link by default, and drops only the link with link set to false", () => {
+    const withLink = renderCardHtml(base, "data:image/png;base64,AA");
+    expect(withLink).toContain("npx fibcheck");
+    expect(withLink).toContain("github.com/Ololadestephen/fibcheck");
+    const withoutLink = renderCardHtml(base, "data:image/png;base64,AA", [base], 3, false);
+    expect(withoutLink).toContain("npx fibcheck");
+    expect(withoutLink).not.toContain("github.com");
+  });
+
+  it("passes --no-link from the card command to the renderer", () => {
+    const writeCard = vi.spyOn(card, "writeCard").mockReturnValue("share.png");
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    try {
+      expect(cardCommand(["soryn-readme-basic-attack", "--no-link", "--findings", FINDINGS, "--out", "cards"])).toBe(0);
+      expect(writeCard).toHaveBeenCalledExactlyOnceWith(FINDINGS, "soryn-readme-basic-attack", "cards", undefined, false, false);
+    } finally {
+      writeCard.mockRestore();
+      stdout.mockRestore();
+    }
   });
 });
