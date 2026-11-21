@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 (not yet published)
+
+- `card --animate` writes an animated GIF of the share card beside the PNG (needs ffmpeg), and the command's help and usage list the flag.
+- Share cards are redesigned around a fib meter that shows how many of the app's checked lines held up, with a verdict stamp, a caption, the quoted line and Kane's screenshot.
+
 ## 0.1.1 (2026-11-21)
 
 - `attack` checks `--url` and `--login` the same way `check` does, and reads findings files through the same guarded loader as `card` and `confirm`.
