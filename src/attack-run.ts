@@ -1,10 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { runAttack, type AttemptResult, type LazyFix } from "./attack.js";
+import { lazyFixTally, runAttack, type AttemptResult, type LazyFix } from "./attack.js";
 import { loadFindings } from "./card.js";
-import { localAddressesToApp, writeKaneVariables } from "./check.js";
 import { modelDiagnoser } from "./diagnose.js";
 import { readFindingsFile, writeFindingsFile, type Finding } from "./findings.js";
+import { escapeKaneBraces, localAddressesToApp, writeKaneVariables } from "./kane/objective.js";
 import { runKane } from "./kane/runner.js";
 import type { ModelClient } from "./model/client.js";
 import { appBaseUrl, runningAppVariables } from "./target.js";
@@ -31,11 +31,9 @@ export interface AttackRecord {
   results: AttemptResult[];
 }
 
-const safe = (text: string) => text.replace(/[{}]{2,}/g, (braces) => braces.split("").join(" "));
-
 /** The Kane objective for one lazy fix: sign in, show the proposed docs line, then its check. */
 export function attackObjective(login: string | undefined, attempt: LazyFix): string {
-  return [login, `Proposed documentation says: "${safe(attempt.text)}".`, safe(localAddressesToApp(attempt.check ?? ""))].filter(Boolean).join(" ");
+  return [login, `Proposed documentation says: "${escapeKaneBraces(attempt.text)}".`, escapeKaneBraces(localAddressesToApp(attempt.check ?? ""))].filter(Boolean).join(" ");
 }
 
 /**
@@ -82,8 +80,7 @@ function saveAttack(findingsPath: string, finding: Finding, record: AttackRecord
   const portable = { ...record, results: record.results.map(({ kane, ...rest }) => (kane ? { ...rest, kane: { status: kane.status, oneLiner: kane.oneLiner } } : rest)) };
   writeFileSync(join(dir, `${finding.id}.json`), `${JSON.stringify(portable, null, 2)}\n`);
   const all = readFindingsFile(findingsPath);
-  const rejected = record.results.filter(({ outcome }) => outcome === "rejected_by_rule" || outcome === "rejected_by_kane").length;
-  const byKane = record.results.filter(({ outcome }) => outcome === "rejected_by_kane").length;
-  const updated = all.map((entry) => (entry.id === finding.id ? { ...entry, lazyFixes: { rejected, byKane } } : entry));
+  const lazyFixes = lazyFixTally(record.results);
+  const updated = all.map((entry) => (entry.id === finding.id ? { ...entry, lazyFixes } : entry));
   writeFindingsFile(findingsPath, updated);
 }

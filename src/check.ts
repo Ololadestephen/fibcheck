@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { startApp, type RunningApp } from "./app/docker.js";
 import { extractClaimsCached } from "./claims/cache.js";
@@ -8,14 +7,16 @@ import { collectDocuments } from "./claims/documents.js";
 import { locateQuote } from "./claims/quotes.js";
 import { rankClaims } from "./claims/rank.js";
 import type { ClaimSourcing, UnusablePart } from "./claims/extract.js";
-import type { Claim, RejectedClaim, SourceDocument } from "./claims/types.js";
+import { isTestable, type Claim, type RejectedClaim, type SourceDocument } from "./claims/types.js";
+import { escapeKaneBraces, localAddressesToApp, writeKaneVariables } from "./kane/objective.js";
 import { runKane, type KaneRun } from "./kane/runner.js";
 import { seedLinkdingTags } from "./linkding-tags.js";
 import { modelDiagnoser } from "./diagnose.js";
 import type { GeneralQuestioning } from "./general-loop.js";
 import { questionClaim } from "./loop.js";
-import type { Questioning } from "./loop-types.js";
+import type { Questioning, RunRound } from "./loop-types.js";
 import type { ModelClient } from "./model/client.js";
+import { newRunId } from "./util.js";
 import { missingLabelAssertion } from "./frozen.js";
 import { appBaseUrl, loadTarget, resolveTarget, runningAppVariables, type ResolvedTarget } from "./target.js";
 
@@ -25,6 +26,8 @@ export interface CheckOptions {
   targetPath: string;
   /** A trusted caller can provide documents staged from a pinned public revision. */
   source?: { directory: string; commit: string };
+  /** Names the run folder; the CLI passes the id it gave the model client so the ledger and the folder match. */
+  runId?: string;
   /** Where run folders go (default `runs/`). */
   runsDir?: string;
   /** fibcheck's working folder for clones and caches (default `.fibcheck/`). */
@@ -94,7 +97,7 @@ export interface CheckReport {
 export async function runCheck(client: ModelClient, options: CheckOptions): Promise<CheckReport> {
   validateOptions(options);
   const log = options.log ?? (() => {});
-  const runId = new Date().toISOString().replace(/[:.]/g, "-");
+  const runId = options.runId ?? newRunId();
   const workDir = options.workDir ?? ".fibcheck";
   const runDir = resolve(options.runsDir ?? "runs", runId);
   mkdirSync(runDir, { recursive: true });
@@ -112,10 +115,10 @@ export async function runCheck(client: ModelClient, options: CheckOptions): Prom
     : await extractClaimsCached(client, documents, join(workDir, "cache", "claims"));
   // Every claim that names a UI element must open with an exact-label assertion; a check without one is not run.
   const unlabelled = extraction.claims.flatMap((claim) => {
-    const why = claim.type !== "untestable" && claim.check ? missingLabelAssertion(claim) : undefined;
+    const why = isTestable(claim) ? missingLabelAssertion(claim) : undefined;
     return why ? [{ claim, why }] : [];
   });
-  const testable = extraction.claims.filter((c) => c.type !== "untestable" && c.check && !unlabelled.some(({ claim }) => claim === c));
+  const testable = extraction.claims.filter((c) => isTestable(c) && !unlabelled.some(({ claim }) => claim === c));
   for (const { claim, why } of unlabelled) {
     extraction.rejected.push({ quote: claim.quote, file: claim.source.file, why: `${NEEDS_REVIEW_PREFIX} line ${claim.source.startLine}. ${why}` });
   }
@@ -253,35 +256,25 @@ async function runClaims(target: ResolvedTarget, claims: Claim[], session: Claim
     }
     log(`[${index + 1}/${claims.length}] ${claim.id}: "${claim.quote}"`);
     const folder = safeName(claim.id);
-    const result = await questionClaim(claim, managedTarget, objectiveFor(claim, target), async (purpose, objective, assertionMode) => {
+    const run: RunRound = async (purpose, objective, assertionMode) => {
       runsRemaining--;
       const outDir = join(runDir, "claims", purpose === "initial" ? folder : `${folder}--${purpose}`);
       const kane = await runKane({ objective, startUrl, outDir, assertionMode, variablesFile });
       log(`    Kane ${purpose}: ${kane.status} (${kane.credits?.toFixed(1) ?? "?"} credits) ${kane.oneLiner}`);
       return kane;
-    }, prepareTags, canRun, session.diagnose && {
-      diagnose: session.diagnose,
-      objectiveFor: (check) => objectiveFor({ ...claim, check }, target),
-      frozen: session.frozen,
+    };
+    const result = await questionClaim(claim, run, {
+      managedTarget, originalObjective: objectiveFor(claim, target), prepareTags, canRunFollowUp: canRun,
+      general: session.diagnose && {
+        diagnose: session.diagnose,
+        objectiveFor: (check) => objectiveFor({ ...claim, check }, target),
+        frozen: session.frozen,
+      },
     });
     log(`    Claim verdict: ${result.questioning.verdict}. ${result.questioning.reason}`);
     tested.push({ claim, ...result });
   }
   return tested;
-}
-
-export function writeKaneVariables(variables: ResolvedTarget["kaneVariables"]) {
-  if (Object.keys(variables).length === 0) return undefined;
-  const directory = mkdtempSync(join(tmpdir(), "fibcheck-kane-"));
-  const path = join(directory, "variables.json");
-  const remove = () => rmSync(directory, { recursive: true, force: true });
-  try {
-    writeFileSync(path, JSON.stringify(variables), { flag: "wx", mode: 0o600 });
-  } catch (error) {
-    remove();
-    throw error;
-  }
-  return { path, remove };
 }
 
 /**
@@ -290,23 +283,12 @@ export function writeKaneVariables(variables: ResolvedTarget["kaneVariables"]) {
  * read it as a variable.
  */
 export function objectiveFor(claim: Claim, target: Pick<ResolvedTarget, "login">): string {
-  const safe = (text: string) => text.replace(/[{}]{2,}/g, (braces) => braces.split("").join(" "));
   const parts = [
     target.login,
-    `The app's documentation (${claim.source.file}, line ${claim.source.startLine}) says: "${safe(claim.quote)}".`,
-    safe(localAddressesToApp(claim.check ?? "")),
+    `The app's documentation (${claim.source.file}, line ${claim.source.startLine}) says: "${escapeKaneBraces(claim.quote)}".`,
+    escapeKaneBraces(localAddressesToApp(claim.check ?? "")),
   ];
   return parts.filter(Boolean).join(" ");
-}
-
-/**
- * Documentation often names its own default address (for example http://localhost:5230). The test app runs
- * elsewhere and Kane already starts on it, so a local address in a check is replaced by a reference to the app.
- */
-export function localAddressesToApp(check: string): string {
-  return check.replace(/\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?(\/[^\s"'<>]*)?/gi, (_match, path: string | undefined) => (
-    path && path !== "/" ? `the app's ${path.replace(/[.,;:]+$/, "")} page` : "the app's start page"
-  ));
 }
 
 function fetchRepo(repo: string, cloneDir: string): string {
