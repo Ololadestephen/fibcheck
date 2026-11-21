@@ -148,7 +148,7 @@ it("passes --animate from the fibcheck card command to the renderer", async () =
   try {
     expect(await main(["card", "soryn-readme-basic-attack", "--animate", "--findings", FINDINGS, "--out", "cards"])).toBe(0);
     expect(writeCard).toHaveBeenCalledExactlyOnceWith(FINDINGS, "soryn-readme-basic-attack", "cards", undefined, true);
-    expect(stdout).toHaveBeenCalledExactlyOnceWith("Saved share.png\n");
+    expect(stdout.mock.calls.map(([line]) => line)).toEqual(["Saved share.png\n", "Saved share.gif\n"]);
   } finally {
     writeCard.mockRestore();
     stdout.mockRestore();

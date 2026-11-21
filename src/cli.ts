@@ -5,11 +5,10 @@ import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { attackFinding } from "./attack-run.js";
 import { attackSummary } from "./attack.js";
-import { writeCard } from "./card.js";
+import { cardCommand } from "./card/command.js";
 import { runCheck } from "./check.js";
 import { extractClaims } from "./claims/extract.js";
 import { confirmFinding } from "./confirm.js";
-import { loadFindings } from "./findings.js";
 import { freeze, frozenClaims } from "./frozen.js";
 import { createModelClient, loadDotEnv } from "./model/config.js";
 import { writeReport } from "./report/report.js";
@@ -22,7 +21,7 @@ Usage:
   fibcheck check <target.json | repository> [--max-claims N] [--max-kane-runs N] [--only CLAIM_ID ...]
                  [--url ADDRESS [--login SENTENCE] | --app-running]
   fibcheck report <check.json>
-  fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards]
+  fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards] [--animate]
   fibcheck attack <finding-id> --url ADDRESS [--login SENTENCE] [--findings index/findings.json]
   fibcheck confirm <check.json> <claim-id> --verdict false|outdated [--fix SENTENCE] [--project NAME] [--own]
                    [--id ID] [--findings index/findings.json]
@@ -40,6 +39,7 @@ Claims are ranked by how specific they are (named menus, buttons, settings, defa
 The top --max-claims (default 5; 5 to 10 is a good range) are tested, and the rest are listed as not tested.
 The report command writes report.html and badge.svg beside a saved check.json.
 The card command draws a PNG share card for a recorded finding, from its verdict and Kane screenshot only.
+--animate also writes an animated GIF of the card beside the PNG.
 The attack command tries lazy fixes for a finding (delete the line, make it vague, hedge it, or guess a
 wrong detail) against the app at --url; each must be rejected by rule or failed by Kane.
 The confirm command records a candidate finding you have reviewed (two failed Kane runs and a passing
@@ -131,21 +131,6 @@ async function attackCommand(args: string[]): Promise<number> {
   });
   for (const result of record.results) process.stdout.write(`${result.kind}: ${result.outcome}. ${result.reason}\n`);
   process.stdout.write(`${attackSummary(record.results) || "No lazy fix was rejected."}\n`);
-  return 0;
-}
-
-function cardCommand(args: string[]): number {
-  const { values, positionals } = parseArgs({
-    args, allowPositionals: true,
-    options: { all: { type: "boolean" }, findings: { type: "string" }, out: { type: "string" }, animate: { type: "boolean" } },
-  });
-  const findingsPath = values.findings ?? "index/findings.json";
-  const ids = values.all ? loadFindings(findingsPath).map(({ id }) => id) : positionals;
-  if (ids.length === 0) {
-    process.stderr.write("Usage: fibcheck card <finding-id | --all> [--findings index/findings.json] [--out index/cards]\n");
-    return 1;
-  }
-  for (const id of ids) process.stdout.write(`Saved ${writeCard(findingsPath, id, values.out ?? "index/cards", undefined, values.animate)}\n`);
   return 0;
 }
 
