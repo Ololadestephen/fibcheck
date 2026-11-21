@@ -38,4 +38,10 @@ describe("attackFinding", () => {
     const { client, findingsPath, runsDir } = setup({ verdict: "outdated" });
     await expect(attackFinding(client, { findingsPath, id: "f", appUrl: "https://app.test", runsDir })).rejects.toThrow("no proven fix");
   });
+
+  it("rejects an app address with a password or a non-web scheme before anything runs", async () => {
+    const { client, findingsPath, runsDir } = setup({ verdict: "outdated", fix: "Open Settings." });
+    await expect(attackFinding(client, { findingsPath, id: "f", appUrl: "https://user:pass@example.org", runsDir })).rejects.toThrow("must not contain a user name or password");
+    await expect(attackFinding(client, { findingsPath, id: "f", appUrl: "ftp://example.org", runsDir })).rejects.toThrow("must start with http:// or https://");
+  });
 });

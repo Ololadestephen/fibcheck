@@ -26,6 +26,16 @@ describe("cli", () => {
     }
   });
 
+  it("rejects an attack --login without a {{NAME}} placeholder before doing any work", async () => {
+    const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(await main(["attack", "some-id", "--url", "http://localhost:9", "--login", "Sign in as admin with password hunter2"])).toBe(1);
+      expect(String(write.mock.calls[0]?.[0])).toContain("--login must name its values as {{NAME}}");
+    } finally {
+      write.mockRestore();
+    }
+  });
+
   it("rejects --login without --url, and --url with --app-running, before loading a target", async () => {
     const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     try {

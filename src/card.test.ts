@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { cardText, evidenceLine, loadFindings, renderCardHtml, type Finding } from "./card.js";
+import { cardText, evidenceLine, loadFindings, renderCardHtml } from "./card.js";
+import type { Finding } from "./findings.js";
 
 const base: Finding = {
   id: "x", project: "Example", own: true, verdict: "false", quote: "Click the Admin tab.",

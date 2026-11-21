@@ -16,7 +16,7 @@ import { questionClaim } from "./loop.js";
 import type { Questioning } from "./loop-types.js";
 import type { ModelClient } from "./model/client.js";
 import { missingLabelAssertion } from "./frozen.js";
-import { loadTarget, resolveTarget, runningAppVariables, type ResolvedTarget } from "./target.js";
+import { appBaseUrl, loadTarget, resolveTarget, runningAppVariables, type ResolvedTarget } from "./target.js";
 
 export interface CheckOptions {
   targetPath: string;
@@ -169,12 +169,7 @@ export function verifyReviewedClaims(documents: SourceDocument[], claims: Claim[
 /** Points a target at an app that is already running somewhere else. */
 export function withAppUrl(target: ResolvedTarget, appUrl: string | undefined): ResolvedTarget {
   if (appUrl === undefined) return target;
-  if (!URL.canParse(appUrl)) throw new Error("--url must be a full address such as https://bookmarks.example.org.");
-  const url = new URL(appUrl);
-  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("--url must start with http:// or https://.");
-  if (url.username || url.password) throw new Error("--url must not contain a user name or password. Put login values in .env instead.");
-  const baseUrl = `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
-  return { ...target, baseUrl };
+  return { ...target, baseUrl: appBaseUrl(appUrl) };
 }
 
 function validateOptions({ maxKaneRuns, appRunningSecrets, appRunning, appUrl }: CheckOptions): void {

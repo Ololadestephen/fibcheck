@@ -54,6 +54,15 @@ export function loginSecretsFromEnv(login: Target["login"], env: NodeJS.ProcessE
   }));
 }
 
+/** Checks an address given with --url and returns it without a trailing slash. */
+export function appBaseUrl(appUrl: string): string {
+  if (!URL.canParse(appUrl)) throw new Error("--url must be a full address such as https://bookmarks.example.org.");
+  const url = new URL(appUrl);
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("--url must start with http:// or https://.");
+  if (url.username || url.password) throw new Error("--url must not contain a user name or password. Put login values in .env instead.");
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+}
+
 export function runningAppVariables(
   login: Target["login"], secrets: Readonly<Record<string, string>>,
 ): ResolvedTarget["kaneVariables"] {

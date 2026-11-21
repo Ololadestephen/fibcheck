@@ -115,6 +115,11 @@ async function attack(args: string[]): Promise<number> {
     process.stderr.write("Usage: fibcheck attack <finding-id> --url ADDRESS [--login SENTENCE] [--findings index/findings.json]\n");
     return 1;
   }
+  const loginError = loginArgError(values.login);
+  if (loginError) {
+    process.stderr.write(loginError);
+    return 1;
+  }
   loadDotEnv();
   const runId = new Date().toISOString().replace(/[:.]/g, "-");
   const record = await attackFinding(createModelClient(runId), {
@@ -184,11 +189,17 @@ export function parseCheckArgs(args: string[]): CheckArgs | string {
   const maxKaneRuns = wholeNumber(values["max-kane-runs"], Number.isSafeInteger);
   if (maxKaneRuns === null) return "--max-kane-runs must be a whole number.\n";
   if (values.login !== undefined && values.url === undefined) return "--login needs --url.\n";
-  if (values.login !== undefined && !/\{\{[A-Za-z_][A-Za-z0-9_]*\}\}/.test(values.login)) {
-    return "--login must name its values as {{NAME}} and keep them in .env as FIBCHECK_LOGIN_NAME, never type a password into the command.\n";
-  }
+  const loginError = loginArgError(values.login);
+  if (loginError) return loginError;
   if (values.url !== undefined && values["app-running"]) return "Use either --url or --app-running, not both.\n";
   return { target, maxClaims, maxKaneRuns, only: values.only, appRunning: values["app-running"], url: values.url, login: values.login };
+}
+
+function loginArgError(login: string | undefined): string | undefined {
+  if (login !== undefined && !/\{\{[A-Za-z_][A-Za-z0-9_]*\}\}/.test(login)) {
+    return "--login must name its values as {{NAME}} and keep them in .env as FIBCHECK_LOGIN_NAME, never type a password into the command.\n";
+  }
+  return undefined;
 }
 
 /** undefined when absent, null when not a non-negative whole number. */
