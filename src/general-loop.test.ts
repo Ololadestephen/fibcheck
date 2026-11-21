@@ -230,3 +230,25 @@ describe("questionGenerally", () => {
     expect(result.questioning.verdict).toBe("true");
   });
 });
+
+describe("assertion mode on every run", () => {
+  it("keeps the claim's assertion mode on the first run, the reworded run, the repeat and the control", async () => {
+    const visualClaim: Claim = { ...claim, assertionMode: "visual" };
+    const misstep = diagnosis({ cause: "agent_misstep", reason: "Kane missed the editor.", revisedCheck: "Open the editor first, then create the memo." });
+    const runs = [kane("failed", "a"), kane("failed", "b"), kane("failed", "c"), kane("passed", "d")];
+    const readings = [misstep, contradiction, contradiction];
+    const modes: { purpose: string; mode: string | undefined }[] = [];
+    let reviewed = 0;
+    await questionGenerally(visualClaim, visualClaim.check ?? "", {
+      diagnose: async () => readings[reviewed++]!,
+      objectiveFor: (check) => check,
+    }, async (purpose, _objective, mode) => {
+      modes.push({ purpose, mode });
+      return runs[modes.length - 1]!;
+    }, () => true);
+    expect(modes).toEqual([
+      { purpose: "initial", mode: "visual" }, { purpose: "reword", mode: "visual" },
+      { purpose: "retry", mode: "visual" }, { purpose: "control", mode: "visual" },
+    ]);
+  });
+});

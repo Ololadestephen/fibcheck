@@ -148,7 +148,7 @@ describe("Linkding tag claims", () => {
   it("does not use a seeded flow on a user-managed app", async () => {
     const run = vi.fn<RunRound>().mockResolvedValue(rename(true));
     const result = await questionClaim(admin, run, { managedTarget: undefined, originalObjective: "Original check" });
-    expect(run).toHaveBeenCalledExactlyOnceWith("initial", "Original check");
+    expect(run).toHaveBeenCalledExactlyOnceWith("initial", "Original check", undefined);
     expect(result.questioning.verdict).toBe("unconfirmed");
   });
 });

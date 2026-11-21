@@ -210,3 +210,15 @@ async function perform(runs: KaneRun[], selected = claim, limit = Infinity) {
   }, { managedTarget: target, originalObjective: "Original check", canRunFollowUp: () => rounds.length < limit });
   return { result, rounds };
 }
+
+describe("assertion mode without a model reading", () => {
+  it("runs an unread claim with its own assertion mode", async () => {
+    const visual: Claim = { id: "README.md#L3", type: "ui_flow", quote: "Click the Save button.", check: "c", assertionMode: "visual", source: { file: "README.md", startLine: 3, endLine: 3 } };
+    const modes: (string | undefined)[] = [];
+    await questionClaim(visual, async (_purpose, _objective, mode) => {
+      modes.push(mode);
+      return { ...parseKaneOutput(JSON.stringify({ type: "run_end", status: "passed" }), 0), objective: "", startUrl: "", outDir: "o", evidence: [], evidenceError: null } as KaneRun;
+    }, { managedTarget: undefined, originalObjective: "o" });
+    expect(modes).toEqual(["visual"]);
+  });
+});

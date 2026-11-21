@@ -55,7 +55,7 @@ export async function questionClaim(claim: Claim, run: RunRound, options: Questi
   }
   if (!linkding || !isAdminTabClaim(claim)) {
     if (general && claim.check) return await questionGenerally(claim, claim.check, general, run, canRunFollowUp);
-    const kane = await run("initial", originalObjective);
+    const kane = await run("initial", originalObjective, claim.assertionMode);
     return {
       kane,
       questioning: {

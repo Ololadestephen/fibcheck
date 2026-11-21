@@ -101,7 +101,7 @@ async function decide(state: LoopState, attempt: Attempt, diagnosis: Diagnosis):
 async function reword(state: LoopState, diagnosis: Diagnosis): Promise<Attempt | undefined> {
   if (state.rewordsLeft <= 0 || !diagnosis.revisedCheck || !state.canRunFollowUp()) return undefined;
   state.rewordsLeft--;
-  const kane = await state.run("reword", state.general.objectiveFor(diagnosis.revisedCheck));
+  const kane = await state.run("reword", state.general.objectiveFor(diagnosis.revisedCheck), state.claim.assertionMode);
   state.followUps.push({ purpose: "reword", reason: `Reworded after the model's reading: ${diagnosis.reason}`, kane });
   return { round: "reword", check: diagnosis.revisedCheck, kane };
 }
